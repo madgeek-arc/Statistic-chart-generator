@@ -1,4 +1,9 @@
 var libraryType;
+var port = "8080";
+var domainName = "localhost";
+var protocol = "http";
+
+var domainLink = protocol+"://"+domainName+":"+port;
 
 function fetchChart(jsonData){
     $.getJSON(jsonData, handleAdminSideData)
@@ -41,7 +46,7 @@ function handleAdminSideData(dataJSONobj)
 
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
          function(){ passToChartDataizer(dataJSONobj,query_chartTypeJson,
-                            "http://localhost:8080/chart"); });
+                            domainLink+"/chart"); });
     }
 }
 
