@@ -1,0 +1,252 @@
+{
+    "entities": [
+        {
+            "@from": "result",
+            "@name": "publication",
+            "filters": [
+                {
+                    "@column": "type",
+                    "@type": "equal",
+                    "@value1": "publication"
+                }
+            ],
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "title",
+                    "@name": "title"
+                },
+                {
+                    "@column": "publisher",
+                    "@name": "publisher"
+                },
+                {
+                    "@column": "journal",
+                    "@name": "journal"
+                },
+                {
+                    "@column": "year",
+                    "@name": "year"
+                },
+                {
+                    "@column": "date",
+                    "@name": "date"
+                },
+                {
+                    "@column": "bestlicense",
+                    "@name": "access mode"
+                },
+                {
+                    "@column": "type",
+                    "@name": "classification",
+                    "@sqlTable": "result_classifications"
+                }
+            ]
+        },
+        {
+            "@from": "project",
+            "@name": "project",
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "acronym",
+                    "@name": "acronym"
+                },
+                {
+                    "@column": "title",
+                    "@name": "title"
+                },
+                {
+                    "@column": "funder",
+                    "@name": "funder"
+                },
+                {
+                    "@column": "funding_lvl0",
+                    "@name": "funding level 0"
+                },
+                {
+                    "@column": "funding_lvl1",
+                    "@name": "funding level 1"
+                },
+                {
+                    "@column": "funding_lvl2",
+                    "@name": "funding level 2"
+                },
+                {
+                    "@column": "funding_lvl3",
+                    "@name": "funding level 3"
+                },
+                {
+                    "@column": "start_year",
+                    "@name": "start year"
+                },
+                {
+                    "@column": "end_year",
+                    "@name": "end year"
+                },
+                {
+                    "@column": "duration",
+                    "@name": "duration"
+                },
+                {
+                    "@column": "startdate",
+                    "@name": "start date"
+                },
+                {
+                    "@column": "enddate",
+                    "@name": "end date"
+                },
+                {
+                    "@column": "code",
+                    "@name": "code"
+                }
+            ]
+        },
+        {
+            "@from": "datasource",
+            "@name": "datasource",
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "name",
+                    "@name": "name"
+                },
+                {
+                    "@column": "name",
+                    "@name": "type"
+                },
+                {
+                    "@column": "compatibility",
+                    "@name": "compatibility"
+                },
+                {
+                    "@column": "latitude",
+                    "@name": "latitude"
+                },
+                {
+                    "@column": "longitude",
+                    "@name": "longitude"
+                }
+            ]
+        },
+        {
+            "@from": "organization",
+            "@name": "organization",
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "name",
+                    "@name": "name"
+                },
+                {
+                    "@column": "country",
+                    "@name": "country"
+                }
+            ]
+        }
+    ],
+    "relations": [
+        {
+            "@from": "result",
+            "@to": "project",
+            "join": [
+                {
+                    "@from": "result",
+                    "@from_field": "id",
+                    "@to": "project_results",
+                    "@to_field": "result"
+                },
+                {
+                    "@from": "project_results",
+                    "@from_field": "id",
+                    "@to": "project",
+                    "@to_field": "id"
+                }
+            ]
+        },
+        {
+            "@from": "result",
+            "@to": "datasource",
+            "join": [
+                {
+                    "@from": "result",
+                    "@from_field": "id",
+                    "@to": "result_datasources",
+                    "@to_field": "id"
+                },
+                {
+                    "@from": "result_datasources",
+                    "@from_field": "datasource",
+                    "@to": "datasource",
+                    "@to_field": "id"
+                }
+            ]
+        },
+        {
+            "@from": "result",
+            "@to": "organization",
+            "join": [
+                {
+                    "@from": "result",
+                    "@from_field": "id",
+                    "@to": "result_organizations",
+                    "@to_field": "id"
+                },
+                {
+                    "@from": "result_organizations",
+                    "@from_field": "organization",
+                    "@to": "organization",
+                    "@to_field": "id"
+                }
+            ]
+        },
+        {
+            "@from": "project",
+            "@to": "organization",
+            "join": [
+                {
+                    "@from": "project",
+                    "@from_field": "id",
+                    "@to": "project_organizations",
+                    "@to_field": "id"
+                },
+                {
+                    "@from": "project_organizations",
+                    "@from_field": "organization",
+                    "@to": "organization",
+                    "@to_field": "id"
+                }
+            ]
+        },
+        {
+            "@from": "datasource",
+            "@to": "organization",
+            "join": [
+                {
+                    "@from": "datasource",
+                    "@from_field": "id",
+                    "@to": "datasource_organizations",
+                    "@to_field": "id"
+                },
+                {
+                    "@from": "datasource_organizations",
+                    "@from_field": "organization",
+                    "@to": "organization",
+                    "@to_field": "id"
+                }
+            ]
+        },
+        {
+            "@from": "result",
+            "@to": "result_classifications",
+            "join": [
+                {
+                    "@from": "result",
+                    "@from_field": "id",
+                    "@to": "result_classifications",
+                    "@to_field": "id"
+                }
+            ]
+        }
+    ]
+}
