@@ -43,5 +43,21 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
+    <build>
+    <resources>
+        <!-- regular resource processsing for everything except logback.xml -->
+        <resource>
+            <directory>src/main/resources</directory>
+            <excludes>
+                <exclude>logback.xml</exclude>
+            </excludes>
+        </resource>
+        <!-- resource processsing with a different output directory
+             for logback.xml -->
+        <resource>
+            <directory>src/main/resources</directory>
+        </resource>
+    </resources>
+</build>
 
 </project>

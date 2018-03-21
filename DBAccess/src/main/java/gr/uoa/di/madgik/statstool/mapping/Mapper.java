@@ -4,7 +4,9 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,7 +32,8 @@ public class Mapper {
     public Mapper() {
         try {
             JSONParser jsonParser = new JSONParser();
-            JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(getClass().getClassLoader().getResource("mapping.json").getFile()));
+            //JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(getClass().getClassLoader().getResource("mapping.json").getFile()));
+            JSONObject jsonObject = (JSONObject) jsonParser.parse(new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/mapping.json"))));
             JSONArray jsonEntities = (JSONArray) jsonObject.get("entities");
             for(Object entity : jsonEntities) {
                 JSONObject jsonEntity = (JSONObject) entity;
