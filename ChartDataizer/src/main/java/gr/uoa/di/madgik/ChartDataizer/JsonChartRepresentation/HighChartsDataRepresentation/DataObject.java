@@ -1,4 +1,4 @@
-package JsonChartRepresentation.HighChartsDataRepresentation;
+package gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -30,6 +30,32 @@ public class DataObject {
     @JsonProperty
     private Number y;
 
+    public DataObject(Number x,Number y){
+        this.className = null;
+        this.color = null;
+        this.colorIndex = null;
+        this.description = null;
+        this.drilldown = null;
+        this.id = null;
+        this.labelrank = null;
+        this.name = null;
+        this.selected = false;
+        this.x = x;
+        this.y = y;
+    }
+    public DataObject(String name,Number y){
+        this.className = null;
+        this.color = null;
+        this.colorIndex = null;
+        this.description = null;
+        this.drilldown = null;
+        this.id = null;
+        this.labelrank = null;
+        this.name = name;
+        this.selected = false;
+        this.x = null;
+        this.y = y;
+    }
     public DataObject(String className, String color,
                       Number colorIndex, String description,
                       String drilldown, String id,

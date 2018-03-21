@@ -1,15 +1,22 @@
-import JsonChartRepresentation.HighChartsDataRepresentation.AbsData;
-import JsonChartRepresentation.HighChartsDataRepresentation.ArrayOfTuples;
-import JsonChartRepresentation.HighChartsDataRepresentation.DataSeries;
+package gr.uoa.di.madgik.ChartDataizer;
+
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.AbsData;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.ArrayOfArrays;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.DataSeries;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.JsonResponse;
 import org.junit.Test;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
 
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @JsonTest
 public class DataSerializationTest {
@@ -20,13 +27,12 @@ public class DataSerializationTest {
     private String unwrappedExpected = "[{\"data\":[[260064,0],[269568,0.4],[288576,0.25],[315360,1.66],[323136,1.8]]}," +
             "{\"data\":[[260064,0],[269568,0.4],[288576,0.25],[315360,1.66],[323136,1.8]]},"+
             "{\"data\":[[260064,0],[269568,0.4],[288576,0.25],[315360,1.66],[323136,1.8]]}]";
+    private String HighchartsJsonResponseExpected = "{\"xAxis_categories\":null,\"series\":[{\"data\":[1,0,4]},{\"data\":[5,7,3]}]}";
 
     @Test
     public void SerializeData() throws JsonProcessingException {
 
         ArrayList<AbsData> dataToPass = new ArrayList<>();
-
-        // Data tuples as Number[]
         ArrayList<Number[]> arrayList = new ArrayList<>();
         Number[] array = new Number[2];
 
@@ -54,42 +60,13 @@ public class DataSerializationTest {
         array[1] = 1.8;
         arrayList.add(array);
 
-        /*// Data tuples as Class
-        ArrayList<DataTuple> arrayList = new ArrayList<>();
-        Number[] array = new Number[2];
+        ArrayOfArrays arrayOfArrays = new ArrayOfArrays(arrayList);
 
-        array[0] = 260064;
-        array[1] = 0;
-        arrayList.add(new DataTuple(array));
-
-        array = new Number[2];
-        array[0] = 269568;
-        array[1] = 0.4;
-        arrayList.add(new DataTuple(array));
-
-        array = new Number[2];
-        array[0] = 288576;
-        array[1] = 0.25;
-        arrayList.add(new DataTuple(array));
-
-        array = new Number[2];
-        array[0] = 315360;
-        array[1] = 1.66;
-        arrayList.add(new DataTuple(array));
-
-        array = new Number[2];
-        array[0] = 323136;
-        array[1] = 1.8;
-        arrayList.add(new DataTuple(array));*/
-
-        ArrayOfTuples tuples = new ArrayOfTuples(arrayList);
-
-        dataToPass.add(tuples);
-        dataToPass.add(tuples);
-        dataToPass.add(tuples);
+        dataToPass.add(arrayOfArrays);
+        dataToPass.add(arrayOfArrays);
+        dataToPass.add(arrayOfArrays);
 
         DataSeries packagedData = new DataSeries(dataToPass);
-
 
         ObjectMapper mapper = new ObjectMapper();
         String wrapped = mapper.writeValueAsString(packagedData);
@@ -99,6 +76,22 @@ public class DataSerializationTest {
         assert wrapped.compareTo(wrappedExpected) == 0;
         String notWrapped = mapper.writeValueAsString(packagedData.getDataSeries());
         assert notWrapped.compareTo(unwrappedExpected) == 0;
+
+    }
+
+
+    @Test
+    public void SerializeDataJsonResponse() throws IOException {
+
+        ObjectMapper mapper = new ObjectMapper();
+        AbsData[] series = mapper.readValue(new File("src/test/resources/public/jsonFiles/chartdataizerToHtml.json"), AbsData[].class);
+
+        assert series != null;
+
+        JsonResponse jsonResponse =  new HighChartsJsonResponse(new ArrayList<>(Arrays.asList(series)),null);
+        String jsonString = mapper.writeValueAsString(jsonResponse);
+        assert jsonString.compareTo(HighchartsJsonResponseExpected) == 0;
+
 
     }
 }

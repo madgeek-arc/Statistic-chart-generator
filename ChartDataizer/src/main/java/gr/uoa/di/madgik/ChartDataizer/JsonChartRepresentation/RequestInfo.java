@@ -1,28 +1,28 @@
-package JsonChartRepresentation;
+package gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import gr.uoa.di.madgik.statstool.query.Query;
 import java.util.ArrayList;
 
 /**
- * Class holding the necessary information for the DBAccess to return the query results
+ * Class holding the necessary information for the ChartDataizer to form the query results
  */
-public class QueryInfo {
+public class RequestInfo {
 
     @JsonProperty
     private String library;
-    @JsonProperty
+    @JsonProperty(value = "type")
     private String chartType;
     @JsonProperty
     private ArrayList<Query> queries;
 
-    public QueryInfo(String library, String chartType, ArrayList<Query> queries) {
+    public RequestInfo(String library, String chartType, ArrayList<Query> queries) {
         this.library = library;
         this.chartType = chartType;
         this.queries = queries;
     }
 
-    public QueryInfo() {}
+    public RequestInfo() {}
 
     public String getLibrary() {
         return library;

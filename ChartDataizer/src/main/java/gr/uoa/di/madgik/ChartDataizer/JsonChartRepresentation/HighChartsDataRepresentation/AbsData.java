@@ -1,4 +1,4 @@
-package JsonChartRepresentation.HighChartsDataRepresentation;
+package gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -32,9 +32,9 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
         if (dataNode != null){
             switch (dataNode.get(0).getNodeType()){
                 case ARRAY:
-                    return mapper.treeToValue(root,ArrayOfTuples.class);
+                    return mapper.treeToValue(root,ArrayOfArrays.class);
                 case NUMBER:
-                    return mapper.treeToValue(root,ArrayOfNumbers.class);
+                    return mapper.treeToValue(root,ArrayOfValues.class);
                 case OBJECT:
                 case POJO:
                     return mapper.treeToValue(root,ArrayOfObjects.class);

@@ -1,9 +1,10 @@
+package gr.uoa.di.madgik.StatisticChartGenerator_App;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
-@ComponentScan(basePackages = { "JsonChartRepresentation","RestControllers"} )
+@ComponentScan(basePackages = {"gr/uoa/di/madgik/ChartDataizer"} )
 @SpringBootApplication
 public class appBoot {
 

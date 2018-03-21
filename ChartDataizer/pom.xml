@@ -39,6 +39,13 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-thymeleaf</artifactId>
 		</dependency>
+
+        <!--Dependency to DBAccess-->
+		<dependency>
+			<groupId>gr.uoa.di.madgik</groupId>
+			<artifactId>Statistic-chart-generator-DBAccess</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 	</dependencies>
 
 </project>

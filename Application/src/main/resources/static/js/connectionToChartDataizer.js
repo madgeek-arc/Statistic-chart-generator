@@ -19,9 +19,10 @@ function loadJS(url, afterLoadCallback){
     fileref.onload = afterLoadCallback;
     fileref.setAttribute("type","text/javascript");
     fileref.setAttribute("src", url);
-    document.getElementsByTagName('head')[0].appendChild(fileref);
-
-    console.log("Library "+url+" loaded!");
+    var firstHeadTaginDOM = document.getElementsByTagName('head')[0];
+    firstHeadTaginDOM.appendChild(fileref);
+        
+    console.log("Library "+firstHeadTaginDOM.lastChild.getAttribute("src")+" loaded!");
 }
 
 //Callback that handles the data sent from the Admin part of the app
@@ -43,10 +44,10 @@ function handleAdminSideData(dataJSONobj)
         query_chartTypeJson.type = dataJSONobj.chartDescription.chart.type;
         //Pass the Chart data queries to ChartDataizer
         query_chartTypeJson.queries = dataJSONobj.chartDescription.series;
-
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
-         function(){ passToChartDataizer(dataJSONobj,query_chartTypeJson,
-                            domainLink+"/chart"); });
+        function(){ passToChartDataizer(dataJSONobj,
+                        query_chartTypeJson,
+                        domainLink+"/chart"); });
     }
 }
 
@@ -71,7 +72,7 @@ function passToChartDataizer(dataJSONobj,chartDataizerReadyJSONobj,chartDataizer
 
 function handleChartDataizerResponse(responseData, originalDataJSONobj)
 {   
-    console.log(responseData);
+    console.log("Response Data:" +responseData);
     
     //Hide children elements of container
     $("#container").children().remove();
@@ -93,6 +94,12 @@ function convertToValidHighchartJson(responseData, originJson){
     for (let index = 0; index < Object.keys(convertedJson.series).length; index++){
         convertedJson.series[index].data = responseData.series[index].data;
         convertedJson.series[index].query = null;
+        
+        if(convertedJson.xAxis !== undefined)
+            convertedJson.xAxis.categories = responseData.xAxis_categories
+        else
+            convertedJson.xAxis = {};
+            convertedJson.xAxis.categories = responseData.xAxis_categories;
     } 
 
     return convertedJson;

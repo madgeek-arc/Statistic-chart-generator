@@ -1,0 +1,46 @@
+{
+    "library" : "Highcharts",
+
+    "chartDescription": 
+    {
+        "chart": {
+            "type": "column"
+        },
+        "title": {
+            "text": "Publications per Year from H2020"
+        },        
+        "yAxis": {
+            "title": {
+            "text": "# of Publications"
+            }
+        },
+        "series": [{
+            "name": "H2020",
+            "query": {
+                "filters": [
+                    {
+                        "field": "publication.year",
+                        "type": "between",
+                        "value1": 2010,
+                        "value2": 2015
+                    },
+                    {	"field": "project.funding level 0",
+                        "type": "equal",
+                        "value1": "H2020"
+                    }
+                ],
+                "select": [
+                    {
+                        "aggregate": "count",
+                        "field": "project"
+                    },
+                    {
+                        "field": "publication.year"
+                    }
+                ],
+                "entity": "project"
+            }
+
+        }]        
+    }
+}

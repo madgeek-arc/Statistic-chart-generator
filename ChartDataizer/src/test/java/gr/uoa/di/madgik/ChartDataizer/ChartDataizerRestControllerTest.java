@@ -1,5 +1,7 @@
-import JsonChartRepresentation.QueryInfo;
-import RestControllers.ChartDataizerRestController;
+package gr.uoa.di.madgik.ChartDataizer;
+
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.RequestInfo;
+import gr.uoa.di.madgik.ChartDataizer.RestControllers.ChartDataizerRestController;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,27 +46,26 @@ public class ChartDataizerRestControllerTest {
     @Test
     public void highchartsLibPost() throws Exception {
 
-        QueryInfo mockHichchartsQueryInfo = new QueryInfo();
-        mockHichchartsQueryInfo.setLibrary("Highcharts");
+        RequestInfo mockHichchartsRequestInfo = new RequestInfo();
+        mockHichchartsRequestInfo.setLibrary("Highcharts");
 
         ObjectMapper mapper = new ObjectMapper();
-        String jsonQueryInfo = mapper.writeValueAsString(mockHichchartsQueryInfo);
+        String jsonQueryInfo = mapper.writeValueAsString(mockHichchartsRequestInfo);
 
         this.mockMvc.perform(MockMvcRequestBuilders.post("/chart").content(jsonQueryInfo)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .accept(MediaType.APPLICATION_JSON_UTF8_VALUE))
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE));
+                .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
     @Test
     public void unknownLibPost() throws Exception {
 
-        QueryInfo mockUnknownQueryInfo = new QueryInfo();
-        mockUnknownQueryInfo.setLibrary("Unknown");
+        RequestInfo mockUnknownRequestInfo = new RequestInfo();
+        mockUnknownRequestInfo.setLibrary("Unknown");
 
         ObjectMapper mapper = new ObjectMapper();
-        String jsonQueryInfo = mapper.writeValueAsString(mockUnknownQueryInfo);
+        String jsonQueryInfo = mapper.writeValueAsString(mockUnknownRequestInfo);
 
         this.mockMvc.perform(MockMvcRequestBuilders.post("/chart").content(jsonQueryInfo)
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
@@ -78,13 +79,17 @@ public class ChartDataizerRestControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode jsonNode = mapper.readTree(new URL("http://localhost:8080/jsonFiles/multiAdminToHtml.json"));
 
-        ResultActions ra = this.mockMvc.perform(MockMvcRequestBuilders.post("/chart").content(jsonNode.toString())
+        ResultActions ra = this.mockMvc.perform(MockMvcRequestBuilders.post("/chart")
+                .content(jsonNode.toString())
                 .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .accept(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
                 .andExpect(MockMvcResultMatchers.jsonPath("@.series[0].data").exists())
-                .andExpect(MockMvcResultMatchers.jsonPath("@.series[0].data").isNotEmpty());
+                .andExpect(MockMvcResultMatchers.jsonPath("@.series[0].data").isNotEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("@.xAxis_categories").exists())
+                .andExpect(MockMvcResultMatchers.jsonPath("@.xAxis_categories").isNotEmpty());
+
 
         System.out.println(ra.andReturn().getResponse().getContentAsString());
 

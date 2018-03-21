@@ -1,8 +1,9 @@
-package RestControllers;
+package gr.uoa.di.madgik.ChartDataizer.RestControllers;
 
-import Handlers.RequestBodyHandler;
-import JsonChartRepresentation.HighChartsDataRepresentation.*;
-import JsonChartRepresentation.QueryInfo;
+import gr.uoa.di.madgik.ChartDataizer.Handlers.RequestBodyHandler;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.JsonResponse;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.RequestInfo;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,14 +29,15 @@ public class ChartDataizerRestController {
             produces = "application/json; charset=UTF-8")
 
     public @ResponseBody
-    ResponseEntity<DataSeries> postFullChartRepresentation(@NotNull @RequestBody QueryInfo requestJson)  {
+    ResponseEntity<JsonResponse> postFullChartRepresentation(@NotNull @RequestBody RequestInfo requestJson)  {
 
         RequestBodyHandler requestBodyHandler = new RequestBodyHandler();
-        DataSeries responseData = null;
+        JsonResponse responseData;
 
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyHandler.RequestBodyException e) {
+            System.err.println(e.getMessage());
             e.getStackTrace();
             return new ResponseEntity<>(e.getHttpStatus());
         }
