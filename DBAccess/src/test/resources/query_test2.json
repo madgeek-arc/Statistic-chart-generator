@@ -1,0 +1,24 @@
+{
+  "filters": [
+    {
+      "field": "publication.year",
+      "type": "between",
+      "value1": 2010,
+      "value2": 2015
+    },
+    {	"field": "project.funding level 0",
+      "type": "equal",
+      "value1": "H2020"
+    }
+  ],
+  "select": [
+    {
+      "aggregate": "count",
+      "field": "project"
+    },
+    {
+      "field": "publication.year"
+    }
+  ],
+  "entity": "project"
+}
