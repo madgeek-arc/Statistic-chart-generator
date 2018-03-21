@@ -17,22 +17,12 @@ public class DBAccessTest {
     public void testDB() {
         DBAccess dbAccess = new DBAccess();
         ObjectMapper mapper = new ObjectMapper();
-        List<Query> queryList = new ArrayList<Query>();
+        List<Query> queryList = new ArrayList<>();
         try {
             Query query = mapper.readValue(getClass().getClassLoader().getResource("query_test.json"), Query.class);
             queryList.add(query);
-            queryList.add(query);
-            queryList.add(query);
-            queryList.add(query);
-            queryList.add(query);
-            queryList.add(query);
 
-            List<Result> results = dbAccess.queryTest(queryList);
-            /*
-            for(Result result : results) {
-                System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(result));
-            }
-            */
+            List<Result> results = dbAccess.query(queryList);
             System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results));
         } catch (Exception e) {
             e.printStackTrace();

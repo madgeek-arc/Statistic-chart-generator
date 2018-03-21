@@ -5,9 +5,9 @@ import java.util.List;
 import gr.uoa.di.madgik.statstool.query.Filter;
 
 public class Table {
-    private String table;
-    private String key;
-    private List<Filter> filters;
+    private final String table;
+    private final String key;
+    private final List<Filter> filters;
 
     public Table(String table, String key, List<Filter> filters) {
         this.table = table;

@@ -14,32 +14,39 @@
             "field": [
                 {
                     "@column": "title",
-                    "@name": "title"
+                    "@name": "title",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "publisher",
-                    "@name": "publisher"
+                    "@name": "publisher",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "journal",
-                    "@name": "journal"
+                    "@name": "journal",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "year",
-                    "@name": "year"
+                    "@name": "year",
+                    "@datatype": "int"
                 },
                 {
                     "@column": "date",
-                    "@name": "date"
+                    "@name": "date",
+                    "@datatype": "date"
                 },
                 {
                     "@column": "bestlicense",
-                    "@name": "access mode"
+                    "@name": "access mode",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "type",
                     "@name": "classification",
-                    "@sqlTable": "result_classifications"
+                    "@sqlTable": "result_classifications",
+                    "@datatype": "text"
                 }
             ]
         },
@@ -50,55 +57,68 @@
             "field": [
                 {
                     "@column": "acronym",
-                    "@name": "acronym"
+                    "@name": "acronym",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "title",
-                    "@name": "title"
+                    "@name": "title",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "funder",
-                    "@name": "funder"
+                    "@name": "funder",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "funding_lvl0",
-                    "@name": "funding level 0"
+                    "@name": "funding level 0",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "funding_lvl1",
-                    "@name": "funding level 1"
+                    "@name": "funding level 1",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "funding_lvl2",
-                    "@name": "funding level 2"
+                    "@name": "funding level 2",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "funding_lvl3",
-                    "@name": "funding level 3"
+                    "@name": "funding level 3",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "start_year",
-                    "@name": "start year"
+                    "@name": "start year",
+                    "@datatype": "int"
                 },
                 {
                     "@column": "end_year",
-                    "@name": "end year"
+                    "@name": "end year",
+                    "@datatype": "int"
                 },
                 {
                     "@column": "duration",
-                    "@name": "duration"
+                    "@name": "duration",
+                    "@datatype": "int"
                 },
                 {
                     "@column": "startdate",
-                    "@name": "start date"
+                    "@name": "start date",
+                    "@datatype": "date"
                 },
                 {
                     "@column": "enddate",
-                    "@name": "end date"
+                    "@name": "end date",
+                    "@datatype": "date"
                 },
                 {
                     "@column": "code",
-                    "@name": "code"
+                    "@name": "code",
+                    "@datatype": "text"
                 }
             ]
         },
@@ -109,23 +129,28 @@
             "field": [
                 {
                     "@column": "name",
-                    "@name": "name"
+                    "@name": "name",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "name",
-                    "@name": "type"
+                    "@name": "type",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "compatibility",
-                    "@name": "compatibility"
+                    "@name": "compatibility",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "latitude",
-                    "@name": "latitude"
+                    "@name": "latitude",
+                    "@datatype": "float"
                 },
                 {
                     "@column": "longitude",
-                    "@name": "longitude"
+                    "@name": "longitude",
+                    "@datatype": "float"
                 }
             ]
         },
@@ -136,11 +161,13 @@
             "field": [
                 {
                     "@column": "name",
-                    "@name": "name"
+                    "@name": "name",
+                    "@datatype": "text"
                 },
                 {
                     "@column": "country",
-                    "@name": "country"
+                    "@name": "country",
+                    "@datatype": "text"
                 }
             ]
         }

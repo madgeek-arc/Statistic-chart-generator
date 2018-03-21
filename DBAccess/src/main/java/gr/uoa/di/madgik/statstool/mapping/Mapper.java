@@ -1,7 +1,5 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -25,9 +23,9 @@ import gr.uoa.di.madgik.statstool.query.Select;
 
 public class Mapper {
 
-    private HashMap<String, Table> tables = new HashMap<String, Table>();
-    private HashMap<String, Field> fields = new HashMap<String, Field>();
-    private HashMap<String, List<Join>> relations = new HashMap<String, List<Join>>();
+    private final HashMap<String, Table> tables = new HashMap<>();
+    private final HashMap<String, Field> fields = new HashMap<>();
+    private final HashMap<String, List<Join>> relations = new HashMap<>();
 
     public Mapper() {
         try {
@@ -41,7 +39,7 @@ public class Mapper {
                 String entityTable = jsonEntity.get("@from").toString();
                 String entityKey = jsonEntity.get("@key").toString();
                 if(jsonEntity.get("filters") != null) {
-                    List<Filter> entityFilters = new ArrayList<Filter>();
+                    List<Filter> entityFilters = new ArrayList<>();
                     JSONArray jsonFilters = (JSONArray) jsonEntity.get("filters");
                     for(Object filter : jsonFilters) {
                         JSONObject jsonFilter = (JSONObject) filter;
@@ -62,14 +60,15 @@ public class Mapper {
                     JSONObject jsonField = (JSONObject) field;
                     String fieldName = jsonField.get("@name").toString();
                     String fieldColumn = jsonField.get("@column").toString();
+                    String fieldDataType = jsonField.get("@datatype").toString();
                     String fieldTable = null;
                     if(jsonField.get("@sqlTable") != null) {
                         fieldTable = jsonField.get("@sqlTable").toString();
                     }
                     if(fieldTable != null) {
-                        fields.put(entityName + "." + fieldName, new Field(fieldTable, fieldColumn));
+                        fields.put(entityName + "." + fieldName, new Field(fieldTable, fieldColumn, fieldDataType));
                     } else {
-                        fields.put(entityName + "." + fieldName, new Field(entityTable, fieldColumn));
+                        fields.put(entityName + "." + fieldName, new Field(entityTable, fieldColumn, fieldDataType));
                     }
 
                 }
@@ -96,23 +95,23 @@ public class Mapper {
                 String from = jsonRelation.get("@from").toString();
                 String to = jsonRelation.get("@to").toString();
                 JSONArray jsonJoins = (JSONArray) jsonRelation.get("join");
-                HashMap<String, List<Join>> joinsMap = new HashMap<String, List<Join>>();
+                HashMap<String, List<Join>> joinsMap = new HashMap<>();
                 for(Object join : jsonJoins) {
                     JSONObject jsonJoin = (JSONObject) join;
                     List<Join> joins = joinsMap.get(jsonJoin.get("@from").toString());
                     if(joins == null) {
-                        joinsMap.put(jsonJoin.get("@from").toString(), joins = new ArrayList<Join>());
+                        joinsMap.put(jsonJoin.get("@from").toString(), joins = new ArrayList<>());
                     }
                     joins.add(new Join(jsonJoin.get("@from").toString(), jsonJoin.get("@from_field").toString(), jsonJoin.get("@to").toString(), jsonJoin.get("@to_field").toString()));
                     joins = joinsMap.get(jsonJoin.get("@to").toString());
                     if(joins == null) {
-                        joinsMap.put(jsonJoin.get("@to").toString(), joins = new ArrayList<Join>());
+                        joinsMap.put(jsonJoin.get("@to").toString(), joins = new ArrayList<>());
                     }
                     joins.add(new Join(jsonJoin.get("@to").toString(), jsonJoin.get("@to_field").toString(), jsonJoin.get("@from").toString(), jsonJoin.get("@from_field").toString()));
                 }
                 String tempFrom = from;
-                List<Join> joinList = new ArrayList<Join>();
-                Set<String> doneTables = new HashSet<String>();
+                List<Join> joinList = new ArrayList<>();
+                Set<String> doneTables = new HashSet<>();
                 while(true) {
                     List<Join> joins = joinsMap.get(tempFrom);
                     if(joins.size() == 1) {
@@ -133,8 +132,8 @@ public class Mapper {
                     }
                 }
                 tempFrom = to;
-                List<Join> revJoinList = new ArrayList<Join>();
-                doneTables = new HashSet<String>();
+                List<Join> revJoinList = new ArrayList<>();
+                doneTables = new HashSet<>();
                 while(true) {
                     List<Join> joins = joinsMap.get(tempFrom);
                     if(joins.size() == 1) {
@@ -173,23 +172,70 @@ public class Mapper {
         }
     }
 
-    public void graph(Query query) {
-        QueryGraph queryGraph = new QueryGraph();
-        queryGraph.addEdge("project(id)", "(id)project_results");
-
+    public String map(Query query, List<Object> parameters) {
+        return mapGraph(mapIntermediate(query), parameters);
     }
 
-    public Query map(Query query) {
+    public String mapGraph(Query query, List<Object> parameters) {
+        QueryGraph queryGraph = new QueryGraph();
+        //queryGraph.addEdge("project(id)", "(id)project_results");
+
+        for(Select select : query.getSelect()) {
+            List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
+            for(int i = 0; i < fldPath.size() - 2; i++) {
+                if(i == 0) {
+                    //System.out.println(fldPath.get(i) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                    queryGraph.addEdge(fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                } else if (i != fldPath.size() - 3){
+                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                } else {
+                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1));
+                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
+                }
+            }
+            String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
+            String field = fldPath.get(fldPath.size() - 1);
+            //System.out.println("addSelect: "  + table + "." + field);
+            //System.out.println();
+            queryGraph.addSelect(table, new Select(table + "." + field, select.getAggregate()));
+        }
+
+        for(Filter filter : query.getFilters()) {
+            List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
+            for(int i = 0; i < fldPath.size() - 2; i++) {
+                if(i == 0) {
+                    //System.out.println(fldPath.get(i) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                    queryGraph.addEdge(fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                } else if (i != fldPath.size() - 3){
+                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                } else {
+                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1));
+                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
+                }
+            }
+            String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
+            String field = fldPath.get(fldPath.size() - 1);
+            //System.out.println("addFilter: "  + table + "." + field);
+            //System.out.println();
+            queryGraph.addFilter(table, new Filter(table + "." + field, filter.getType(), filter.getValue1(), filter.getValue2()));
+        }
+
+        return queryGraph.makeQuery(query.getEntity(), parameters);
+    }
+
+    public Query mapIntermediate(Query query) {
         List<Select> selects = query.getSelect();
-        List<Select> mappedSelects = new ArrayList<Select>();
-        List<Filter> mappedFilters = new ArrayList<Filter>();
-        Set<String> filteredEntities = new HashSet<String>();
+        List<Select> mappedSelects = new ArrayList<>();
+        List<Filter> mappedFilters = new ArrayList<>();
+        Set<String> filteredEntities = new HashSet<>();
 
         Table entityTable = tables.get(query.getEntity());
 
         for(Select select : selects) {
             //System.out.println(select.getField());
-            List<String> fldPath = new ArrayList<String>(Arrays.asList(select.getField().split("\\.")));
+            List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
             if(fldPath.get(0).equals(query.getEntity())) {
                 if(fldPath.size() == 1) {
                     mappedSelects.add(new Select(entityTable.getTable() + "." + entityTable.getKey(), select.getAggregate()));
@@ -210,7 +256,7 @@ public class Mapper {
 
         List<Filter> filters = query.getFilters();
         for(Filter filter : filters) {
-            List<String> fldPath = new ArrayList<String>(Arrays.asList(filter.getField().split("\\.")));
+            List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
             if(fldPath.get(0).equals(query.getEntity())) {
                 //mappedFilters.add(new Filter(entityTable.getTable() + mapField(filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2()));
                 mappedFilters.add(new Filter(mapField(entityTable.getTable(), filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2()));
@@ -289,7 +335,7 @@ public class Mapper {
 
         System.out.println("fields");
         for(Map.Entry<String, Field> entry : fields.entrySet()) {
-            System.out.println(entry.getKey() + " : " + entry.getValue().getTable() + " - " + entry.getValue().getColumn());
+            System.out.println(entry.getKey() + " : " + entry.getValue().getTable() + " - " + entry.getValue().getColumn() + " - " + entry.getValue().getDatatype());
         }
 
         System.out.println("relations");

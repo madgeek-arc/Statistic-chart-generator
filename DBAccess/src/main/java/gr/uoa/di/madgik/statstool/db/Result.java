@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Result {
-    private List<ArrayList<String>> rows = new ArrayList<ArrayList<String>>();
+    private List<ArrayList<String>> rows = new ArrayList<>();
 
     public Result() {
     }

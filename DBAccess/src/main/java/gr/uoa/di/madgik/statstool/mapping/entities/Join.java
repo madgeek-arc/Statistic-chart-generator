@@ -2,10 +2,10 @@ package gr.uoa.di.madgik.statstool.mapping.entities;
 
 public class Join {
 
-    private String first_table;
-    private String first_field;
-    private String second_table;
-    private String second_field;
+    private final String first_table;
+    private final String first_field;
+    private final String second_table;
+    private final String second_field;
 
     public Join(String first_table, String first_field, String second_table, String second_field) {
         this.first_table = first_table;
