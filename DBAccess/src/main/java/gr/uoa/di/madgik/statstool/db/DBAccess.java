@@ -1,7 +1,12 @@
 package gr.uoa.di.madgik.statstool.db;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -12,10 +17,12 @@ import java.util.List;
 
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.query.Query;
+import redis.clients.jedis.Jedis;
 
 public class DBAccess{
 
     private final Mapper mapper = new Mapper();
+    Jedis jedis = new Jedis("vatopedi.di.uoa.gr", 6379);
 
     private final String dbUrl = "jdbc:postgresql://vatopedi.di.uoa.gr:5432/stats?autoReconnect=true";
     private final String username = "sqoop";
@@ -39,6 +46,15 @@ public class DBAccess{
                     st.setObject(count, param);
                     count++;
                 }
+
+                String redisKey = MD5(st.toString());
+                String redisResponse = jedis.hget(redisKey, "result");
+                if(redisResponse != null) {
+                    results.add(new ObjectMapper().readValue(redisResponse, Result.class));
+                    st.close();
+                    continue;
+                }
+
                 ResultSet rs = st.executeQuery();
                 int columnCount = rs.getMetaData().getColumnCount();
                 Result result = new Result();
@@ -49,15 +65,38 @@ public class DBAccess{
                     }
                     result.addRow(row);
                 }
+
+                jedis.hset(redisKey, "persistent", "false");
+                jedis.hset(redisKey, "query", st.toString());
+                jedis.hset(redisKey, "result", new ObjectMapper().writeValueAsString(result));
+
                 rs.close();
                 st.close();
                 results.add(result);
             }
             connection.close();
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (Exception e) {
             return null;
         }
         return results;
+    }
+
+    private static String MD5(String string) {
+        MessageDigest md = null;
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        md.update(string.getBytes());
+
+        byte byteData[] = md.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte aByteData : byteData) {
+            sb.append(Integer.toString((aByteData & 0xff) + 0x100, 16).substring(1));
+        }
+
+        return sb.toString();
     }
 
     public List<Result> queryTest(List<Query> queryList) {
