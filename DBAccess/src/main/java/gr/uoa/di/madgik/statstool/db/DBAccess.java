@@ -1,17 +1,13 @@
 package gr.uoa.di.madgik.statstool.db;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +18,7 @@ import redis.clients.jedis.Jedis;
 public class DBAccess{
 
     private final Mapper mapper = new Mapper();
-    Jedis jedis = new Jedis("vatopedi.di.uoa.gr", 6379);
+    private final Jedis jedis = new Jedis("vatopedi.di.uoa.gr", 6379);
 
     private final String dbUrl = "jdbc:postgresql://vatopedi.di.uoa.gr:5432/stats?autoReconnect=true";
     private final String username = "sqoop";
@@ -38,7 +34,7 @@ public class DBAccess{
             for(Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
                 String sql_query = mapper.map(query, parameters);
-                System.out.println(sql_query);
+                //System.out.println(sql_query);
                 PreparedStatement st = connection.prepareStatement(sql_query);
                 int count = 1;
                 for(Object param : parameters) {
@@ -76,6 +72,7 @@ public class DBAccess{
             }
             connection.close();
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
         return results;
