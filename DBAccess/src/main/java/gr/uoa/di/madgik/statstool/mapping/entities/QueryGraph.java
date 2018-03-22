@@ -2,10 +2,8 @@ package gr.uoa.di.madgik.statstool.mapping.entities;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
 
 import gr.uoa.di.madgik.statstool.query.Filter;
@@ -83,11 +81,11 @@ public class QueryGraph {
 
     public String makeQuery(String node, List<Object> parameters) {
         Stack<Node> stack = new Stack<>();
-        Set<String> tables = new HashSet<>();
-        Set<String> selects = new HashSet<>();
-        Set<String> joins = new HashSet<>();
-        Set<Filter> filters = new HashSet<>();
-        Set<String> group = new HashSet<>();
+        List<String> tables = new ArrayList<>();
+        List<String> selects = new ArrayList<>();
+        List<String> joins = new ArrayList<>();
+        List<Filter> filters = new ArrayList<>();
+        List<String> group = new ArrayList<>();
 
         stack.push(nodes.get(node));
         //tables.add(node);
@@ -204,7 +202,7 @@ public class QueryGraph {
         return query;
     }
 
-    private List<String> mapFilters(Set<Filter> filters, List<Object> parameters) {
+    private List<String> mapFilters(List<Filter> filters, List<Object> parameters) {
         List<String> mappedFilters = new ArrayList<>();
         for (Filter filter : filters) {
             switch (filter.getType()) {
