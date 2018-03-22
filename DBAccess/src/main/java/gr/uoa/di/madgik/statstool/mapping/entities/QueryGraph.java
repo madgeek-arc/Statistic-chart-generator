@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.mapping.entities;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +83,7 @@ public class QueryGraph {
     public String makeQuery(String node, List<Object> parameters) {
         Stack<Node> stack = new Stack<>();
         List<String> tables = new ArrayList<>();
-        List<String> selects = new ArrayList<>();
+        List<OrderedSelect> selects = new ArrayList<>();
         List<String> joins = new ArrayList<>();
         List<Filter> filters = new ArrayList<>();
         List<String> group = new ArrayList<>();
@@ -95,10 +96,10 @@ public class QueryGraph {
             if (!tables.contains(nd.table)) {
                 for (Select select : nd.selects) {
                     if (select.getAggregate() == null) {
-                        selects.add(select.getField());
+                        selects.add(new OrderedSelect(select.getOrder(), select.getField()));
                         group.add(select.getField());
                     } else {
-                        selects.add(select.getAggregate() + "(" + select.getField() + ")");
+                        selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
                     }
                 }
                 filters.addAll(nd.filters);
@@ -141,12 +142,13 @@ public class QueryGraph {
         */
         String query = "SELECT ";
         Boolean first = true;
-        for (String select : selects) {
+        selects.sort(Comparator.comparingInt(o -> o.order));
+        for (OrderedSelect select : selects) {
             if (first) {
-                query += select;
+                query += select.select;
                 first = false;
             } else {
-                query += ", " + select;
+                query += ", " + select.select;
             }
         }
         query += " FROM ";
@@ -227,6 +229,16 @@ public class QueryGraph {
             }
         }
         return mappedFilters;
+    }
+
+    private class OrderedSelect {
+        int order;
+        String select;
+
+        OrderedSelect(int order, String select) {
+            this.order = order;
+            this.select = select;
+        }
     }
 }
 

@@ -200,7 +200,7 @@ public class Mapper {
             String field = fldPath.get(fldPath.size() - 1);
             //System.out.println("addSelect: "  + table + "." + field);
             //System.out.println();
-            queryGraph.addSelect(table, new Select(table + "." + field, select.getAggregate()));
+            queryGraph.addSelect(table, new Select(table + "." + field, select.getAggregate(), select.getOrder()));
         }
 
         for(Filter filter : query.getFilters()) {
@@ -235,15 +235,16 @@ public class Mapper {
 
         Table entityTable = tables.get(query.getEntity());
 
+        int selectCount = 1;
         for(Select select : selects) {
             //System.out.println(select.getField());
             List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
             if(fldPath.get(0).equals(query.getEntity())) {
                 if(fldPath.size() == 1) {
-                    mappedSelects.add(new Select(entityTable.getTable() + "." + entityTable.getKey(), select.getAggregate()));
+                    mappedSelects.add(new Select(entityTable.getTable() + "." + entityTable.getKey(), select.getAggregate(), selectCount));
                 } else {
                     //mappedSelects.add(new Select(entityTable.getTable() + mapField(select.getField()), select.getAggregate()));
-                    mappedSelects.add(new Select(mapField(entityTable.getTable(), select.getField()), select.getAggregate()));
+                    mappedSelects.add(new Select(mapField(entityTable.getTable(), select.getField()), select.getAggregate(), selectCount));
                 }
             } else {
                 String fieldPath = entityTable.getTable();
@@ -252,8 +253,9 @@ public class Mapper {
                     fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
                 }
                 //mappedSelects.add(new Select(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), select.getAggregate()));
-                mappedSelects.add(new Select(mapField(fieldPath, fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), select.getAggregate()));
+                mappedSelects.add(new Select(mapField(fieldPath, fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), select.getAggregate(), selectCount));
             }
+            selectCount++;
         }
 
         List<Filter> filters = query.getFilters();
