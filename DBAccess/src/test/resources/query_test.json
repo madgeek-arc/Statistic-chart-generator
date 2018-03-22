@@ -13,11 +13,11 @@
     ],
     "select": [
         {
-            "aggregate": "count",
-            "field": "project"
+            "field": "publication.year"
         },
         {
-            "field": "publication.year"
+            "aggregate": "count",
+            "field": "project"
         }
     ],
     "entity": "project"
