@@ -1,7 +1,9 @@
 package gr.uoa.di.madgik.ChartDataizer.Handlers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import gr.uoa.di.madgik.ChartDataizer.DataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepresentation.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.JsonResponse;
 import gr.uoa.di.madgik.statstool.db.DBAccess;
 import gr.uoa.di.madgik.statstool.db.Result;
@@ -25,21 +27,27 @@ public class RequestBodyHandler {
 
                 case Highcharts:
 
-                    List<Result> dbAccessResults = null;
+                    List<Result> dbAccessResults;
 
-                    /*//Test call here
-                    dbAccessResults = getChartData(requestJson.getQueries());
-                    */
+                    //Test call here
+//                    dbAccessResults = getMissMatchChartData(requestJson.getQueries());
+//                    dbAccessResults = getChartData(requestJson.getQueries());
                     dbAccessResults = new DBAccess().query(requestJson.getQueries());
 
-                    if (dbAccessResults == null) {
+                    if (dbAccessResults == null)
                         throw new RequestBodyException("DBAccess Error", HttpStatus.INTERNAL_SERVER_ERROR);
-                    }
 
                     if(requestJson.getChartType() == null)
                         throw new RequestBodyException("Null chart type",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    HighChartsJsonResponse retResponse = new DataFormatter().toHighchartsJsonResponse(dbAccessResults, requestJson.getChartType());
+                    HighChartsJsonResponse retResponse;
+                    try {
+                         retResponse = new DataFormatter().toHighchartsJsonResponse(dbAccessResults,
+                                SupportedChartTypes.valueOf(requestJson.getChartType()));
+
+                    }catch (IllegalArgumentException e){
+                        throw new RequestBodyException("Not supported chart type",HttpStatus.UNPROCESSABLE_ENTITY);
+                    }
 
                     if(retResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
@@ -55,21 +63,40 @@ public class RequestBodyHandler {
     }
 
     //TODO Mock call that provides Data based on the queries given
-    private List<Result> getChartData(ArrayList<Query> queries) throws IOException {
+    private List<Result> getChartData(ArrayList<Query> queries) {
 
-        //This responseJson will be ultimately provided by DBAccess
         ObjectMapper mapper = new ObjectMapper();
-        /*Multidata test static file*/
-//        JsonNode jsonNode = mapper.readTree(new URL("http://localhost:8080/jsonFiles/multiChartdataizerToHtml.json"));
-        /*Simple data test static file*/
-//        JsonNode jsonNode = mapper.readTree(new URL("http://localhost:8080/jsonFiles/chartdataizerToHtml.json"));
-        /*Empty data test static file*/
-//        JsonNode jsonNode = mapper.readTree(new URL("http://localhost:8080/jsonFiles/emptyDataResponse.json"));
-
-        Result result = mapper.readValue(new URL("http://localhost:8080/jsonFiles/result1.json"),Result.class);
+        Result result = null;
+        try {
+            result = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications1.json"),Result.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
 //        Result result = mapper.readValue(new File("src/test/resources/result1.json"),Result.class);
         ArrayList<Result> retList = new ArrayList<>();
-        retList.add(result);
+        for(Query q : queries)
+            retList.add(result);
+
+        return retList;
+    }
+
+    private List<Result> getMissMatchChartData(ArrayList<Query> queries) {
+
+        ObjectMapper mapper = new ObjectMapper();
+        Result result1 = null;
+        Result result2 = null;
+        try {
+            result1 = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications1.json"),Result.class);
+            result2 = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications2.json"),Result.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+//        Result result = mapper.readValue(new File("src/test/resources/result1.json"),Result.class);
+        ArrayList<Result> retList = new ArrayList<>();
+        retList.add(result1);
+        retList.add(result2);
 
         return retList;
     }

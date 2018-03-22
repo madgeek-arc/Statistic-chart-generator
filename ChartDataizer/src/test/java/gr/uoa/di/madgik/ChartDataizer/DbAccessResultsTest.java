@@ -26,7 +26,7 @@ public class DbAccessResultsTest {
             if(row.size() != 2)
                 throw new CantDealWithException("Row size different than 2");
 
-        HighChartsJsonResponse response = new DataFormatter().toHighchartsJsonResponse(resultList, SupportedChartTypes.pie.toString());
+        HighChartsJsonResponse response = new DataFormatter().toHighchartsJsonResponse(resultList, SupportedChartTypes.pie);
         mapper.configure(SerializationFeature.INDENT_OUTPUT,true);
 
         assert response != null;

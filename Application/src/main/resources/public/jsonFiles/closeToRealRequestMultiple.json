@@ -7,7 +7,7 @@
             "type": "line"
         },
         "title": {
-            "text": "Publications per Year from H2020"
+            "text": "Publications per Year"
         },        
         "yAxis": {
             "title": {
@@ -40,6 +40,34 @@
                 ],
                 "entity": "project"
             }
-        }]               
+
+        },
+        {
+            "name": "FP7",
+            "query":{
+            "filters": [
+                {
+                    "field": "publication.year",
+                    "type": "between",
+                    "value1": 2010,
+                    "value2": 2015
+                },
+                {	"field": "project.funding level 0",
+                    "type": "equal",
+                    "value1": "FP7"
+                }
+            ],
+            "select": [
+                {
+                    "field": "publication.year"
+                },
+                {
+                    "aggregate": "count",
+                    "field": "project"
+                }
+            ],
+            "entity": "project"
+            }
+        }]        
     }
 }

@@ -78,7 +78,7 @@ function passToChartDataizer(dataJSONobj,chartDataizerReadyJSONobj,chartDataizer
 
 function handleChartDataizerResponse(responseData, originalDataJSONobj)
 {   
-    console.log("Response Data:" +responseData);
+    console.log(responseData);
     
     //Hide children elements of container
     $("#container").children().remove();

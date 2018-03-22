@@ -4,68 +4,88 @@ import gr.uoa.di.madgik.ChartDataizer.JsonChartRepresentation.HighChartsDataRepr
 import gr.uoa.di.madgik.statstool.db.Result;
 import org.springframework.lang.NonNull;
 
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
 
 public class DataFormatter {
 
     public DataFormatter() { }
 
-    public HighChartsJsonResponse toHighchartsJsonResponse(@NonNull List<Result> dbAccessResults,@NonNull String chartType){
+    //TODO Testing on extreme results
+    public HighChartsJsonResponse toHighchartsJsonResponse(@NonNull List<Result> dbAccessResults,@NonNull SupportedChartTypes chartType){
 
         /* ASSUMPTIONS:
          * ~ Results have a [x,y] format.
-         * ~ On each Result there will be every available X value
-         *   paired with a Y value, which might be null.
          * ~ Y values are either float or int, I do not account for Date yet
          */
 
-        LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
-        ArrayList<AbsData> dataSeries = new ArrayList<>();
+        LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
+        ArrayList<HashMap<String,String>> allRowsXValueToYValueMappings = new ArrayList<>();
 
+        //Create a Map where its keys are all the possible xValues from the Results
         for(Result result : dbAccessResults) {
-            if(result.getRows().isEmpty())
+            if (result.getRows().isEmpty())
                 break;
 
-            switch (SupportedChartTypes.valueOf(chartType)) {
+            HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
+
+            for (int i = 0; i<result.getRows().size(); i++){
+                ArrayList<String> row = result.getRows().get(i);
+
+                String xValue = row.get(0);
+                String yValue = row.get(1);
+
+                //Finding an xValue and registering it in the xAxis_categories
+                if (!xAxis_categories.contains(xValue))
+                    xAxis_categories.add(xValue);
+
+                rowXValueToYValueMapping.put(xValue,yValue);
+            }
+            allRowsXValueToYValueMappings.add(rowXValueToYValueMapping);
+        }
+
+        ArrayList<String> sortedXAxis_Categories = new ArrayList<>(xAxis_categories);
+        sortedXAxis_Categories.sort(String::compareToIgnoreCase);
+
+        System.out.println("XAxis_Categories: "+xAxis_categories.toString());
+
+        ArrayList<AbsData> dataSeries = new ArrayList<>();
+
+        //Map to all the possible xValues their corresponding yValues. Fill with null if need be
+        for (HashMap<String, String> xValuetoY : allRowsXValueToYValueMappings)
+            switch (chartType) {
                 case area:
                 case bar:
                 case column:
                 case line:
                     ArrayList<Number> yValuesArray = new ArrayList<>();
-                    for (ArrayList<String> row : result.getRows()) {
 
-                        String xValue = row.get(0);
+                    for (String xValue : sortedXAxis_Categories) {
+                        if (xValuetoY.containsKey(xValue)) {
 
-                        if (!xAxis_categories.containsKey(xValue))
-                            xAxis_categories.put(xValue, xAxis_categories.size());
-
-                        String yValue = row.get(1);
-                        if (yValue.contains("."))
-                            yValuesArray.add(Float.parseFloat(yValue));
-                        else
-                            yValuesArray.add(Integer.parseInt(yValue));
+                            String yValue = xValuetoY.get(xValue);
+                            if (yValue.contains("."))
+                                yValuesArray.add(Float.parseFloat(yValue));
+                            else
+                                yValuesArray.add(Integer.parseInt(yValue));
+                        } else
+                            yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
                     break;
 
                 case pie:
                     ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
-                    for (ArrayList<String> row : result.getRows()) {
 
-                        String xValue = row.get(0);
+                    for (String xValue : sortedXAxis_Categories) {
+                        if (xValuetoY.containsKey(xValue)) {
 
-                        if (!xAxis_categories.containsKey(xValue))
-                            xAxis_categories.put(xValue, xAxis_categories.size());
-
-                        String yValue = row.get(1);
-                        if (yValue.contains("."))
-                            yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
-                        else
-                            yObjectValuesArray.add(new DataObject(xValue ,Integer.parseInt(yValue)));
+                            String yValue = xValuetoY.get(xValue);
+                            if (yValue.contains("."))
+                                yObjectValuesArray.add(new DataObject(xValue, Float.parseFloat(yValue)));
+                            else
+                                yObjectValuesArray.add(new DataObject(xValue, Integer.parseInt(yValue)));
+                        } else
+                            yObjectValuesArray.add(new DataObject(xValue, null));
                     }
                     dataSeries.add(new ArrayOfObjects(yObjectValuesArray));
                     break;
@@ -73,11 +93,11 @@ public class DataFormatter {
                 default:
                     return null;
             }
-        }
+
 
         if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
             return null;
 
-        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+        return new HighChartsJsonResponse(dataSeries,sortedXAxis_Categories);
     }
 }
