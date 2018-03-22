@@ -43,7 +43,13 @@ function handleAdminSideData(dataJSONobj)
         //Pass the Chart type to ChartDataizer
         query_chartTypeJson.type = dataJSONobj.chartDescription.chart.type;
         //Pass the Chart data queries to ChartDataizer
-        query_chartTypeJson.queries = dataJSONobj.chartDescription.series;
+        var queries = [];
+        dataJSONobj.chartDescription.series.
+        forEach(element => {
+            queries.push(element.query);
+        });;
+        query_chartTypeJson.queries = queries;
+
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
         function(){ passToChartDataizer(dataJSONobj,
                         query_chartTypeJson,
