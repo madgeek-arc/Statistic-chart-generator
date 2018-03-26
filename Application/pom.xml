@@ -35,10 +35,10 @@
             <scope>test</scope>
         </dependency>
 
-        <!--ChartDataizer & DBAccess module dependencies-->
+        <!--ChartDataFormatter & DBAccess module dependencies-->
         <dependency>
             <groupId>gr.uoa.di.madgik</groupId>
-            <artifactId>Statistic-chart-generator-ChartDataizer</artifactId>
+            <artifactId>Statistic-chart-generator-ChartDataFormatter</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

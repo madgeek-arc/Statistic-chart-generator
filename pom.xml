@@ -10,7 +10,7 @@
 
     <modules>
         <module>Application</module>
-        <module>ChartDataizer</module>
+        <module>ChartDataFormatter</module>
         <module>DBAccess</module>
     </modules>
 
