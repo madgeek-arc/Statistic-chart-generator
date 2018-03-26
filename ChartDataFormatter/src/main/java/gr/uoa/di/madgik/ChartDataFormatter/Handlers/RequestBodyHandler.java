@@ -30,9 +30,6 @@ public class RequestBodyHandler {
 
         List<Result> dbAccessResults;
 
-        //Test call here
-//                    dbAccessResults = getMissMatchChartData(requestJson.getQueries());
-//                    dbAccessResults = getChartData(requestJson.getQueries());
         dbAccessResults = new DBAccess().query(requestJson.getQueries());
 
         if (dbAccessResults == null)
@@ -66,45 +63,6 @@ public class RequestBodyHandler {
         } catch (IllegalArgumentException e){
             throw new RequestBodyException(HttpStatus.UNPROCESSABLE_ENTITY);
         }
-    }
-
-    //TODO Mock call that provides Data based on the queries given
-    private List<Result> getChartData(ArrayList<Query> queries) {
-
-        ObjectMapper mapper = new ObjectMapper();
-        Result result = null;
-        try {
-            result = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications1.json"),Result.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-//        Result result = mapper.readValue(new File("src/test/resources/result1.json"),Result.class);
-        ArrayList<Result> retList = new ArrayList<>();
-        for(Query q : queries)
-            retList.add(result);
-
-        return retList;
-    }
-
-    private List<Result> getMissMatchChartData(ArrayList<Query> queries) {
-
-        ObjectMapper mapper = new ObjectMapper();
-        Result result1 = null;
-        Result result2 = null;
-        try {
-            result1 = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications1.json"),Result.class);
-            result2 = mapper.readValue(new URL("http://localhost:8080/jsonFiles/resultPublications2.json"),Result.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-//        Result result = mapper.readValue(new File("src/test/resources/result1.json"),Result.class);
-        ArrayList<Result> retList = new ArrayList<>();
-        retList.add(result1);
-        retList.add(result2);
-
-        return retList;
     }
 
     /**
