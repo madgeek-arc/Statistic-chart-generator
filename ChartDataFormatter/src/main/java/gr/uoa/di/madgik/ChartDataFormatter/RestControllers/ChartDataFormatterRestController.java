@@ -17,7 +17,7 @@ import javax.validation.constraints.NotNull;
  * The entry point to the Chart Data Formatter. This class is responsible of handling and fulfilling the requests made.
  */
 @RestController
-public class ChartDataizerRestController {
+public class ChartDataFormatterRestController {
 
     @GetMapping("/chart")
     public ModelAndView content(Model model){

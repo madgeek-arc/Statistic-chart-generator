@@ -1,9 +1,8 @@
 package gr.uoa.di.madgik.ChartDataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestInfo;
-import gr.uoa.di.madgik.ChartDataFormatter.RestControllers.ChartDataizerRestController;
+import gr.uoa.di.madgik.ChartDataFormatter.RestControllers.ChartDataFormatterRestController;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.query.Query;
 import org.junit.Before;
@@ -25,7 +24,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.io.File;
-import java.net.URL;
 import java.util.ArrayList;
 
 import static org.mockito.Mockito.mock;
@@ -33,8 +31,8 @@ import static org.mockito.Mockito.mock;
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnableAutoConfiguration
-@ContextConfiguration(classes={TestContext.class,ChartDataizerRestController.class})
-public class ChartDataizerRestControllerTest {
+@ContextConfiguration(classes={TestContext.class,ChartDataFormatterRestController.class})
+public class ChartDataFormatterRestControllerTest {
 
     @Autowired
     private WebApplicationContext context;
