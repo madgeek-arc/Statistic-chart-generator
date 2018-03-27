@@ -32,37 +32,19 @@ public class HighChartsDataFormatter extends DataFormatter{
         if(dbAccessResults.size() == 1)
             return singleToHighchartsJsonResponse(dbAccessResults.get(0), chartType);
 
-        LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
-        ArrayList<HashMap<String,String>> allRowsXValueToYValueMappings = new ArrayList<>();
+        AbstractMap.SimpleEntry<List<String>,List<HashMap<String,String>>> xAxis_CategoriesToXYMapping
+                = assembleXAxisCategoriesToXYMapping(dbAccessResults);
 
-        //Create a Map where its keys are all the possible xValues from the Results
-        for(Result result : dbAccessResults) {
-            if (result.getRows().isEmpty())
-                break;
+        //A sorted List with all the possible x values occurring from the Queries.
+        List<String> xAxis_Categories = xAxis_CategoriesToXYMapping.getKey();
 
-            HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
-
-            for (int i = 0; i<result.getRows().size(); i++){
-                ArrayList<String> row = result.getRows().get(i);
-
-                String xValue = row.get(0);
-                String yValue = row.get(1);
-
-                //Finding an xValue and registering it in the xAxis_categories
-                if (!xAxis_categories.contains(xValue))
-                    xAxis_categories.add(xValue);
-
-                rowXValueToYValueMapping.put(xValue,yValue);
-            }
-            allRowsXValueToYValueMappings.add(rowXValueToYValueMapping);
-        }
-
-        ArrayList<String> sortedXAxis_Categories = new ArrayList<>(xAxis_categories);
-        sortedXAxis_Categories.sort(String::compareToIgnoreCase);
+        //A List which holds every Result in a HashMap, mapping y values to x values ([x,y]).
+        List<HashMap<String,String>> allRowsXValueToYValueMappings = xAxis_CategoriesToXYMapping.getValue();
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
-        //Map to all the possible xValues their corresponding yValues. Fill with null if need be
+        // Create the necessary AbsData object by mapping to all the possible xValues their corresponding yValues.
+        // Fill with null if need be.
         for (HashMap<String, String> xValuetoY : allRowsXValueToYValueMappings)
             switch (chartType) {
                 case area:
@@ -71,7 +53,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 case line:
                     ArrayList<Number> yValuesArray = new ArrayList<>();
 
-                    for (String xValue : sortedXAxis_Categories) {
+                    for (String xValue : xAxis_Categories) {
                         if (xValuetoY.containsKey(xValue)) {
 
                             String yValue = xValuetoY.get(xValue);
@@ -88,7 +70,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 case pie:
                     ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
 
-                    for (String xValue : sortedXAxis_Categories) {
+                    for (String xValue : xAxis_Categories) {
                         if (xValuetoY.containsKey(xValue)) {
 
                             String yValue = xValuetoY.get(xValue);
@@ -103,14 +85,53 @@ public class HighChartsDataFormatter extends DataFormatter{
                     break;
 
                 default:
-                    return null;
+                    dataSeries.add(null);
+                    break;
             }
 
 
-        if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
+        if(dataSeries.isEmpty() || xAxis_Categories.isEmpty())
             return null;
 
-        return new HighChartsJsonResponse(dataSeries,sortedXAxis_Categories);
+        return new HighChartsJsonResponse(dataSeries,xAxis_Categories);
+    }
+
+    private AbstractMap.SimpleEntry<List<String>,List<HashMap<String,String>>>
+        assembleXAxisCategoriesToXYMapping(List<Result> dbAccessResults){
+
+        //A HashSet with all the possible x values occurring from the Queries.
+        LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
+
+        //A List which holds every Result in a HashMap, mapping y values to x values ([x,y]).
+        ArrayList<HashMap<String,String>> allRowsXValueToYValueMappings = new ArrayList<>();
+
+        for(Result result : dbAccessResults) {
+            if (result.getRows().isEmpty())
+                break;
+
+            HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
+
+            for (int i = 0; i<result.getRows().size(); i++){
+                ArrayList<String> row = result.getRows().get(i);
+
+                String xValue = row.get(0);
+                String yValue = row.get(1);
+
+                //Finding a xValue and registering it in the xAxis_categories
+                if (!xAxis_categories.contains(xValue))
+                    xAxis_categories.add(xValue);
+
+                //Filling the HashMap with the y value to x value map
+                rowXValueToYValueMapping.put(xValue,yValue);
+            }
+            //Adding the finished HashMap to the List
+            allRowsXValueToYValueMappings.add(rowXValueToYValueMapping);
+        }
+
+        ArrayList<String> sortedXAxis_Categories = new ArrayList<>(xAxis_categories);
+        sortedXAxis_Categories.sort(String::compareToIgnoreCase);
+
+        return new AbstractMap.SimpleEntry<>(sortedXAxis_Categories,allRowsXValueToYValueMappings);
     }
 
     private HighChartsJsonResponse singleToHighchartsJsonResponse(@NonNull Result result,@NonNull SupportedChartTypes chartType){
