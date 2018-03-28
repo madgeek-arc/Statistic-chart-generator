@@ -2,18 +2,13 @@ package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.HighChartsDataFormatter;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation.HighChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.statstool.db.DBAccess;
 import gr.uoa.di.madgik.statstool.db.Result;
-import gr.uoa.di.madgik.statstool.query.Query;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 
-import java.io.IOException;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,13 +25,10 @@ public class RequestBodyHandler {
 
         List<Result> dbAccessResults;
 
-        dbAccessResults = new DBAccess().query(requestJson.getQueries());
+        dbAccessResults = new DBAccess().query(requestJson.getChartQueries());
 
         if (dbAccessResults == null)
             throw new RequestBodyException("DBAccess Error", HttpStatus.INTERNAL_SERVER_ERROR);
-
-        if(requestJson.getChartType() == null)
-            throw new RequestBodyException("Null chart type",HttpStatus.UNPROCESSABLE_ENTITY);
 
         try {
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
@@ -45,13 +37,13 @@ public class RequestBodyHandler {
 
                     HighChartsJsonResponse retResponse;
                     try {
-                         retResponse = new HighChartsDataFormatter().toJsonResponse(dbAccessResults,
-                                SupportedChartTypes.valueOf(requestJson.getChartType()));
-
+                         retResponse = new HighChartsDataFormatter().toJsonResponse(dbAccessResults,requestJson.getChartTypes());
+                         
                     }catch (IllegalArgumentException e){
                         throw new RequestBodyException("Not supported chart type",HttpStatus.UNPROCESSABLE_ENTITY);
+                    }catch (DataFormatter.DataFormationException e){
+                        throw new RequestBodyException("Results and chart types were not matched 1-1",HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-
                     if(retResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 

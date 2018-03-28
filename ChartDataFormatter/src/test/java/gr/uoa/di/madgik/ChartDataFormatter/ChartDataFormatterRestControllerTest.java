@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter;
 
-import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ChartInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.RestControllers.ChartDataFormatterRestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,8 +50,7 @@ public class ChartDataFormatterRestControllerTest {
 
         RequestInfo mockUnknownRequestInfo = new RequestInfo();
         mockUnknownRequestInfo.setLibrary("Unknown");
-        mockUnknownRequestInfo.setQueries(new ArrayList<>());
-        mockUnknownRequestInfo.setChartType("line");
+        mockUnknownRequestInfo.setChartsInfo(new ArrayList<>());
 
         ObjectMapper mapper = new ObjectMapper();
         String jsonQueryInfo = mapper.writeValueAsString(mockUnknownRequestInfo);
@@ -69,9 +69,12 @@ public class ChartDataFormatterRestControllerTest {
         Query query = mapper.readValue(new File("src/test/resources/public/jsonFiles/query_test.json"),Query.class);
         RequestInfo mockRequestInfo = new RequestInfo();
         mockRequestInfo.setLibrary("Highcharts");
-        mockRequestInfo.setQueries(new ArrayList<>());
-        mockRequestInfo.getQueries().add(query);
-        mockRequestInfo.setChartType("line");
+        mockRequestInfo.setChartsInfo(new ArrayList<>());
+
+        ChartInfo mockChartInfo = new ChartInfo();
+        mockChartInfo.setChartType("line");
+        mockChartInfo.setQuery(query);
+        mockRequestInfo.getChartsInfo().add(mockChartInfo);
 
         ResultActions ra = this.mockMvc.perform(MockMvcRequestBuilders.post("/chart")
                 .content(mapper.writeValueAsString(mockRequestInfo))

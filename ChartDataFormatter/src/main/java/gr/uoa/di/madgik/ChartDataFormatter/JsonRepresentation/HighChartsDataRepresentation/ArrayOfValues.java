@@ -1,28 +1,29 @@
-package gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation;
+package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
+
 @JsonDeserialize(using= JsonDeserializer.None.class)
-public class ArrayOfObjects extends AbsData {
+public class ArrayOfValues extends AbsData {
 
     @JsonProperty
-    private ArrayList<DataObject> data;
+    private ArrayList<Number> data;
 
-    public ArrayOfObjects() {}
+    public ArrayOfValues() {}
 
-    public ArrayOfObjects(ArrayList<DataObject> data) {
+    public ArrayOfValues(ArrayList<Number> data) {
         this.data = data;
     }
 
     @Override
-    public ArrayList<DataObject> getData() {
+    public ArrayList<Number> getData() {
         return data;
     }
 
-    public void setData(ArrayList<DataObject> data) {
+    public void setData(ArrayList<Number> data) {
         this.data = data;
     }
 }
