@@ -1,8 +1,8 @@
 package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.JsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

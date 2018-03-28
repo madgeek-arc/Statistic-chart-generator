@@ -1,3 +1,4 @@
+//This variable holds the Library state across the execution of the Chart Formation
 var libraryType;
 var port = "8080";
 var domainName = "localhost";
@@ -29,54 +30,66 @@ function loadJS(url, afterLoadCallback){
 function handleAdminSideData(dataJSONobj)
 {   
     // dataJSONobj holds the option-ready version of the JSON that will be passed to the Chart library,
-    // along with the queries that must be passed to ChartDataizer and eventually to DBAccess
+    // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
     console.log(dataJSONobj);
-    
-    var query_chartTypeJson = new Object();
-    //Pass the Chart library to ChartDataizer
-    query_chartTypeJson.library = dataJSONobj.library;
 
     //Dynamically add JS library
-    if(query_chartTypeJson.library === "Highcharts"){
+    if(dataJSONobj.library === "Highcharts"){
         
-        libraryType = query_chartTypeJson.library;
-        //Pass the Chart type to ChartDataizer
-        query_chartTypeJson.type = dataJSONobj.chartDescription.chart.type;
-        //Pass the Chart data queries to ChartDataizer
-        var queries = [];
+        var RequestInfoObj = new Object();
+        //Pass the Chart library to ChartDataFormatter
+        RequestInfoObj.library = dataJSONobj.library;
+        
+        //Hold the Library state
+        libraryType = RequestInfoObj.library;
+
+        //Pass the Chart type to ChartDataFormatter
+        RequestInfoObj.type = dataJSONobj.chartDescription.chart.type;
+        //Create ChartInfo Object Array
+        RequestInfoObj.chartsInfo = [];
+
+        //Creat ChartInfo and pass the Chart data queries to ChartDataFormatter
+        //along with the requested Chart type
         dataJSONobj.chartDescription.series.
         forEach(element => {
-            queries.push(element.query);
-        });;
-        query_chartTypeJson.queries = queries;
+            var ChartInfoObj = new Object();
+
+            if(element.type === undefined)
+                ChartInfoObj.type = RequestInfoObj.type;
+            else
+                ChartInfoObj.type = element.type;
+            
+            ChartInfoObj.query = element.query;
+            RequestInfoObj.chartsInfo.push(ChartInfoObj);
+        });
 
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
-        function(){ passToChartDataizer(dataJSONobj,
-                        query_chartTypeJson,
+        function(){ passToChartDataFormatter(dataJSONobj,
+                        RequestInfoObj,
                         domainLink+"/chart"); });
     }
 }
 
-//Post the admin-side json to the chartDataizer
-function passToChartDataizer(dataJSONobj,chartDataizerReadyJSONobj,chartDataizerUrl)
+//Post the admin-side json to the ChartDataFormatter
+function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,ChartDataFormatterUrl)
 {
-    console.log(chartDataizerReadyJSONobj);
+    console.log(ChartDataFormatterReadyJSONobj);
 
     $.ajax(
-    {url: this.chartDataizerUrl,
+    {url: this.ChartDataFormatterUrl,
     type: "POST",
     dataType: "json",
     contentType: 'application/json; charset=utf-8',
-    data: JSON.stringify(chartDataizerReadyJSONobj),
+    data: JSON.stringify(ChartDataFormatterReadyJSONobj),
     cache: false,
-    success: function(data){ handleChartDataizerResponse(data,dataJSONobj) }            
+    success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj) }            
     })
     .done()
     .fail()
     .always();
 }
 
-function handleChartDataizerResponse(responseData, originalDataJSONobj)
+function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
 {   
     console.log(responseData);
     

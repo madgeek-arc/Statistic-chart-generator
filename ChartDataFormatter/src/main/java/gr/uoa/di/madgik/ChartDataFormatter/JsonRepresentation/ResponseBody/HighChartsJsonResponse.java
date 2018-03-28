@@ -1,7 +1,8 @@
-package gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation;
+package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 
 import java.util.List;
 

@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.db.Result;
 import org.springframework.lang.NonNull;
 
@@ -16,36 +17,41 @@ public class HighChartsDataFormatter extends DataFormatter{
     //TODO Testing on extreme results
 
     /**
-     * @param dbAccessResults A List of {@link Result} originating from DBAccess.
-     * @param chartType The type of Chart that the List of Results will be formatted into.
-     *                  This type of Chart should be supported across every Chart Library.
+     * {@inheritDoc}
+     *
      * @return A {@link HighChartsJsonResponse} ready to be passed as a response body.
      */
     @Override
-    public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, SupportedChartTypes chartType) {
+    public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType) throws DataFormationException {
 
         /* ASSUMPTIONS:
          * ~ Results have a [x,y] format.
          * ~ Dates are returned as a String format
          */
 
-        if(dbAccessResults.size() == 1)
-            return singleToHighchartsJsonResponse(dbAccessResults.get(0), chartType);
+        if (dbAccessResults.size() == 1 && chartsType.size() == 1)
+            return singleToHighchartsJsonResponse(dbAccessResults.get(0), chartsType.get(0));
+        if (dbAccessResults.size() != chartsType.size())
+            throw new DataFormationException("Result list and Chart Type list are of different size.");
 
-        AbstractMap.SimpleEntry<List<String>,List<HashMap<String,String>>> xAxis_CategoriesToXYMapping
+        AbstractMap.SimpleEntry<List<String>, List<HashMap<String, String>>> xAxis_CategoriesToXYMapping
                 = assembleXAxisCategoriesToXYMapping(dbAccessResults);
 
         //A sorted List with all the possible x values occurring from the Queries.
         List<String> xAxis_Categories = xAxis_CategoriesToXYMapping.getKey();
 
         //A List which holds every Result in a HashMap, mapping y values to x values ([x,y]).
-        List<HashMap<String,String>> allRowsXValueToYValueMappings = xAxis_CategoriesToXYMapping.getValue();
+        List<HashMap<String, String>> allRowsXValueToYValueMappings = xAxis_CategoriesToXYMapping.getValue();
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
         // Create the necessary AbsData object by mapping to all the possible xValues their corresponding yValues.
         // Fill with null if need be.
-        for (HashMap<String, String> xValuetoY : allRowsXValueToYValueMappings)
+        for (int i = 0; i < allRowsXValueToYValueMappings.size(); i++){
+
+            HashMap<String, String> xValuetoY = allRowsXValueToYValueMappings.get(i);
+            SupportedChartTypes chartType = chartsType.get(i);
+
             switch (chartType) {
                 case area:
                 case bar:
@@ -88,7 +94,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                     dataSeries.add(null);
                     break;
             }
-
+        }
 
         if(dataSeries.isEmpty() || xAxis_Categories.isEmpty())
             return null;

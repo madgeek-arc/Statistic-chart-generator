@@ -2,9 +2,11 @@ package gr.uoa.di.madgik.ChartDataFormatter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.HighChartsDataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import org.junit.Test;
 import gr.uoa.di.madgik.statstool.db.Result;
 
@@ -16,7 +18,7 @@ import java.util.List;
 public class DbAccessResultsTest {
 
     @Test
-    public void getResultsFromDBAccess() throws IOException, CantDealWithException {
+    public void getResultsFromDBAccess() throws IOException, CantDealWithException, DataFormatter.DataFormationException {
 
         ObjectMapper mapper = new ObjectMapper();
         Result queryResult = mapper.readValue(new File("src/test/resources/result1.json"), Result.class);
@@ -26,7 +28,10 @@ public class DbAccessResultsTest {
             if(row.size() != 2)
                 throw new CantDealWithException("Row size different than 2");
 
-        HighChartsJsonResponse response = new HighChartsDataFormatter().toJsonResponse(resultList, SupportedChartTypes.pie);
+        List<SupportedChartTypes> chartList = new ArrayList<>();
+        chartList.add(SupportedChartTypes.pie);
+
+        HighChartsJsonResponse response = new HighChartsDataFormatter().toJsonResponse(resultList, chartList);
         mapper.configure(SerializationFeature.INDENT_OUTPUT,true);
 
         assert response != null;
@@ -44,8 +49,7 @@ public class DbAccessResultsTest {
     }
 
     public class CantDealWithException extends Exception{
-        public CantDealWithException() {
-        }
+        public CantDealWithException() { }
 
         public CantDealWithException(String s) {
             super(s);
