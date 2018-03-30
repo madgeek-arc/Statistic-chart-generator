@@ -1,4 +1,4 @@
-package gr.uoa.di.madgik.ChartDataFormatter.JsonChartRepresentation.HighChartsDataRepresentation;
+package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
