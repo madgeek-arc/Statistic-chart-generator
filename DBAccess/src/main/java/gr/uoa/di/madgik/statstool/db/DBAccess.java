@@ -1,7 +1,9 @@
 package gr.uoa.di.madgik.statstool.db;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
@@ -33,27 +35,24 @@ public class DBAccess{
 
             for(Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
-                String sql_query = mapper.map(query, parameters);
-                //System.out.println(sql_query);
-                PreparedStatement st = connection.prepareStatement(sql_query);
+                PreparedStatement st = connection.prepareStatement(mapper.map(query, parameters));
                 int count = 1;
                 for(Object param : parameters) {
-                    System.out.println(param);
                     st.setObject(count, param);
                     count++;
                 }
 
                 String redisKey = MD5(st.toString());
-                String redisResponse = jedis.hget(redisKey, "result");
-                if(redisResponse != null) {
-                    results.add(new ObjectMapper().readValue(redisResponse, Result.class));
+                Result result = checkRedis(redisKey);
+                if(result != null) {
+                    results.add(result);
                     st.close();
                     continue;
                 }
 
                 ResultSet rs = st.executeQuery();
                 int columnCount = rs.getMetaData().getColumnCount();
-                Result result = new Result();
+                result = new Result();
                 while(rs.next()) {
                     ArrayList<String> row = new ArrayList<>();
                     for(int i = 1; i <= columnCount; i++) {
@@ -61,10 +60,7 @@ public class DBAccess{
                     }
                     result.addRow(row);
                 }
-
-                jedis.hset(redisKey, "persistent", "false");
-                jedis.hset(redisKey, "query", st.toString());
-                jedis.hset(redisKey, "result", new ObjectMapper().writeValueAsString(result));
+                addToRedis(redisKey, st.toString(), result);
 
                 rs.close();
                 st.close();
@@ -76,6 +72,29 @@ public class DBAccess{
             return null;
         }
         return results;
+    }
+
+    private Result checkRedis(String key) {
+        Result result = null;
+        try {
+            String redisResponse = jedis.hget(key, "result");
+            if(redisResponse != null) {
+                result = new ObjectMapper().readValue(redisResponse, Result.class);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    private void addToRedis(String key, String query, Result result) {
+        try {
+            jedis.hset(key, "persistent", "false");
+            jedis.hset(key, "query", query);
+            jedis.hset(key, "result", new ObjectMapper().writeValueAsString(result));
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
     }
 
     private static String MD5(String string) {
@@ -94,43 +113,5 @@ public class DBAccess{
         }
 
         return sb.toString();
-    }
-
-    public List<Result> queryTest(List<Query> queryList) {
-        List<Result> customResult = new ArrayList<>();
-        ObjectMapper objectMapper  = new ObjectMapper();
-        try {
-            /*
-            ArrayList<String> row= new ArrayList<String>();
-            row.add("EPLANET");
-            row.add("598");
-            Result result = new Result();
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            result.addRow(row);
-            */
-            Result result = objectMapper.readValue(getClass().getClassLoader().getResource("result1.json"), Result.class);
-            customResult.add(result);
-            result = objectMapper.readValue(getClass().getClassLoader().getResource("result2.json"), Result.class);
-            customResult.add(result);
-            result = objectMapper.readValue(getClass().getClassLoader().getResource("result3.json"), Result.class);
-            customResult.add(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        List<Result> results = new ArrayList<>();
-        int count = 0;
-        for(Query query: queryList) {
-            results.add(customResult.get(count % customResult.size()));
-            count++;
-        }
-        return results;
     }
 }

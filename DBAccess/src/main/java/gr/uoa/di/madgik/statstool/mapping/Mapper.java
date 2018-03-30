@@ -17,6 +17,7 @@ import java.util.Set;
 import gr.uoa.di.madgik.statstool.mapping.entities.Field;
 import gr.uoa.di.madgik.statstool.mapping.entities.Join;
 import gr.uoa.di.madgik.statstool.mapping.entities.QueryGraph;
+import gr.uoa.di.madgik.statstool.mapping.entities.QueryTree;
 import gr.uoa.di.madgik.statstool.mapping.entities.Table;
 import gr.uoa.di.madgik.statstool.query.Filter;
 import gr.uoa.di.madgik.statstool.query.Query;
@@ -175,7 +176,19 @@ public class Mapper {
     }
 
     public String map(Query query, List<Object> parameters) {
-        return mapGraph(mapIntermediate(query), parameters);
+        return mapTree(mapIntermediate(query), parameters);
+    }
+
+    public String mapTree(Query query, List<Object> parameters) {
+        QueryTree queryTree = new QueryTree(query.getEntity());
+
+        for(Select select : query.getSelect()) {
+            queryTree.addSelect(select);
+        }
+        for(Filter filter : query.getFilters()) {
+            queryTree.addFilter(filter);
+        }
+        return queryTree.makeQuery(parameters);
     }
 
     public String mapGraph(Query query, List<Object> parameters) {
