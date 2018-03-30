@@ -50,10 +50,11 @@ public class Mapper {
                         String filterType = jsonFilter.get("@type").toString();
                         String filterValue1 = jsonFilter.get("@value1").toString();
                         String filterValue2 = null;
+                        String filterDatatype = jsonFilter.get("@datatype").toString();
                         if(jsonFilter.get("@value2") != null) {
                             filterValue2 = jsonFilter.get("@value2").toString();
                         }
-                        entityFilters.add(new Filter(filterColumn, filterType, filterValue1, filterValue2));
+                        entityFilters.add(new Filter(filterColumn, filterType, filterValue1, filterValue2, filterDatatype));
                     }
                     tables.put(entityName, new Table(entityTable, entityKey, entityFilters));
                 } else {
@@ -234,7 +235,7 @@ public class Mapper {
             String field = fldPath.get(fldPath.size() - 1);
             //System.out.println("addFilter: "  + table + "." + field);
             //System.out.println();
-            queryGraph.addFilter(table, new Filter(table + "." + field, filter.getType(), filter.getValue1(), filter.getValue2()));
+            queryGraph.addFilter(table, new Filter(table + "." + field, filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
         }
 
         return queryGraph.makeQuery(query.getEntity(), parameters);
@@ -276,7 +277,7 @@ public class Mapper {
             List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
             if(fldPath.get(0).equals(query.getEntity())) {
                 //mappedFilters.add(new Filter(entityTable.getTable() + mapField(filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2()));
-                mappedFilters.add(new Filter(mapField(entityTable.getTable(), filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2()));
+                mappedFilters.add(new Filter(mapField(entityTable.getTable(), filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(filter.getField()).getDatatype()));
             } else {
                 String fieldPath = entityTable.getTable();
                 fldPath.add(0, query.getEntity());
@@ -284,7 +285,7 @@ public class Mapper {
                     fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
                 }
                 //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
-                mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
+                mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
             }
         }
         return new Query(mappedFilters, mappedSelects, entityTable.getTable());
@@ -294,7 +295,7 @@ public class Mapper {
         Table table = tables.get(t);
         if(table.getFilters() != null && !filteredEntities.contains(t)) {
             for(Filter filter : table.getFilters()) {
-                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable()) + "." + filter.getField(), filter.getType(), filter.getValue1(), filter.getValue2()));
+                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable()) + "." + filter.getField(), filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
             }
             filteredEntities.add(t);
         }

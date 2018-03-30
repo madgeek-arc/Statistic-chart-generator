@@ -7,7 +7,8 @@
                 {
                     "@column": "type",
                     "@type": "equal",
-                    "@value1": "publication"
+                    "@value1": "publication",
+                    "@datatype": "text"
                 }
             ],
             "@key": "id",

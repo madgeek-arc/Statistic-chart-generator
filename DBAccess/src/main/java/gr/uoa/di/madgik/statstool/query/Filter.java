@@ -5,9 +5,19 @@ public class Filter {
     private String type;
     private String value1;
     private String value2;
+    private String datatype;
 
     public Filter() {}
 
+    public Filter(String field, String type, String value1, String value2, String datatype) {
+        this.field = field;
+        this.type = type;
+        this.value1 = value1;
+        this.value2 = value2;
+        this.datatype = datatype;
+    }
+
+    /*
     public Filter(String field, String type, String value1, String value2) {
         this.field = field;
         this.type = type;
@@ -20,6 +30,7 @@ public class Filter {
         this.type = type;
         this.value1 = value1;
     }
+    */
 
     public String getField() {
         return field;
@@ -51,5 +62,13 @@ public class Filter {
 
     public void setValue2(String value2) {
         this.value2 = value2;
+    }
+
+    public String getDatatype() {
+        return datatype;
+    }
+
+    public void setDatatype(String datatype) {
+        this.datatype = datatype;
     }
 }

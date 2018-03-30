@@ -82,7 +82,7 @@ public class QueryTree {
         }
         String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
         String field = fldPath.get(fldPath.size() - 1);
-        parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValue1(), filter.getValue2()));
+        parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
     }
 
     public void addSelect(Select select) {
@@ -238,26 +238,40 @@ public class QueryTree {
         for (Filter filter : filters) {
             switch (filter.getType()) {
                 case "equal":
-                    mappedFilters.add(filter.getField() + "='" + filter.getValue1() + "'");
-                    //mappedFilters.add(filter.getField() + "=?");
-                    //parameters.add(filter.getValue1());
+                    //mappedFilters.add(filter.getField() + "='" + filter.getValue1() + "'");
+                    mappedFilters.add(filter.getField() + "=?");
+                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
                     break;
                 case "between":
-                    mappedFilters.add(filter.getField() + ">'" + filter.getValue1() + "'");
-                    mappedFilters.add(filter.getField() + "<'" + filter.getValue2() + "'");
-                    //mappedFilters.add(filter.getField() + ">?");
-                    //mappedFilters.add(filter.getField() + "<?");
-                    //parameters.add(filter.getValue1());
-                    //parameters.add(filter.getValue2());
+                    //mappedFilters.add(filter.getField() + ">'" + filter.getValue1() + "'");
+                    //mappedFilters.add(filter.getField() + "<'" + filter.getValue2() + "'");
+                    mappedFilters.add(filter.getField() + ">?");
+                    mappedFilters.add(filter.getField() + "<?");
+                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
+                    parameters.add(mapType(filter.getValue2(), filter.getDatatype()));
                     break;
                 case "not_equal":
-                    mappedFilters.add(filter.getField() + "!='" + filter.getValue1() + "'");
-                    //mappedFilters.add(filter.getField() + "!=?");
-                    //parameters.add(filter.getValue1());
+                    //mappedFilters.add(filter.getField() + "!='" + filter.getValue1() + "'");
+                    mappedFilters.add(filter.getField() + "!=?");
+                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
                     break;
             }
         }
         return mappedFilters;
+    }
+
+    private Object mapType(String value, String datatype) {
+        switch (datatype) {
+            case "text":
+                return value;
+            case "int":
+                return Integer.parseInt(value);
+            case "float":
+                return Float.parseFloat(value);
+            case "date":
+                return value;
+        }
+        return null;
     }
 
     private class OrderedSelect {
