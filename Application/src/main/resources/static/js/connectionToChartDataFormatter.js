@@ -33,40 +33,69 @@ function handleAdminSideData(dataJSONobj)
     // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
     console.log(dataJSONobj);
 
-    //Dynamically add JS library
-    if(dataJSONobj.library === "Highcharts"){
+    if(dataJSONobj.library === "GoogleCharts"){
         
-        var RequestInfoObj = new Object();
-        //Pass the Chart library to ChartDataFormatter
-        RequestInfoObj.library = dataJSONobj.library;
-        
-        //Hold the Library state
-        libraryType = RequestInfoObj.library;
+        loadJS("https://www.gstatic.com/charts/loader.js",                 
+        function(){            
+            google.charts.load('45', {packages: ['corechart']});
+            google.charts.setOnLoadCallback(function(){
+                libraryType = dataJSONobj.library;
+                
+                var RequestInfoObj = new Object();
+                //Pass the Chart library to ChartDataFormatter
+                RequestInfoObj.library = dataJSONobj.library;
+                
+                //Create ChartInfo Object Array
+                RequestInfoObj.chartsInfo = [];
+                //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
+                //along with the requested Chart type
+                dataJSONobj.chartDescription.queries.
+                forEach(element => {
+                    var ChartInfoObj = new Object();
+                    ChartInfoObj.query = element.query;
+                    RequestInfoObj.chartsInfo.push(ChartInfoObj);
+                });
 
-        //Pass the Chart type to ChartDataFormatter
-        RequestInfoObj.type = dataJSONobj.chartDescription.chart.type;
-        //Create ChartInfo Object Array
-        RequestInfoObj.chartsInfo = [];
-
-        //Creat ChartInfo and pass the Chart data queries to ChartDataFormatter
-        //along with the requested Chart type
-        dataJSONobj.chartDescription.series.
-        forEach(element => {
-            var ChartInfoObj = new Object();
-
-            if(element.type === undefined)
-                ChartInfoObj.type = RequestInfoObj.type;
-            else
-                ChartInfoObj.type = element.type;
-            
-            ChartInfoObj.query = element.query;
-            RequestInfoObj.chartsInfo.push(ChartInfoObj);
+                passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                    domainLink+"/chart");
+            });            
         });
-
+    }
+    if(dataJSONobj.library === "Highcharts"){
+                
+        //Dynamically add JS library
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
-        function(){ passToChartDataFormatter(dataJSONobj,
-                        RequestInfoObj,
-                        domainLink+"/chart"); });
+        
+        function(){ 
+            //Hold the Library state
+            libraryType = dataJSONobj.library;
+
+            var RequestInfoObj = new Object();
+            //Pass the Chart library to ChartDataFormatter
+            RequestInfoObj.library = dataJSONobj.library;        
+            //Pass the Chart type to ChartDataFormatter
+            var defaultType = dataJSONobj.chartDescription.chart.type;
+            //Create ChartInfo Object Array
+            RequestInfoObj.chartsInfo = [];
+    
+            //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
+            //along with the requested Chart type
+            dataJSONobj.chartDescription.series.
+            forEach(element => {
+                var ChartInfoObj = new Object();
+    
+                if(element.type === undefined)
+                    ChartInfoObj.type = defaultType;
+                else
+                    ChartInfoObj.type = element.type;
+                
+                ChartInfoObj.query = element.query;
+                RequestInfoObj.chartsInfo.push(ChartInfoObj);
+            });
+
+            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                        domainLink+"/chart"); }
+        );
     }
 }
 
@@ -96,12 +125,41 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
     //Hide children elements of container
     $("#container").children().remove();
     
+    if(libraryType === "GoogleCharts"){
+
+        var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
+       
+        var wrapper = new google.visualization.ChartWrapper({
+            chartType: originalDataJSONobj.chartDescription.chartType,
+            dataTable: data,
+            options: originalDataJSONobj.chartDescription.options,
+            containerId: 'container'
+            });
+
+        wrapper.draw();
+    }
     if(libraryType === "Highcharts"){
         var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
         console.log(chartJson);
         Highcharts.chart('container',chartJson);
     }
 
+}
+
+function fillGoogleChartsDataTable(responseData, originJson){
+
+    var data = new google.visualization.DataTable();
+    var dataColumns = originJson.chartDescription.columns;
+
+    for(let index = 0; index < dataColumns.length; index++){
+        if(index == 0)
+            data.addColumn('string', dataColumns[index]);
+        else
+            data.addColumn('number', dataColumns[index]);
+    }
+    data.addRows(responseData.dataTable);
+
+    return data;
 }
 
 function convertToValidHighchartJson(responseData, originJson){
@@ -113,13 +171,10 @@ function convertToValidHighchartJson(responseData, originJson){
     for (let index = 0; index < Object.keys(convertedJson.series).length; index++){
         convertedJson.series[index].data = responseData.series[index].data;
         convertedJson.series[index].query = null;
-        
-        if(convertedJson.xAxis !== undefined)
-            convertedJson.xAxis.categories = responseData.xAxis_categories
-        else
-            convertedJson.xAxis = {};
-            convertedJson.xAxis.categories = responseData.xAxis_categories;
     } 
+    if(convertedJson.xAxis === undefined)
+        convertedJson.xAxis = {};    
+    convertedJson.xAxis.categories = responseData.xAxis_categories;
 
     return convertedJson;
 }

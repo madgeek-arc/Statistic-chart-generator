@@ -4,7 +4,7 @@
     "chartDescription": 
     {
         "chart": {
-            "type": "line"
+            "type": "bar"
         },
         "title": {
             "text": "Publications per Year from H2020"

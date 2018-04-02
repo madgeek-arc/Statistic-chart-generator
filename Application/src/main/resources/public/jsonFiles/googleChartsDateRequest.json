@@ -1,0 +1,66 @@
+{
+    "library":"GoogleCharts",
+
+    "chartDescription":
+    {   
+        "chartType":"ComboChart",
+        "columns": ["Dates", "H2020", "FP7"],
+        "queries":[
+            {"query": {
+                "filters": [
+                  {
+                    "field": "publication.date",
+                    "type": "between",
+                    "value1": "2017-01-01",
+                    "value2": "2017-02-01"
+                  },
+                  {	"field": "project.funding level 0",
+                    "type": "equal",
+                    "value1": "FP7"
+                  }
+                ],
+                "select": [
+                  {
+                    "field": "publication.date"
+                  },
+                  {
+                    "aggregate": "count",
+                    "field": "project"
+                  }
+                ],
+                "entity": "project"
+              }},
+            {"query": {
+                "filters": [
+                  {
+                    "field": "publication.date",
+                    "type": "between",
+                    "value1": "2017-01-01",
+                    "value2": "2017-01-15"
+                  },
+                  {	"field": "project.funding level 0",
+                    "type": "equal",
+                    "value1": "FP7"
+                  }
+                ],
+                "select": [
+                  {
+                    "field": "publication.date"
+                  },
+                  {
+                    "aggregate": "count",
+                    "field": "project"
+                  }
+                ],
+                "entity": "project"
+              }}
+        ],
+        "options":{
+            "title" : "Publications per Day",
+            "vAxis": {"title": "# of Publications"},
+            "seriesType": "bars",
+            "series": [{"type":"bars"},{"type":"area"}]
+      
+        }
+    }
+}

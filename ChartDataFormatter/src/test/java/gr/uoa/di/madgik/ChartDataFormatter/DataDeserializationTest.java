@@ -20,11 +20,11 @@ public class DataDeserializationTest {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        AbsData[] absData = mapper.readValue(new File("src/test/resources/unwrappedExpected.json"),AbsData[].class);
+        AbsData[] absData = mapper.readValue(new File("src/test/resources/highcharts/testFiles/unwrappedExpected.json"),AbsData[].class);
 
         assert absData != null;
 
-        JsonNode jsonNode = mapper.readTree(new File("src/test/resources/wrappedExpected.json"));
+        JsonNode jsonNode = mapper.readTree(new File("src/test/resources/highcharts/testFiles/wrappedExpected.json"));
         DataSeries deserialised = mapper.treeToValue(jsonNode,DataSeries.class);
 
         assert deserialised != null;
