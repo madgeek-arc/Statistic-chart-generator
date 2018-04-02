@@ -1,7 +1,9 @@
 package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.DataFormatter;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.GoogleChartsDataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.HighChartsDataFormatter;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
@@ -35,25 +37,39 @@ public class RequestBodyHandler {
 
                 case Highcharts:
 
-                    HighChartsJsonResponse retResponse;
+                    HighChartsJsonResponse highChartsJsonResponse;
                     try {
-                         retResponse = new HighChartsDataFormatter().toJsonResponse(dbAccessResults,requestJson.getChartTypes());
+                        highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(dbAccessResults,requestJson.getChartTypes());
                          
-                    }catch (IllegalArgumentException e){
-                        throw new RequestBodyException("Not supported chart type",HttpStatus.UNPROCESSABLE_ENTITY);
                     }catch (DataFormatter.DataFormationException e){
                         throw new RequestBodyException("Results and chart types were not matched 1-1",HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-                    if(retResponse == null)
+                    if(highChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    return retResponse;
+                    return highChartsJsonResponse;
+
+                case GoogleCharts:
+
+                    GoogleChartsJsonResponse googleChartsJsonResponse;
+                    try{
+                        //Google Charts data is independent of type, hence chartsType = null
+                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(dbAccessResults,null);
+
+                    } catch (DataFormatter.DataFormationException e) {
+                        e.printStackTrace();
+                        throw new RequestBodyException(HttpStatus.UNPROCESSABLE_ENTITY);
+                    }
+                    if(googleChartsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+
+                    return googleChartsJsonResponse;
 
                 default:
-                    throw new RequestBodyException(HttpStatus.UNPROCESSABLE_ENTITY);
+                    throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
         } catch (IllegalArgumentException e){
-            throw new RequestBodyException(HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new RequestBodyException("Not supported Chart Library",HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 

@@ -21,7 +21,7 @@ public class DbAccessResultsTest {
     public void getResultsFromDBAccess() throws IOException, CantDealWithException, DataFormatter.DataFormationException {
 
         ObjectMapper mapper = new ObjectMapper();
-        Result queryResult = mapper.readValue(new File("src/test/resources/result1.json"), Result.class);
+        Result queryResult = mapper.readValue(new File("src/test/resources/highcharts/testFiles/result1.json"), Result.class);
         List<Result> resultList = new ArrayList<>();
         resultList.add(queryResult);
         for(ArrayList<String> row :queryResult.getRows())

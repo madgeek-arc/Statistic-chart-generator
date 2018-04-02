@@ -36,6 +36,8 @@ class JsonResponseDeserializer extends JsonDeserializer<JsonResponse>{
 
         if(root.get("series") != null)
             return mapper.treeToValue(root,HighChartsJsonResponse.class);
+        if(root.get("dataTable") != null)
+            return mapper.treeToValue(root,GoogleChartsJsonResponse.class);
 
         return null;
     }

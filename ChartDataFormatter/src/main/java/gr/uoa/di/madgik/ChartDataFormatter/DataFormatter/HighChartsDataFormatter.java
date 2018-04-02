@@ -9,7 +9,7 @@ import java.util.*;
 
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
- * to valid HighCharts library format.
+ * to a format convenient for HighCharts library.
  * @see DataFormatter
  */
 public class HighChartsDataFormatter extends DataFormatter{
@@ -27,6 +27,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         /* ASSUMPTIONS:
          * ~ Results have a [x,y] format.
          * ~ Dates are returned as a String format
+         * ~ Results and Chart Types match 1-1
          */
 
         if (dbAccessResults.size() == 1 && chartsType.size() == 1)
@@ -116,9 +117,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 break;
 
             HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
-
-            for (int i = 0; i<result.getRows().size(); i++){
-                ArrayList<String> row = result.getRows().get(i);
+            for(ArrayList<String> row : result.getRows()){
 
                 String xValue = row.get(0);
                 String yValue = row.get(1);

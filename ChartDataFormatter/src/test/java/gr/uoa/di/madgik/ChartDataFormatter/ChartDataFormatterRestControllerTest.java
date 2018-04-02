@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import static org.mockito.Mockito.mock;
@@ -62,11 +63,11 @@ public class ChartDataFormatterRestControllerTest {
     }
 
     @Test
-    public void PostResponse() throws Exception {
+    public void HighchartsPostResponse() throws Exception {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        Query query = mapper.readValue(new File("src/test/resources/public/jsonFiles/query_test.json"),Query.class);
+        Query query = mapper.readValue(new File("src/test/resources/highcharts/testFiles/query_test.json"),Query.class);
         RequestInfo mockRequestInfo = new RequestInfo();
         mockRequestInfo.setLibrary("Highcharts");
         mockRequestInfo.setChartsInfo(new ArrayList<>());
@@ -89,6 +90,31 @@ public class ChartDataFormatterRestControllerTest {
 
 
         System.out.println("Response: "+ra.andReturn().getResponse().getContentAsString());
+    }
+    @Test
+    public void GoogleChartsPostResponse() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
 
+        Query query = mapper.readValue(new File("src/test/resources/highcharts/testFiles/query_test.json"),Query.class);
+        RequestInfo mockRequestInfo = new RequestInfo();
+        mockRequestInfo.setLibrary("GoogleCharts");
+        mockRequestInfo.setChartsInfo(new ArrayList<>());
+
+        ChartInfo mockChartInfo = new ChartInfo();
+        mockChartInfo.setChartType("");
+        mockChartInfo.setQuery(query);
+        mockRequestInfo.getChartsInfo().add(mockChartInfo);
+
+        ResultActions ra = this.mockMvc.perform(MockMvcRequestBuilders.post("/chart")
+                .content(mapper.writeValueAsString(mockRequestInfo))
+                .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .accept(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(MockMvcResultMatchers.jsonPath("@.dataTable[0]").exists())
+                .andExpect(MockMvcResultMatchers.jsonPath("@.dataTable[0]").isNotEmpty())
+                .andExpect(MockMvcResultMatchers.jsonPath("@.dataTable[0][0]").isNotEmpty());
+
+        System.out.println("Response: "+ra.andReturn().getResponse().getContentAsString());
     }
 }

@@ -1,22 +1,12 @@
 {
-    "library" : "Highcharts",
+    "library":"GoogleCharts",
 
-    "chartDescription": 
-    {
-        "chart": {
-            "type": "line"
-        },
-        "title": {
-            "text": "Publications per Year from H2020"
-        },        
-        "yAxis": {
-            "title": {
-            "text": "# of Publications"
-            }
-        },
-        "series": [{
-            "name": "H2020",
-            "query": {
+    "chartDescription":
+    {   
+        "chartType":"BarChart",
+        "columns": ["Year","H2020"],
+        "queries":[
+            {"query": {
                 "filters": [
                     {
                         "field": "publication.year",
@@ -39,7 +29,11 @@
                     }
                 ],
                 "entity": "project"
-            }
-        }]               
+            }}
+        ],
+        "options":{
+            "title" : "Publications per Year from H2020",
+            "hAxis": {"title": "# of Publications"}  
+        }
     }
 }

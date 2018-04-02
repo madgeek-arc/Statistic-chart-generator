@@ -91,7 +91,7 @@ public class DataSerializationTest {
     public void SerializeDataJsonResponse() throws IOException {
 
         ObjectMapper mapper = new ObjectMapper();
-        AbsData[] series = mapper.readValue(new File("src/test/resources/public/jsonFiles/chartdataizerToHtml.json"), AbsData[].class);
+        AbsData[] series = mapper.readValue(new File("src/test/resources/highcharts/testFiles/chartdataizerToHtml.json"), AbsData[].class);
         assert series != null;
 
         JsonResponse jsonResponse =  new HighChartsJsonResponse(Arrays.asList(series),null);
