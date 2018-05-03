@@ -122,7 +122,11 @@ public class QueryTree {
                         selects.add(new OrderedSelect(select.getOrder(), select.getField()));
                         group.add(select.getField());
                     } else {
-                        selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
+                        if(select.getAggregate().equals("count")) {
+                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(DISTINCT " + select.getField() + ")"));
+                        } else {
+                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
+                        }
                     }
                 }
                 filters.addAll(nd.filters);
@@ -245,8 +249,9 @@ public class QueryTree {
                 case "between":
                     //mappedFilters.add(filter.getField() + ">'" + filter.getValue1() + "'");
                     //mappedFilters.add(filter.getField() + "<'" + filter.getValue2() + "'");
-                    mappedFilters.add(filter.getField() + ">?");
-                    mappedFilters.add(filter.getField() + "<?");
+                    //mappedFilters.add(filter.getField() + ">?");
+                    //mappedFilters.add(filter.getField() + "<?");
+                    mappedFilters.add(filter.getField() + " BETWEEN ? AND ?");
                     parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
                     parameters.add(mapType(filter.getValue2(), filter.getDatatype()));
                     break;
