@@ -21,7 +21,7 @@ import redis.clients.jedis.Jedis;
 public class DBAccess{
 
     private final Mapper mapper = new Mapper();
-    private final Jedis jedis = new Jedis("localhost", 6379);
+    private final Jedis jedis = new Jedis("vatopedi.di.uoa.gr", 6379);
 
     private final String dbUrl = "jdbc:postgresql://vatopedi.di.uoa.gr:5432/stats?autoReconnect=true";
     private final String username = "sqoop";
