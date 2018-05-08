@@ -1,7 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 
 public class ChartInfo {
 

@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 
 public class MapperTest {
 

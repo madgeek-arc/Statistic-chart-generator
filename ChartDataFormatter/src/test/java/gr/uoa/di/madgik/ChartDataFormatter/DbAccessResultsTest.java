@@ -8,7 +8,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import org.junit.Test;
-import gr.uoa.di.madgik.statstool.db.Result;
+import gr.uoa.di.madgik.statstool.domain.Result;
 
 import java.io.File;
 import java.io.IOException;

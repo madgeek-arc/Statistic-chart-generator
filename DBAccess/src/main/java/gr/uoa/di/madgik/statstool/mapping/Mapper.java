@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
+import gr.uoa.di.madgik.statstool.mapping.entities.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -14,20 +15,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import gr.uoa.di.madgik.statstool.mapping.entities.Field;
-import gr.uoa.di.madgik.statstool.mapping.entities.Join;
-import gr.uoa.di.madgik.statstool.mapping.entities.QueryGraph;
-import gr.uoa.di.madgik.statstool.mapping.entities.QueryTree;
-import gr.uoa.di.madgik.statstool.mapping.entities.Table;
-import gr.uoa.di.madgik.statstool.query.Filter;
-import gr.uoa.di.madgik.statstool.query.Query;
-import gr.uoa.di.madgik.statstool.query.Select;
+import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.Query;
+import gr.uoa.di.madgik.statstool.domain.Select;
 
 public class Mapper {
 
     private final HashMap<String, Table> tables = new HashMap<>();
     private final HashMap<String, Field> fields = new HashMap<>();
     private final HashMap<String, List<Join>> relations = new HashMap<>();
+
+    private final HashMap<String, Entity> entities = new HashMap<>();
 
     public Mapper() {
         try {
@@ -37,6 +35,7 @@ public class Mapper {
             JSONArray jsonEntities = (JSONArray) jsonObject.get("entities");
             for(Object entity : jsonEntities) {
                 JSONObject jsonEntity = (JSONObject) entity;
+
                 JSONArray jsonFields = (JSONArray) jsonEntity.get("field");
                 String entityName = jsonEntity.get("@name").toString();
                 String entityTable = jsonEntity.get("@from").toString();
@@ -60,6 +59,7 @@ public class Mapper {
                 } else {
                     tables.put(entityName, new Table(entityTable, entityKey, null));
                 }
+                Entity schemaEntity = new Entity(entityName);
                 for(Object field : jsonFields) {
                     JSONObject jsonField = (JSONObject) field;
                     String fieldName = jsonField.get("@name").toString();
@@ -74,8 +74,13 @@ public class Mapper {
                     } else {
                         fields.put(entityName + "." + fieldName, new Field(entityTable, fieldColumn, fieldDataType));
                     }
-
+                    schemaEntity.addField(new EntityField(fieldName, fieldDataType));
                 }
+                JSONArray jsonEntityRelations = (JSONArray) jsonEntity.get("relations");
+                for(Object relation : jsonEntityRelations) {
+                    schemaEntity.addRelation((String)relation);
+                }
+                entities.put(entityName, schemaEntity);
             }
             /*
             JSONArray jsonRelations = (JSONArray) jsonObject.get("relations");
@@ -363,5 +368,21 @@ public class Mapper {
                 System.out.println('\t' + join.getFirst_table() + "." + join.getFirst_field() + " = " + join.getSecond_table() + "." + join.getSecond_field());
             }
         }
+    }
+
+    public HashMap<String, Table> getTables() {
+        return tables;
+    }
+
+    public HashMap<String, Field> getFields() {
+        return fields;
+    }
+
+    public HashMap<String, List<Join>> getRelations() {
+        return relations;
+    }
+
+    public HashMap<String, Entity> getEntities() {
+        return entities;
     }
 }

@@ -13,14 +13,15 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 import redis.clients.jedis.Jedis;
 
 public class DBAccess{
 
     private final Mapper mapper = new Mapper();
-    private final Jedis jedis = new Jedis("vatopedi.di.uoa.gr", 6379);
+    private final Jedis jedis = new Jedis("localhost", 6379);
 
     private final String dbUrl = "jdbc:postgresql://vatopedi.di.uoa.gr:5432/stats?autoReconnect=true";
     private final String username = "sqoop";

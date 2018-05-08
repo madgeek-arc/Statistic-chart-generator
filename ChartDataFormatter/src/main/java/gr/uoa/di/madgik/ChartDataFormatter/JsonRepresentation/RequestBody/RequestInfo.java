@@ -2,7 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 
 import java.util.ArrayList;
 import java.util.List;

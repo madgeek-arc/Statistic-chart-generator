@@ -1,4 +1,4 @@
-package gr.uoa.di.madgik.statstool.db;
+package gr.uoa.di.madgik.statstool.domain;
 
 import java.util.ArrayList;
 import java.util.List;

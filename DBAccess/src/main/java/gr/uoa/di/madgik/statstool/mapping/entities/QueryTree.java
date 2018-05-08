@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-import gr.uoa.di.madgik.statstool.query.Filter;
-import gr.uoa.di.madgik.statstool.query.Select;
+import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.Select;
 
 public class QueryTree {
     private final Node root;

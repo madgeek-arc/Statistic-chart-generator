@@ -8,7 +8,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighC
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.statstool.db.DBAccess;
-import gr.uoa.di.madgik.statstool.db.Result;
+import gr.uoa.di.madgik.statstool.domain.Result;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;

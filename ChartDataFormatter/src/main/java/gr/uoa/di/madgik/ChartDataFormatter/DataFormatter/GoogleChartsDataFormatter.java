@@ -1,9 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
-import gr.uoa.di.madgik.statstool.db.Result;
+import gr.uoa.di.madgik.statstool.domain.Result;
 
 import java.util.*;
 

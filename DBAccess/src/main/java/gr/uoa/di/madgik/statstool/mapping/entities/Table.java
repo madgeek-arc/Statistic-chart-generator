@@ -2,7 +2,7 @@ package gr.uoa.di.madgik.statstool.mapping.entities;
 
 import java.util.List;
 
-import gr.uoa.di.madgik.statstool.query.Filter;
+import gr.uoa.di.madgik.statstool.domain.Filter;
 
 public class Table {
     private final String table;

@@ -5,7 +5,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.Reques
 import gr.uoa.di.madgik.ChartDataFormatter.RestControllers.ChartDataFormatterRestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 
 import static org.mockito.Mockito.mock;

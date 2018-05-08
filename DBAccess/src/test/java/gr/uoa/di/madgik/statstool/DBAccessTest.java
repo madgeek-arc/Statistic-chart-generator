@@ -7,9 +7,9 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import gr.uoa.di.madgik.statstool.db.Result;
+import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.db.DBAccess;
-import gr.uoa.di.madgik.statstool.query.Query;
+import gr.uoa.di.madgik.statstool.domain.Query;
 
 public class DBAccessTest {
 

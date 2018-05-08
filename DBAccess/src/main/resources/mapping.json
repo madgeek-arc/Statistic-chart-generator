@@ -49,7 +49,8 @@
                     "@sqlTable": "result_classifications",
                     "@datatype": "text"
                 }
-            ]
+            ],
+            "relations": [ "project", "datasource", "organization"]
         },
         {
             "@from": "project",
@@ -121,7 +122,8 @@
                     "@name": "code",
                     "@datatype": "text"
                 }
-            ]
+            ],
+            "relations": [ "publication", "organization"]
         },
         {
             "@from": "datasource",
@@ -153,7 +155,8 @@
                     "@name": "longitude",
                     "@datatype": "float"
                 }
-            ]
+            ],
+            "relations": [ "publication", "organization"]
         },
         {
             "@from": "organization",
@@ -170,7 +173,8 @@
                     "@name": "country",
                     "@datatype": "text"
                 }
-            ]
+            ],
+            "relations": [ "publication", "project", "datasource"]
         }
     ],
     "relations": [

@@ -1,4 +1,4 @@
-package gr.uoa.di.madgik.statstool.query;
+package gr.uoa.di.madgik.statstool.domain;
 
 public class Filter {
     private String field;
