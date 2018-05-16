@@ -21,7 +21,7 @@ public class MapperTest {
             Query query = objectMapper.readValue(getClass().getClassLoader().getResource("query_test.json"), Query.class);
             Query mappedQuery = mapper.mapIntermediate(query);
             List<Object> parameters = new ArrayList<>();
-            String SqlQuery = mapper.mapGraph(mappedQuery, parameters);
+            String SqlQuery = mapper.mapTree(mappedQuery, parameters);
             System.out.println(SqlQuery);
             for(Object obj : parameters) {
                 System.out.println(obj);

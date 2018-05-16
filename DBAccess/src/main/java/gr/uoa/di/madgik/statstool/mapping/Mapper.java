@@ -197,55 +197,6 @@ public class Mapper {
         return queryTree.makeQuery(parameters);
     }
 
-    public String mapGraph(Query query, List<Object> parameters) {
-        QueryGraph queryGraph = new QueryGraph();
-        //queryGraph.addEdge("project(id)", "(id)project_results");
-
-        for(Select select : query.getSelect()) {
-            List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
-            for(int i = 0; i < fldPath.size() - 2; i++) {
-                if(i == 0) {
-                    //System.out.println(fldPath.get(i) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                    queryGraph.addEdge(fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                } else if (i != fldPath.size() - 3){
-                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                } else {
-                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1));
-                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
-                }
-            }
-            String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
-            String field = fldPath.get(fldPath.size() - 1);
-            //System.out.println("addSelect: "  + table + "." + field);
-            //System.out.println();
-            queryGraph.addSelect(table, new Select(table + "." + field, select.getAggregate(), select.getOrder()));
-        }
-
-        for(Filter filter : query.getFilters()) {
-            List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
-            for(int i = 0; i < fldPath.size() - 2; i++) {
-                if(i == 0) {
-                    //System.out.println(fldPath.get(i) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                    queryGraph.addEdge(fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                } else if (i != fldPath.size() - 3){
-                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
-                } else {
-                    //System.out.println(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1) + " - " + fldPath.get(i+1));
-                    queryGraph.addEdge(fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
-                }
-            }
-            String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
-            String field = fldPath.get(fldPath.size() - 1);
-            //System.out.println("addFilter: "  + table + "." + field);
-            //System.out.println();
-            queryGraph.addFilter(table, new Filter(table + "." + field, filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
-        }
-
-        return queryGraph.makeQuery(query.getEntity(), parameters);
-    }
-
     public Query mapIntermediate(Query query) {
         List<Select> selects = query.getSelect();
         List<Select> mappedSelects = new ArrayList<>();
@@ -258,16 +209,10 @@ public class Mapper {
         for(Select select : selects) {
             //System.out.println(select.getField());
             List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
-            if(fldPath.get(0).equals(query.getEntity())) {
-                if(fldPath.size() == 1) {
-                    mappedSelects.add(new Select(entityTable.getTable() + "." + entityTable.getKey(), select.getAggregate(), selectCount));
-                } else {
-                    //mappedSelects.add(new Select(entityTable.getTable() + mapField(select.getField()), select.getAggregate()));
-                    mappedSelects.add(new Select(mapField(entityTable.getTable(), select.getField()), select.getAggregate(), selectCount));
-                }
+            if(fldPath.size() == 1) {
+                mappedSelects.add(new Select(entityTable.getTable() + "." + entityTable.getKey(), select.getAggregate(), selectCount));
             } else {
-                String fieldPath = entityTable.getTable();
-                fldPath.add(0, query.getEntity());
+                String fieldPath = "";
                 for(int i = 0; i < fldPath.size() - 2; i++) {
                     fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
                 }
@@ -280,18 +225,12 @@ public class Mapper {
         List<Filter> filters = query.getFilters();
         for(Filter filter : filters) {
             List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
-            if(fldPath.get(0).equals(query.getEntity())) {
-                //mappedFilters.add(new Filter(entityTable.getTable() + mapField(filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2()));
-                mappedFilters.add(new Filter(mapField(entityTable.getTable(), filter.getField()), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(filter.getField()).getDatatype()));
-            } else {
-                String fieldPath = entityTable.getTable();
-                fldPath.add(0, query.getEntity());
-                for(int i = 0; i < fldPath.size() - 2; i++) {
-                    fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
-                }
-                //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
-                mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
+            String fieldPath = "";
+            for(int i = 0; i < fldPath.size() - 2; i++) {
+                fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
             }
+            //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
+            mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
         }
         return new Query(mappedFilters, mappedSelects, entityTable.getTable());
     }
