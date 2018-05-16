@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.statstool.repositories;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.Result;
+
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 @Repository
 public class StatsRedisRepository {
@@ -34,7 +36,21 @@ public class StatsRedisRepository {
         return result;
     }
 
-    public void save(String fullSqlQuery, Result result) {
+    public List<String> getValues(String fullSqlQuery) {
+        List<String> result = null;
+        try {
+            String redisResponse = jedis.get(MD5(fullSqlQuery), "result");
+            if(redisResponse != null) {
+                result = new ObjectMapper().readValue(redisResponse, new ObjectMapper().getTypeFactory().constructCollectionType(List.class, String.class));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+    public void save(String fullSqlQuery, Object result) {
         try {
             String key = MD5(fullSqlQuery);
             jedis.put(key, "persistence", "false");

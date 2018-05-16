@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.statstool.controllers;
 
+import gr.uoa.di.madgik.statstool.domain.FieldValues;
 import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 import gr.uoa.di.madgik.statstool.services.SchemaService;
@@ -29,4 +30,13 @@ public class SchemaController {
         return schemaService.getEntity(entity);
     }
 
+    @RequestMapping(value = "fields/{field}")
+    public FieldValues getField(@PathVariable(value = "field") String field) {
+        return schemaService.getFieldValues(field, "");
+    }
+
+    @RequestMapping(value = "fields/{field}/{like}")
+    public FieldValues getFieldLike(@PathVariable(value = "field") String field, @PathVariable(value = "like") String like) {
+        return schemaService.getFieldValues(field, like);
+    }
 }

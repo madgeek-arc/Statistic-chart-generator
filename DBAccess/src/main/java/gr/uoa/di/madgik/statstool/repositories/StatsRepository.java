@@ -52,6 +52,50 @@ public class StatsRepository {
         }
     }
 
+    public List<String> executeFieldQuery(String query, String parameter) {
+        List<String> result = new ArrayList<>();
+        try {
+            Connection connection = dataSource.getConnection();
+
+            PreparedStatement st = connection.prepareStatement(query);
+            if(!parameter.equals("")) {
+                st.setString(1, parameter);
+            }
+
+            ResultSet rs = st.executeQuery();
+            while(rs.next()) {
+                result.add(rs.getString(1));
+            }
+
+            rs.close();
+            st.close();
+            connection.close();
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public String getFullFieldsQuery(String query, String parameter) {
+        try {
+            Connection connection = dataSource.getConnection();
+            PreparedStatement st = connection.prepareStatement(query);
+            if(!parameter.equals("")) {
+                st.setString(1, parameter);
+            }
+            String fullQuery = st.toString();
+            fullQuery = fullQuery.substring(fullQuery.indexOf("SELECT"));
+            st.close();
+            connection.close();
+            return fullQuery;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
     public String getFullQuery(String query, List<Object> parameters) {
         try {
             Connection connection = dataSource.getConnection();
