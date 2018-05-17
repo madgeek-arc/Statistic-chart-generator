@@ -1,7 +1,7 @@
 {
   "filters": [
     {
-      "field": "publication.date",
+      "field": "project.publication.date",
       "type": "between",
       "value1": "2017-01-01",
       "value2": "2017-02-01"
@@ -13,7 +13,7 @@
   ],
   "select": [
     {
-      "field": "publication.date"
+      "field": "project.publication.date"
     },
     {
       "aggregate": "count",
