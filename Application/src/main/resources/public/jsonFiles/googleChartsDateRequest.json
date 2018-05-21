@@ -11,12 +11,11 @@
                   {
                     "field": "project.publication.date",
                     "type": "between",
-                    "value1": "2017-01-01",
-                    "value2": "2017-02-01"
+                    "values": ["2017-01-01", "2017-02-01"]
                   },
                   {	"field": "project.funding level 0",
-                    "type": "equal",
-                    "value1": "FP7"
+                    "type": "=",
+                    "values": ["FP7"]
                   }
                 ],
                 "select": [
@@ -35,12 +34,11 @@
                   {
                     "field": "project.publication.date",
                     "type": "between",
-                    "value1": "2017-01-01",
-                    "value2": "2017-01-15"
+                    "values": ["2017-01-01", "2017-01-15"]
                   },
                   {	"field": "project.funding level 0",
-                    "type": "equal",
-                    "value1": "FP7"
+                    "type": "=",
+                    "values": ["FP7"]
                   }
                 ],
                 "select": [

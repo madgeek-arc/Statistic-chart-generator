@@ -47,13 +47,13 @@ public class Mapper {
                         JSONObject jsonFilter = (JSONObject) filter;
                         String filterColumn = jsonFilter.get("@column").toString();
                         String filterType = jsonFilter.get("@type").toString();
-                        String filterValue1 = jsonFilter.get("@value1").toString();
-                        String filterValue2 = null;
-                        String filterDatatype = jsonFilter.get("@datatype").toString();
-                        if(jsonFilter.get("@value2") != null) {
-                            filterValue2 = jsonFilter.get("@value2").toString();
+                        JSONArray jsonFilterValues = (JSONArray) jsonFilter.get("@values");
+                        List<String> filterValues = new ArrayList<>();
+                        for(Object filterValue : jsonFilterValues) {
+                            filterValues.add((String) filterValue);
                         }
-                        entityFilters.add(new Filter(filterColumn, filterType, filterValue1, filterValue2, filterDatatype));
+                        String filterDatatype = jsonFilter.get("@datatype").toString();
+                        entityFilters.add(new Filter(filterColumn, filterType, filterValues, filterDatatype));
                     }
                     tables.put(entityName, new Table(entityTable, entityKey, entityFilters));
                 } else {
@@ -230,7 +230,7 @@ public class Mapper {
                 fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
             }
             //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
-            mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
+            mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValues(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
         }
         return new Query(mappedFilters, mappedSelects, entityTable.getTable());
     }
@@ -239,7 +239,7 @@ public class Mapper {
         Table table = tables.get(t);
         if(table.getFilters() != null && !filteredEntities.contains(t)) {
             for(Filter filter : table.getFilters()) {
-                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable()) + "." + filter.getField(), filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
+                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable()) + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
             }
             filteredEntities.add(t);
         }
@@ -290,7 +290,10 @@ public class Mapper {
             System.out.println(entry.getKey() + " : " + entry.getValue().getTable() + " - " + entry.getValue().getKey());
             if(entry.getValue().getFilters() != null) {
                 for (Filter filter : entry.getValue().getFilters()) {
-                    System.out.println("\t" + filter.getField() + " - " + filter.getType() + " - " + filter.getValue1() + " - " + filter.getValue2());
+                    System.out.println("\t" + filter.getField() + " - " + filter.getType());
+                    for(String filterValue : filter.getValues()) {
+                        System.out.print(filterValue + " - ");
+                    }
                 }
             }
         }

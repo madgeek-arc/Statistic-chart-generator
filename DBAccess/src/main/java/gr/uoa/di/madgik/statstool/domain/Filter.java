@@ -1,36 +1,21 @@
 package gr.uoa.di.madgik.statstool.domain;
 
+import java.util.List;
+
 public class Filter {
     private String field;
     private String type;
-    private String value1;
-    private String value2;
+    private List<String> values;
     private String datatype;
 
     public Filter() {}
 
-    public Filter(String field, String type, String value1, String value2, String datatype) {
+    public Filter(String field, String type, List<String> values, String datatype) {
         this.field = field;
         this.type = type;
-        this.value1 = value1;
-        this.value2 = value2;
+        this.values = values;
         this.datatype = datatype;
     }
-
-    /*
-    public Filter(String field, String type, String value1, String value2) {
-        this.field = field;
-        this.type = type;
-        this.value1 = value1;
-        this.value2 = value2;
-    }
-
-    public Filter(String field, String type, String value1) {
-        this.field = field;
-        this.type = type;
-        this.value1 = value1;
-    }
-    */
 
     public String getField() {
         return field;
@@ -48,20 +33,12 @@ public class Filter {
         this.type = type;
     }
 
-    public String getValue1() {
-        return value1;
+    public List<String> getValues() {
+        return values;
     }
 
-    public void setValue1(String value1) {
-        this.value1 = value1;
-    }
-
-    public String getValue2() {
-        return value2;
-    }
-
-    public void setValue2(String value2) {
-        this.value2 = value2;
+    public void setValues(List<String> values) {
+        this.values = values;
     }
 
     public String getDatatype() {

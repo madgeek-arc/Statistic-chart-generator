@@ -42,6 +42,9 @@ public class SchemaServiceImpl implements SchemaService{
     @Override
     public SchemaEntity getEntity(String entity) {
         Entity ent = mapper.getEntities().get(entity);
+        if(ent == null) {
+            return null;
+        }
         SchemaEntity schemaEntity = new SchemaEntity(ent.getName(), ent.getFields());
         Set<String> path = new HashSet<>();
         path.add(entity);

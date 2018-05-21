@@ -6,8 +6,8 @@
             "filters": [
                 {
                     "@column": "type",
-                    "@type": "equal",
-                    "@value1": "publication",
+                    "@type": "=",
+                    "@values": ["publication"],
                     "@datatype": "text"
                 }
             ],

@@ -82,7 +82,7 @@ public class QueryTree {
         }
         String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
         String field = fldPath.get(fldPath.size() - 1);
-        parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValue1(), filter.getValue2(), filter.getDatatype()));
+        parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype()));
     }
 
     public void addSelect(Select select) {
@@ -192,7 +192,7 @@ public class QueryTree {
             }
         }
         */
-        query += " WHERE ";
+        query += "WHERE ";
         first = true;
         /*
         for (String join : joins) {
@@ -204,12 +204,24 @@ public class QueryTree {
             }
         }
         */
-        for (String filter : mapFilters(filters, parameters)) {
+        for (List<String> multipleFilters : mapFilters(filters, parameters)) {
             if (first) {
-                query += filter;
                 first = false;
             } else {
-                query += " AND " + filter;
+                query += " AND ";
+            }
+            boolean first_filter = true;
+            for(String filter : multipleFilters) {
+                if(first_filter && multipleFilters.size() > 1) {
+                    query += "(";
+                    first_filter = false;
+                } else if(multipleFilters.size() > 1) {
+                    query += " or ";
+                }
+                query += filter;
+            }
+            if(multipleFilters.size() > 1) {
+                query += ")";
             }
         }
         query += " GROUP BY ";
@@ -237,29 +249,39 @@ public class QueryTree {
         return query;
     }
 
-    private List<String> mapFilters(List<Filter> filters, List<Object> parameters) {
-        List<String> mappedFilters = new ArrayList<>();
+    private List<List<String>> mapFilters(List<Filter> filters, List<Object> parameters) {
+        List<List<String>> mappedFilters = new ArrayList<>();
         for (Filter filter : filters) {
-            switch (filter.getType()) {
-                case "equal":
-                    //mappedFilters.add(filter.getField() + "='" + filter.getValue1() + "'");
-                    mappedFilters.add(filter.getField() + "=?");
-                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
-                    break;
-                case "between":
-                    //mappedFilters.add(filter.getField() + ">'" + filter.getValue1() + "'");
-                    //mappedFilters.add(filter.getField() + "<'" + filter.getValue2() + "'");
-                    //mappedFilters.add(filter.getField() + ">?");
-                    //mappedFilters.add(filter.getField() + "<?");
-                    mappedFilters.add(filter.getField() + " BETWEEN ? AND ?");
-                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
-                    parameters.add(mapType(filter.getValue2(), filter.getDatatype()));
-                    break;
-                case "not_equal":
-                    //mappedFilters.add(filter.getField() + "!='" + filter.getValue1() + "'");
-                    mappedFilters.add(filter.getField() + "!=?");
-                    parameters.add(mapType(filter.getValue1(), filter.getDatatype()));
-                    break;
+            List<String> multipleFilters = new ArrayList<>();
+            if(filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
+                for(String value: filter.getValues()) {
+                    multipleFilters.add(filter.getField() + filter.getType() + "?");
+                    parameters.add(mapType(value, filter.getDatatype()));
+                }
+            } else if (filter.getType().equals("between")) {
+                for(int i = 0; i < filter.getValues().size(); i+=2) {
+                    multipleFilters.add(filter.getField() + " BETWEEN ? AND ?");
+                    parameters.add(mapType(filter.getValues().get(i), filter.getDatatype()));
+                    parameters.add(mapType(filter.getValues().get(i+1), filter.getDatatype()));
+                }
+            } else if(filter.getType().equals("contains")) {
+                for(String value: filter.getValues()) {
+                    multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ? || \'%\'");
+                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                }
+            } else if(filter.getType().equals("starts_with")) {
+                for(String value: filter.getValues()) {
+                    multipleFilters.add("lower(" + filter.getField() + ") LIKE ? || \'%\'");
+                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                }
+            } else if(filter.getType().equals("ends_with")) {
+                for (String value : filter.getValues()) {
+                    multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
+                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                }
+            }
+            if(!multipleFilters.isEmpty()) {
+                mappedFilters.add(multipleFilters);
             }
         }
         return mappedFilters;

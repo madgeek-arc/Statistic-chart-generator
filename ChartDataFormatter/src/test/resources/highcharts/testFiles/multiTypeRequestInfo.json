@@ -8,12 +8,11 @@
                 {
                     "field": "project.publication.year",
                     "type": "between",
-                    "value1": 2010,
-                    "value2": 2015
+                    "values": ["2010", "2015"]
                 },
                 {	"field": "project.funding level 0",
-                    "type": "equal",
-                    "value1": "FP7"
+                    "type": "=",
+                    "values": ["FP7"]
                 }
             ],
             "select": [
@@ -35,12 +34,11 @@
                 {
                     "field": "project.publication.year",
                     "type": "between",
-                    "value1": 2010,
-                    "value2": 2015
+                    "values": ["2010", "2015"]
                 },
                 {	"field": "project.funding level 0",
-                    "type": "equal",
-                    "value1": "FP7"
+                    "type": "=",
+                    "values": ["FP7"]
                 }
             ],
             "select": [
