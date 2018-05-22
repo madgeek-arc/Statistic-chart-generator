@@ -64,7 +64,9 @@ public class StatsRepository {
 
             ResultSet rs = st.executeQuery();
             while(rs.next()) {
-                result.add(rs.getString(1));
+                if(rs.getString(1) != null) {
+                    result.add(rs.getString(1));
+                }
             }
 
             rs.close();
