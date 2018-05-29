@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
@@ -32,12 +33,13 @@ class JsonResponseDeserializer extends JsonDeserializer<JsonResponse>{
         ObjectNode root = mapper.readTree(p);
 
         JsonNode dataNode = root.get("series");
-//        System.out.println("JsonResponseDeserializer | Node to deserialize: " + mapper.writeValueAsString(dataNode));
-
-        if(root.get("series") != null)
-            return mapper.treeToValue(root,HighChartsJsonResponse.class);
-        if(root.get("dataTable") != null)
-            return mapper.treeToValue(root,GoogleChartsJsonResponse.class);
+        if(dataNode != null && !(dataNode instanceof NullNode)) {
+            return mapper.treeToValue(root, HighChartsJsonResponse.class);
+        }
+        dataNode = root.get("dataTable");
+        if(dataNode != null && !(dataNode instanceof NullNode)) {
+            return mapper.treeToValue(root, GoogleChartsJsonResponse.class);
+        }
 
         return null;
     }
