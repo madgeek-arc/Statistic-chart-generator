@@ -9,7 +9,7 @@ var domainLink = protocol+"://"+domainName+":"+port;
 function fetchChart(jsonData){
     $.getJSON(jsonData, handleAdminSideData)
     .done()
-    .fail()
+    .fail(()=>{console.log("Failed");})
     .always();
 }
 
@@ -33,7 +33,9 @@ function handleAdminSideData(dataJSONobj)
     // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
     console.log(dataJSONobj);
 
-    if(dataJSONobj.library === "GoogleCharts"){
+    switch(dataJSONobj.library){
+    case "GoogleCharts":
+    {
         
         loadJS("https://www.gstatic.com/charts/loader.js",                 
         function(){            
@@ -60,8 +62,10 @@ function handleAdminSideData(dataJSONobj)
                     domainLink+"/chart");
             });            
         });
+        break;
     }
-    if(dataJSONobj.library === "Highcharts"){
+    case "HighCharts":
+    {
                 
         //Dynamically add JS library
         loadJS("https://code.highcharts.com/6.0/highcharts.js",
@@ -96,12 +100,17 @@ function handleAdminSideData(dataJSONobj)
             passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                         domainLink+"/chart"); }
         );
+        break;
+    }
+    default:
+        console.log("Unsupported Library: "+ dataJSONobj.library);
     }
 }
 
 //Post the admin-side json to the ChartDataFormatter
 function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,ChartDataFormatterUrl)
 {
+    console.log("Passing to CDF:");
     console.log(ChartDataFormatterReadyJSONobj);
 
     $.ajax(
@@ -120,6 +129,7 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 
 function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
 {   
+    console.log("Got from CDF:");
     console.log(responseData);
     
     //Hide children elements of container
@@ -138,9 +148,10 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
 
         wrapper.draw();
     }
-    if(libraryType === "Highcharts"){
+    if(libraryType === "HighCharts"){
         var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
         console.log(chartJson);
+        console.log("Drawing HighCharts");
         Highcharts.chart('container',chartJson);
     }
 
