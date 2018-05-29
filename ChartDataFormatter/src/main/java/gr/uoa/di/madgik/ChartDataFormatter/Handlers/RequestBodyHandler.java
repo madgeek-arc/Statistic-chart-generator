@@ -35,7 +35,7 @@ public class RequestBodyHandler {
         try {
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
-                case Highcharts:
+                case HighCharts:
 
                     HighChartsJsonResponse highChartsJsonResponse;
                     try {
