@@ -31,6 +31,11 @@ public class RequestBodyHandler {
 
         if (dbAccessResults == null)
             throw new RequestBodyException("DBAccess Error", HttpStatus.INTERNAL_SERVER_ERROR);
+        int resultNo = 0;
+        for(Result res : dbAccessResults) {
+            System.out.println("DBAccess Results ["+resultNo+"]: " + res.getRows().toString());
+            resultNo++;
+        }
 
         try {
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
@@ -68,8 +73,8 @@ public class RequestBodyHandler {
                 default:
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
-        } catch (IllegalArgumentException e){
-            throw new RequestBodyException("Not supported Chart Library",HttpStatus.UNPROCESSABLE_ENTITY);
+        } catch (RuntimeException e){
+            throw new RequestBodyException("Chart Data Formation Error" ,HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
