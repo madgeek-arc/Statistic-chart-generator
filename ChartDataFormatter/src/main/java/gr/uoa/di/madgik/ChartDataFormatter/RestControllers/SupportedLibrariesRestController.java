@@ -17,12 +17,12 @@ public class SupportedLibrariesRestController {
         return Arrays.stream(e.getEnumConstants()).map(Enum::name).toArray(String[]::new);
     }
 
-    @GetMapping( path = "/chart/libraries",
-        produces = "application/json; charset=UTF-8")
-
-    public @ResponseBody ResponseEntity getSupportedLibraries(){
-
-        String[] supportedLibraries = getNames(SupportedLibraries.class);
-        return new ResponseEntity<>(supportedLibraries, HttpStatus.OK);
-    }
+//    @GetMapping( path = "/chart/libraries",
+//        produces = "application/json; charset=UTF-8")
+//
+//    public @ResponseBody ResponseEntity getSupportedLibraries(){
+//
+//        String[] supportedLibraries = getNames(SupportedLibraries.class);
+//        return new ResponseEntity<>(supportedLibraries, HttpStatus.OK);
+//    }
 }
