@@ -74,6 +74,7 @@ public class RequestBodyHandler {
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
         } catch (RuntimeException e){
+            e.printStackTrace();
             throw new RequestBodyException("Chart Data Formation Error" ,HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
