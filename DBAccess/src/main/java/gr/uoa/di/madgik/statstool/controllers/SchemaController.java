@@ -4,14 +4,18 @@ import gr.uoa.di.madgik.statstool.domain.FieldValues;
 import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 import gr.uoa.di.madgik.statstool.services.SchemaService;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequestMapping(value = "schema/")
+@CrossOrigin(methods = RequestMethod.GET, origins = "*")
 public class SchemaController {
 
     private SchemaService schemaService;
