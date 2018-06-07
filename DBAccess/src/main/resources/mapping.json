@@ -53,6 +53,110 @@
             "relations": [ "project", "datasource", "organization"]
         },
         {
+            "@from": "result",
+            "@name": "dataset",
+            "filters": [
+                {
+                    "@column": "type",
+                    "@type": "=",
+                    "@values": ["dataset"],
+                    "@datatype": "text"
+                }
+            ],
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "title",
+                    "@name": "title",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "publisher",
+                    "@name": "publisher",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "journal",
+                    "@name": "journal",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "year",
+                    "@name": "year",
+                    "@datatype": "int"
+                },
+                {
+                    "@column": "date",
+                    "@name": "date",
+                    "@datatype": "date"
+                },
+                {
+                    "@column": "bestlicense",
+                    "@name": "access mode",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "type",
+                    "@name": "classification",
+                    "@sqlTable": "result_classifications",
+                    "@datatype": "text"
+                }
+            ],
+            "relations": [ "project", "datasource", "organization"]
+        },
+        {
+            "@from": "result",
+            "@name": "software",
+            "filters": [
+                {
+                    "@column": "type",
+                    "@type": "=",
+                    "@values": ["software"],
+                    "@datatype": "text"
+                }
+            ],
+            "@key": "id",
+            "field": [
+                {
+                    "@column": "title",
+                    "@name": "title",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "publisher",
+                    "@name": "publisher",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "journal",
+                    "@name": "journal",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "year",
+                    "@name": "year",
+                    "@datatype": "int"
+                },
+                {
+                    "@column": "date",
+                    "@name": "date",
+                    "@datatype": "date"
+                },
+                {
+                    "@column": "bestlicense",
+                    "@name": "access mode",
+                    "@datatype": "text"
+                },
+                {
+                    "@column": "type",
+                    "@name": "classification",
+                    "@sqlTable": "result_classifications",
+                    "@datatype": "text"
+                }
+            ],
+            "relations": [ "project", "datasource", "organization"]
+        },
+        {
             "@from": "project",
             "@name": "project",
             "@key": "id",
@@ -123,7 +227,7 @@
                     "@datatype": "text"
                 }
             ],
-            "relations": [ "publication", "organization"]
+            "relations": [ "publication", "dataset", "software", "organization"]
         },
         {
             "@from": "datasource",
@@ -156,7 +260,7 @@
                     "@datatype": "float"
                 }
             ],
-            "relations": [ "publication", "organization"]
+            "relations": [ "publication", "dataset", "software", "organization"]
         },
         {
             "@from": "organization",
@@ -174,7 +278,7 @@
                     "@datatype": "text"
                 }
             ],
-            "relations": [ "publication", "project", "datasource"]
+            "relations": [ "publication", "dataset", "software", "project", "datasource"]
         }
     ],
     "relations": [
