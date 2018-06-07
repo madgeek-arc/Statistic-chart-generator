@@ -16,13 +16,12 @@ public class SupportedChartTypesRestController {
         return Arrays.stream(e.getEnumConstants()).map(Enum::name).toArray(String[]::new);
     }
 
-    @GetMapping( path = "/chart/types",
-        produces = "application/json; charset=UTF-8")
-
-    public @ResponseBody
-    ResponseEntity getSupportedLibraries(){
-
-        String[] supportedTypes = getNames(SupportedChartTypes.class);
-        return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
-    }
+//    @GetMapping( path = "/chart/types",
+//        produces = "application/json; charset=UTF-8")
+//
+//    public @ResponseBody ResponseEntity getSupportedChartTypes(){
+//
+//        String[] supportedTypes = getNames(SupportedChartTypes.class);
+//        return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
+//    }
 }
