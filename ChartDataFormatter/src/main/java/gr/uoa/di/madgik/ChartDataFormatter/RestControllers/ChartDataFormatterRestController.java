@@ -38,8 +38,8 @@ public class ChartDataFormatterRestController {
      */
     @PostMapping(consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")
-    public @ResponseBody
-    ResponseEntity<JsonResponse> postFullChartRepresentation(@NotNull @RequestBody RequestInfo requestJson)  {
+    public @ResponseBody ResponseEntity<JsonResponse>
+    postFullChartRepresentation(@NotNull @RequestBody RequestInfo requestJson)  {
 
         RequestBodyHandler requestBodyHandler = new RequestBodyHandler();
         JsonResponse responseData;
@@ -61,7 +61,6 @@ public class ChartDataFormatterRestController {
 
     @GetMapping(path = "/libraries",
             produces = "application/json; charset=UTF-8")
-
     public @ResponseBody ResponseEntity getSupportedLibraries(){
 
         String[] supportedLibraries = getNames(SupportedLibraries.class);
@@ -70,7 +69,6 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/types",
             produces = "application/json; charset=UTF-8")
-
     public @ResponseBody ResponseEntity getSupportedChartTypes(){
 
         String[] supportedTypes = getNames(SupportedChartTypes.class);
