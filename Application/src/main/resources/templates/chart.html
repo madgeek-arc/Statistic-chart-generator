@@ -2,6 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="utf-8"/>
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="js/connectionToChartDataFormatter.js"></script>
     <title>Chart Giver</title>
@@ -9,8 +10,8 @@
     /*<![CDATA[*/
         $( document ).ready(function(){
             //Setting container's height & <width></width>
-            $("#container").height =  window.innerHeight;
-            $("#container").width = window.innerWidth;
+            $("#container").height(window.innerHeight);
+            $("#container").width(window.innerWidth);
 
             let params = new URLSearchParams(document.location.search.substring(1));
             let jsonParam = params.get("json");
@@ -37,7 +38,6 @@
 
             }
 
-
             /*Close to real request file*/
             // fetchChart("http://localhost:8080/jsonFiles/closeToRealRequest.json");
             /*Close to real request file multiple queries*/
@@ -57,11 +57,11 @@
 
 <body style="margin: 0 auto">
 
-<div id="container" style="margin: 0 auto; text-align: center; max-width:100%; height: 600px; display: block">
+<div id="container" style="margin: 0 auto; text-align: center; max-width:100%; display: block">
     <span class="centerer" style="display: inline-block;vertical-align: middle; height: 100%;"></span>
     <img id="loadingImg" src="/images/ajaxloader.gif" alt="Loading" style="display: none"/>
          <!--style="display: inline-block; vertical-align: middle;"-->
-    <span id="errorSpan" style="display: none">Unavailable Query</span>
+    <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;">Awaiting Query</span>
 </div>
 
 </body>
