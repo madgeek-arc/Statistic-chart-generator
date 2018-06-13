@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.statstool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import gr.uoa.di.madgik.statstool.mapping.NewMapper;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -14,7 +15,8 @@ public class MapperTest {
 
     @Test
     public void testMapper() {
-        Mapper mapper = new Mapper();
+        NewMapper mapper = new NewMapper();
+        //Mapper mapper = new Mapper();
         mapper.printMapper();
         try {
             ObjectMapper objectMapper = new ObjectMapper();

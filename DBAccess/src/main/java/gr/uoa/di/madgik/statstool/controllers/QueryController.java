@@ -35,6 +35,7 @@ public class QueryController {
             List<Result> results = dbAccess.query(queryList);
             return results;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
@@ -50,6 +51,7 @@ public class QueryController {
 
             return statsService.query(queryList);
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

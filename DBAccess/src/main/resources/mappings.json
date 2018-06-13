@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Admin",
+    "description": "Admin description",
+    "primary": true,
+    "file": "mapping.json"
+  },
+  {
+    "name": "User",
+    "description": "User description",
+    "primary": false,
+    "file": "mapping.json"
+  }
+]

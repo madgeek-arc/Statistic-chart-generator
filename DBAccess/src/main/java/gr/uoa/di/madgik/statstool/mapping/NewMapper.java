@@ -1,14 +1,10 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gr.uoa.di.madgik.statstool.mapping.domain.*;
+import org.springframework.stereotype.Component;
 
 import gr.uoa.di.madgik.statstool.mapping.entities.*;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -21,106 +17,83 @@ import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Select;
 
-public class Mapper {
+@Component
+public class NewMapper {
 
     private final HashMap<String, Table> tables = new HashMap<>();
     private final HashMap<String, Field> fields = new HashMap<>();
     private final HashMap<String, List<Join>> relations = new HashMap<>();
 
-    private final HashMap<String, Entity> entities = new HashMap<>();
+    private final HashMap<String, HashMap<String, Entity>> entities = new HashMap<>();
 
-    public Mapper() {
+    private final List<Profile> profiles = new ArrayList<>();
+
+    private String primaryProfile;
+
+    public NewMapper() {
         try {
-            JSONParser jsonParser = new JSONParser();
-            //JSONObject jsonObject = (JSONObject) jsonParser.parse(new FileReader(getClass().getClassLoader().getResource("mapping.json").getFile()));
-            JSONObject jsonObject = (JSONObject) jsonParser.parse(new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("/mapping_old.json"))));
-            JSONArray jsonEntities = (JSONArray) jsonObject.get("entities");
-            for(Object entity : jsonEntities) {
-                JSONObject jsonEntity = (JSONObject) entity;
+            ObjectMapper mapper = new ObjectMapper();
+            MappingProfile[] mappings = mapper.readValue(getClass().getClassLoader().getResource("mappings.json"), MappingProfile[].class);
+            for(MappingProfile mappingProfile : mappings) {
+                profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription()));
+                if(mappingProfile.isPrimary()) {
+                    initMapper(mappingProfile.getFile());
+                    primaryProfile = mappingProfile.getName();
+                }
 
-                JSONArray jsonFields = (JSONArray) jsonEntity.get("field");
-                String entityName = jsonEntity.get("@name").toString();
-                String entityTable = jsonEntity.get("@from").toString();
-                String entityKey = jsonEntity.get("@key").toString();
-                if(jsonEntity.get("filters") != null) {
-                    List<Filter> entityFilters = new ArrayList<>();
-                    JSONArray jsonFilters = (JSONArray) jsonEntity.get("filters");
-                    for(Object filter : jsonFilters) {
-                        JSONObject jsonFilter = (JSONObject) filter;
-                        String filterColumn = jsonFilter.get("@column").toString();
-                        String filterType = jsonFilter.get("@type").toString();
-                        JSONArray jsonFilterValues = (JSONArray) jsonFilter.get("@values");
-                        List<String> filterValues = new ArrayList<>();
-                        for(Object filterValue : jsonFilterValues) {
-                            filterValues.add((String) filterValue);
-                        }
-                        String filterDatatype = jsonFilter.get("@datatype").toString();
-                        entityFilters.add(new Filter(filterColumn, filterType, filterValues, filterDatatype));
+                Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingProfile.getFile()), Mapping.class);
+                HashMap<String, Entity> entityHashMap = new HashMap<>();
+                for(MappingEntity entity : mapping.getEntities()) {
+                    Entity schemaEntity = new Entity(entity.getName());
+                    for(MappingField field : entity.getFields()) {
+                        schemaEntity.addField(new EntityField(field.getName(), field.getDatatype()));
                     }
-                    tables.put(entityName, new Table(entityTable, entityKey, entityFilters));
+                    for(String relation : entity.getRelations()) {
+                        schemaEntity.addRelation(relation);
+                    }
+                    entityHashMap.put(entity.getName(), schemaEntity);
+                }
+                entities.put(mappingProfile.getName(), entityHashMap);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void initMapper(String mappingFile) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingFile), Mapping.class);
+            for(MappingEntity entity : mapping.getEntities()) {
+                if(entity.getFilters() != null) {
+                    List<Filter> filters = new ArrayList<>();
+                    for (MappingFilter filter : entity.getFilters()) {
+                        filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
+                    }
+                    tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
                 } else {
-                    tables.put(entityName, new Table(entityTable, entityKey, null));
+                    tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
                 }
-                Entity schemaEntity = new Entity(entityName);
-                for(Object field : jsonFields) {
-                    JSONObject jsonField = (JSONObject) field;
-                    String fieldName = jsonField.get("@name").toString();
-                    String fieldColumn = jsonField.get("@column").toString();
-                    String fieldDataType = jsonField.get("@datatype").toString();
-                    String fieldTable = null;
-                    if(jsonField.get("@sqlTable") != null) {
-                        fieldTable = jsonField.get("@sqlTable").toString();
-                    }
-                    if(fieldTable != null) {
-                        fields.put(entityName + "." + fieldName, new Field(fieldTable, fieldColumn, fieldDataType));
+
+                for(MappingField field : entity.getFields()) {
+                    if(field.getSqlTable() != null) {
+                        fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
                     } else {
-                        fields.put(entityName + "." + fieldName, new Field(entityTable, fieldColumn, fieldDataType));
+                        fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
                     }
-                    schemaEntity.addField(new EntityField(fieldName, fieldDataType));
                 }
-                JSONArray jsonEntityRelations = (JSONArray) jsonEntity.get("relations");
-                for(Object relation : jsonEntityRelations) {
-                    schemaEntity.addRelation((String)relation);
-                }
-                entities.put(entityName, schemaEntity);
             }
-            /*
-            JSONArray jsonRelations = (JSONArray) jsonObject.get("relations");
-            for(Object relation : jsonRelations) {
-                JSONObject jsonRelation = (JSONObject) relation;
-                String from = jsonRelation.get("@from").toString();
-                String to = jsonRelation.get("@to").toString();
-                List<Join> joinList = new ArrayList<Join>();
-                JSONArray jsonJoins = (JSONArray) jsonRelation.get("join");
-                for(Object join : jsonJoins) {
-                    JSONObject jsonJoin = (JSONObject) join;
-                    joinList.add(new Join(jsonJoin.get("@from").toString(),jsonJoin.get("@from_field").toString(),jsonJoin.get("@to").toString(),jsonJoin.get("@to_field").toString()));
-                }
-                relations.put(from + "." + to, joinList);
-                relations.put(to + "." + from, joinList);
-            }
-            */
-            JSONArray jsonRelations = (JSONArray) jsonObject.get("relations");
-            for(Object relation : jsonRelations) {
-                JSONObject jsonRelation = (JSONObject) relation;
-                String from = jsonRelation.get("@from").toString();
-                String to = jsonRelation.get("@to").toString();
-                JSONArray jsonJoins = (JSONArray) jsonRelation.get("join");
+
+            for(MappingRelation relation : mapping.getRelations()) {
                 HashMap<String, List<Join>> joinsMap = new HashMap<>();
-                for(Object join : jsonJoins) {
-                    JSONObject jsonJoin = (JSONObject) join;
-                    List<Join> joins = joinsMap.get(jsonJoin.get("@from").toString());
-                    if(joins == null) {
-                        joinsMap.put(jsonJoin.get("@from").toString(), joins = new ArrayList<>());
-                    }
-                    joins.add(new Join(jsonJoin.get("@from").toString(), jsonJoin.get("@from_field").toString(), jsonJoin.get("@to").toString(), jsonJoin.get("@to_field").toString()));
-                    joins = joinsMap.get(jsonJoin.get("@to").toString());
-                    if(joins == null) {
-                        joinsMap.put(jsonJoin.get("@to").toString(), joins = new ArrayList<>());
-                    }
-                    joins.add(new Join(jsonJoin.get("@to").toString(), jsonJoin.get("@to_field").toString(), jsonJoin.get("@from").toString(), jsonJoin.get("@from_field").toString()));
+                for(MappingJoin join : relation.getJoins()) {
+                    List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
+                    joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
+
+                    joins = joinsMap.computeIfAbsent(join.getTo(), k -> new ArrayList<>());
+                    joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField()));
                 }
-                String tempFrom = from;
+                String tempFrom = relation.getFrom();
                 List<Join> joinList = new ArrayList<>();
                 Set<String> doneTables = new HashSet<>();
                 while(true) {
@@ -138,11 +111,11 @@ public class Mapper {
                             }
                         }
                     }
-                    if(tempFrom.equals(to)) {
+                    if(tempFrom.equals(relation.getTo())) {
                         break;
                     }
                 }
-                tempFrom = to;
+                tempFrom = relation.getTo();
                 List<Join> revJoinList = new ArrayList<>();
                 doneTables = new HashSet<>();
                 while(true) {
@@ -160,24 +133,14 @@ public class Mapper {
                             }
                         }
                     }
-                    if(tempFrom.equals(from)) {
+                    if(tempFrom.equals(relation.getFrom())) {
                         break;
                     }
                 }
-                /*
-                for(Map.Entry<String, List<Join>> entry : joinsMap.entrySet()) {
-                    System.out.println(entry.getKey());
-                    for(Join join : entry.getValue()) {
-                        System.out.println("\t" + join.getFirst_table() + "." + join.getFirst_field() + " = " + join.getSecond_table() + "." + join.getSecond_field());
-                    }
-                }
-                System.out.println();
-                */
 
-                relations.put(from + "." + to, joinList);
-                relations.put(to + "." + from, revJoinList);
+                relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
+                relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -328,7 +291,15 @@ public class Mapper {
         return relations;
     }
 
-    public HashMap<String, Entity> getEntities() {
-        return entities;
+    public HashMap<String, Entity> getEntities(String profile) {
+        if(profile != null) {
+            return entities.get(profile);
+        } else {
+            return entities.get(primaryProfile);
+        }
+    }
+
+    public List<Profile> getProfiles() {
+        return profiles;
     }
 }

@@ -1,281 +1,281 @@
 {
     "entities": [
         {
-            "@from": "result",
-            "@name": "publication",
+            "from": "result",
+            "name": "publication",
             "filters": [
                 {
-                    "@column": "type",
-                    "@type": "=",
-                    "@values": ["publication"],
-                    "@datatype": "text"
+                    "column": "type",
+                    "type": "=",
+                    "values": ["publication"],
+                    "datatype": "text"
                 }
             ],
-            "@key": "id",
-            "field": [
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "title",
-                    "@name": "title",
-                    "@datatype": "text"
+                    "column": "title",
+                    "name": "title",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "publisher",
-                    "@name": "publisher",
-                    "@datatype": "text"
+                    "column": "publisher",
+                    "name": "publisher",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "journal",
-                    "@name": "journal",
-                    "@datatype": "text"
+                    "column": "journal",
+                    "name": "journal",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "year",
-                    "@name": "year",
-                    "@datatype": "int"
+                    "column": "year",
+                    "name": "year",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "date",
-                    "@name": "date",
-                    "@datatype": "date"
+                    "column": "date",
+                    "name": "date",
+                    "datatype": "date"
                 },
                 {
-                    "@column": "bestlicense",
-                    "@name": "access mode",
-                    "@datatype": "text"
+                    "column": "bestlicense",
+                    "name": "access mode",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "type",
-                    "@name": "classification",
-                    "@sqlTable": "result_classifications",
-                    "@datatype": "text"
+                    "column": "type",
+                    "name": "classification",
+                    "sqlTable": "result_classifications",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "project", "datasource", "organization"]
         },
         {
-            "@from": "result",
-            "@name": "dataset",
+            "from": "result",
+            "name": "dataset",
             "filters": [
                 {
-                    "@column": "type",
-                    "@type": "=",
-                    "@values": ["dataset"],
-                    "@datatype": "text"
+                    "column": "type",
+                    "type": "=",
+                    "values": ["dataset"],
+                    "datatype": "text"
                 }
             ],
-            "@key": "id",
-            "field": [
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "title",
-                    "@name": "title",
-                    "@datatype": "text"
+                    "column": "title",
+                    "name": "title",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "publisher",
-                    "@name": "publisher",
-                    "@datatype": "text"
+                    "column": "publisher",
+                    "name": "publisher",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "journal",
-                    "@name": "journal",
-                    "@datatype": "text"
+                    "column": "journal",
+                    "name": "journal",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "year",
-                    "@name": "year",
-                    "@datatype": "int"
+                    "column": "year",
+                    "name": "year",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "date",
-                    "@name": "date",
-                    "@datatype": "date"
+                    "column": "date",
+                    "name": "date",
+                    "datatype": "date"
                 },
                 {
-                    "@column": "bestlicense",
-                    "@name": "access mode",
-                    "@datatype": "text"
+                    "column": "bestlicense",
+                    "name": "access mode",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "type",
-                    "@name": "classification",
-                    "@sqlTable": "result_classifications",
-                    "@datatype": "text"
+                    "column": "type",
+                    "name": "classification",
+                    "sqlTable": "result_classifications",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "project", "datasource", "organization"]
         },
         {
-            "@from": "result",
-            "@name": "software",
+            "from": "result",
+            "name": "software",
             "filters": [
                 {
-                    "@column": "type",
-                    "@type": "=",
-                    "@values": ["software"],
-                    "@datatype": "text"
+                    "column": "type",
+                    "type": "=",
+                    "values": ["software"],
+                    "datatype": "text"
                 }
             ],
-            "@key": "id",
-            "field": [
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "title",
-                    "@name": "title",
-                    "@datatype": "text"
+                    "column": "title",
+                    "name": "title",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "publisher",
-                    "@name": "publisher",
-                    "@datatype": "text"
+                    "column": "publisher",
+                    "name": "publisher",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "journal",
-                    "@name": "journal",
-                    "@datatype": "text"
+                    "column": "journal",
+                    "name": "journal",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "year",
-                    "@name": "year",
-                    "@datatype": "int"
+                    "column": "year",
+                    "name": "year",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "date",
-                    "@name": "date",
-                    "@datatype": "date"
+                    "column": "date",
+                    "name": "date",
+                    "datatype": "date"
                 },
                 {
-                    "@column": "bestlicense",
-                    "@name": "access mode",
-                    "@datatype": "text"
+                    "column": "bestlicense",
+                    "name": "access mode",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "type",
-                    "@name": "classification",
-                    "@sqlTable": "result_classifications",
-                    "@datatype": "text"
+                    "column": "type",
+                    "name": "classification",
+                    "sqlTable": "result_classifications",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "project", "datasource", "organization"]
         },
         {
-            "@from": "project",
-            "@name": "project",
-            "@key": "id",
-            "field": [
+            "from": "project",
+            "name": "project",
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "acronym",
-                    "@name": "acronym",
-                    "@datatype": "text"
+                    "column": "acronym",
+                    "name": "acronym",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "title",
-                    "@name": "title",
-                    "@datatype": "text"
+                    "column": "title",
+                    "name": "title",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "funder",
-                    "@name": "funder",
-                    "@datatype": "text"
+                    "column": "funder",
+                    "name": "funder",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "funding_lvl0",
-                    "@name": "funding level 0",
-                    "@datatype": "text"
+                    "column": "funding_lvl0",
+                    "name": "funding level 0",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "funding_lvl1",
-                    "@name": "funding level 1",
-                    "@datatype": "text"
+                    "column": "funding_lvl1",
+                    "name": "funding level 1",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "funding_lvl2",
-                    "@name": "funding level 2",
-                    "@datatype": "text"
+                    "column": "funding_lvl2",
+                    "name": "funding level 2",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "funding_lvl3",
-                    "@name": "funding level 3",
-                    "@datatype": "text"
+                    "column": "funding_lvl3",
+                    "name": "funding level 3",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "start_year",
-                    "@name": "start year",
-                    "@datatype": "int"
+                    "column": "start_year",
+                    "name": "start year",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "end_year",
-                    "@name": "end year",
-                    "@datatype": "int"
+                    "column": "end_year",
+                    "name": "end year",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "duration",
-                    "@name": "duration",
-                    "@datatype": "int"
+                    "column": "duration",
+                    "name": "duration",
+                    "datatype": "int"
                 },
                 {
-                    "@column": "startdate",
-                    "@name": "start date",
-                    "@datatype": "date"
+                    "column": "startdate",
+                    "name": "start date",
+                    "datatype": "date"
                 },
                 {
-                    "@column": "enddate",
-                    "@name": "end date",
-                    "@datatype": "date"
+                    "column": "enddate",
+                    "name": "end date",
+                    "datatype": "date"
                 },
                 {
-                    "@column": "code",
-                    "@name": "code",
-                    "@datatype": "text"
+                    "column": "code",
+                    "name": "code",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "publication", "dataset", "software", "organization"]
         },
         {
-            "@from": "datasource",
-            "@name": "datasource",
-            "@key": "id",
-            "field": [
+            "from": "datasource",
+            "name": "datasource",
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "name",
-                    "@name": "name",
-                    "@datatype": "text"
+                    "column": "name",
+                    "name": "name",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "name",
-                    "@name": "type",
-                    "@datatype": "text"
+                    "column": "name",
+                    "name": "type",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "compatibility",
-                    "@name": "compatibility",
-                    "@datatype": "text"
+                    "column": "compatibility",
+                    "name": "compatibility",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "latitude",
-                    "@name": "latitude",
-                    "@datatype": "float"
+                    "column": "latitude",
+                    "name": "latitude",
+                    "datatype": "float"
                 },
                 {
-                    "@column": "longitude",
-                    "@name": "longitude",
-                    "@datatype": "float"
+                    "column": "longitude",
+                    "name": "longitude",
+                    "datatype": "float"
                 }
             ],
             "relations": [ "publication", "dataset", "software", "organization"]
         },
         {
-            "@from": "organization",
-            "@name": "organization",
-            "@key": "id",
-            "field": [
+            "from": "organization",
+            "name": "organization",
+            "key": "id",
+            "fields": [
                 {
-                    "@column": "name",
-                    "@name": "name",
-                    "@datatype": "text"
+                    "column": "name",
+                    "name": "name",
+                    "datatype": "text"
                 },
                 {
-                    "@column": "country",
-                    "@name": "country",
-                    "@datatype": "text"
+                    "column": "country",
+                    "name": "country",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "publication", "dataset", "software", "project", "datasource"]
@@ -283,104 +283,104 @@
     ],
     "relations": [
         {
-            "@from": "result",
-            "@to": "project",
-            "join": [
+            "from": "result",
+            "to": "project",
+            "joins": [
                 {
-                    "@from": "result",
-                    "@from_field": "id",
-                    "@to": "project_results",
-                    "@to_field": "result"
+                    "from": "result",
+                    "fromField": "id",
+                    "to": "project_results",
+                    "toField": "result"
                 },
                 {
-                    "@from": "project_results",
-                    "@from_field": "id",
-                    "@to": "project",
-                    "@to_field": "id"
+                    "from": "project_results",
+                    "fromField": "id",
+                    "to": "project",
+                    "toField": "id"
                 }
             ]
         },
         {
-            "@from": "result",
-            "@to": "datasource",
-            "join": [
+            "from": "result",
+            "to": "datasource",
+            "joins": [
                 {
-                    "@from": "result",
-                    "@from_field": "id",
-                    "@to": "result_datasources",
-                    "@to_field": "id"
+                    "from": "result",
+                    "fromField": "id",
+                    "to": "result_datasources",
+                    "toField": "id"
                 },
                 {
-                    "@from": "result_datasources",
-                    "@from_field": "datasource",
-                    "@to": "datasource",
-                    "@to_field": "id"
+                    "from": "result_datasources",
+                    "fromField": "datasource",
+                    "to": "datasource",
+                    "toField": "id"
                 }
             ]
         },
         {
-            "@from": "result",
-            "@to": "organization",
-            "join": [
+            "from": "result",
+            "to": "organization",
+            "joins": [
                 {
-                    "@from": "result",
-                    "@from_field": "id",
-                    "@to": "result_organizations",
-                    "@to_field": "id"
+                    "from": "result",
+                    "fromField": "id",
+                    "to": "result_organizations",
+                    "toField": "id"
                 },
                 {
-                    "@from": "result_organizations",
-                    "@from_field": "organization",
-                    "@to": "organization",
-                    "@to_field": "id"
+                    "from": "result_organizations",
+                    "fromField": "organization",
+                    "to": "organization",
+                    "toField": "id"
                 }
             ]
         },
         {
-            "@from": "project",
-            "@to": "organization",
-            "join": [
+            "from": "project",
+            "to": "organization",
+            "joins": [
                 {
-                    "@from": "project",
-                    "@from_field": "id",
-                    "@to": "project_organizations",
-                    "@to_field": "id"
+                    "from": "project",
+                    "fromField": "id",
+                    "to": "project_organizations",
+                    "toField": "id"
                 },
                 {
-                    "@from": "project_organizations",
-                    "@from_field": "organization",
-                    "@to": "organization",
-                    "@to_field": "id"
+                    "from": "project_organizations",
+                    "fromField": "organization",
+                    "to": "organization",
+                    "toField": "id"
                 }
             ]
         },
         {
-            "@from": "datasource",
-            "@to": "organization",
-            "join": [
+            "from": "datasource",
+            "to": "organization",
+            "joins": [
                 {
-                    "@from": "datasource",
-                    "@from_field": "id",
-                    "@to": "datasource_organizations",
-                    "@to_field": "id"
+                    "from": "datasource",
+                    "fromField": "id",
+                    "to": "datasource_organizations",
+                    "toField": "id"
                 },
                 {
-                    "@from": "datasource_organizations",
-                    "@from_field": "organization",
-                    "@to": "organization",
-                    "@to_field": "id"
+                    "from": "datasource_organizations",
+                    "fromField": "organization",
+                    "to": "organization",
+                    "toField": "id"
                 }
             ]
         },
         {
-            "@from": "result",
-            "@to": "result_classifications",
-            "join": [
+            "from": "result",
+            "to": "result_classifications",
+            "joins": [
                 {
-                    "@from": "result",
-                    "@from_field": "id",
-                    "@to": "result_classifications",
-                    "@to_field": "id"
+                    "from": "result",
+                    "fromField": "id",
+                    "to": "result_classifications",
+                    "toField": "id"
                 }
             ]
         }
