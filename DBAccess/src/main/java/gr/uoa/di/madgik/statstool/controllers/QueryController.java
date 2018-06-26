@@ -56,4 +56,19 @@ public class QueryController {
         }
     }
 
+    @RequestMapping(value = "/query_flat")
+    public List<Result> queryFlat() {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            Query query = mapper.readValue(getClass().getClassLoader().getResource("query_flat.json"), Query.class);
+
+            List<Query> queryList = new ArrayList<>();
+            queryList.add(query);
+
+            return statsService.query(queryList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 }

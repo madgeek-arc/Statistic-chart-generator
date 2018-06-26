@@ -1,0 +1,183 @@
+{
+  "entities": [
+    {
+      "from": "new_result_datasource_project",
+      "name": "publication",
+      "filters": [
+        {
+          "column": "result_type",
+          "type": "=",
+          "values": ["publication"],
+          "datatype": "text"
+        }
+      ],
+      "key": "result_id",
+      "fields": [
+        {
+          "column": "result_title",
+          "name": "title",
+          "datatype": "text"
+        },
+        {
+          "column": "result_publisher",
+          "name": "publisher",
+          "datatype": "text"
+        },
+        {
+          "column": "result_journal",
+          "name": "journal",
+          "datatype": "text"
+        },
+        {
+          "column": "result_year",
+          "name": "year",
+          "datatype": "int"
+        },
+        {
+          "column": "result_date",
+          "name": "date",
+          "datatype": "date"
+        },
+        {
+          "column": "result_bestlicense",
+          "name": "access mode",
+          "datatype": "text"
+        },
+        {
+          "column": "type",
+          "name": "classification",
+          "sqlTable": "result_classifications",
+          "datatype": "text"
+        },
+        {
+          "column": "project_id",
+          "name": "project",
+          "datatype": "text"
+        },
+        {
+        "column": "project_acronym",
+        "name": "project_acronym",
+        "datatype": "text"
+        },
+        {
+        "column": "project_title",
+        "name": "project_title",
+        "datatype": "text"
+        },
+        {
+        "column": "project_funder",
+        "name": "project_funder",
+        "datatype": "text"
+        },
+        {
+        "column": "project_funding_lvl0",
+        "name": "project_funding level 0",
+        "datatype": "text"
+        },
+        {
+        "column": "project_funding_lvl1",
+        "name": "project_funding level 1",
+        "datatype": "text"
+        },
+        {
+        "column": "project_funding_lvl2",
+        "name": "project_funding level 2",
+        "datatype": "text"
+        },
+        {
+        "column": "project_funding_lvl3",
+        "name": "project_funding level 3",
+        "datatype": "text"
+        },
+        {
+        "column": "project_start_year",
+        "name": "project_start year",
+        "datatype": "int"
+        },
+        {
+        "column": "project_end_year",
+        "name": "project_end year",
+        "datatype": "int"
+        },
+        {
+        "column": "project_duration",
+        "name": "project_duration",
+        "datatype": "int"
+        },
+        {
+        "column": "project_startdate",
+        "name": "project_start date",
+        "datatype": "date"
+        },
+        {
+        "column": "project_enddate",
+        "name": "project_end date",
+        "datatype": "date"
+        },
+        {
+        "column": "project_code",
+        "name": "project_code",
+        "datatype": "text"
+        },
+        {
+        "column": "datasource_name",
+        "name": "datasource_name",
+        "datatype": "text"
+        },
+        {
+        "column": "datasource_type",
+        "name": "datasource_type",
+        "datatype": "text"
+        },
+        {
+        "column": "datasource_compatibility",
+        "name": "datasource_compatibility",
+        "datatype": "text"
+        },
+        {
+        "column": "datasource_latitude",
+        "name": "datasource_latitude",
+        "datatype": "float"
+        },
+        {
+        "column": "datasource_longitude",
+        "name": "datasource_longitude",
+        "datatype": "float"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "from": "organization",
+      "name": "organization",
+      "key": "id",
+      "fields": [
+        {
+          "column": "name",
+          "name": "name",
+          "datatype": "text"
+        },
+        {
+          "column": "country",
+          "name": "country",
+          "datatype": "text"
+        }
+      ],
+      "relations": [ "publication", "dataset", "software", "project", "datasource"]
+    }
+  ],
+  "relations": [
+    {
+      "from": "new_result_datasource_project",
+      "to": "result_classifications",
+      "joins": [
+        {
+          "from": "new_result_datasource_project",
+          "fromField": "result_id",
+          "to": "result_classifications",
+          "toField": "id"
+        }
+      ]
+    }
+  ]
+}

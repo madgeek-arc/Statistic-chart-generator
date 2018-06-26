@@ -1,14 +1,14 @@
 [
   {
-    "name": "Admin",
-    "description": "Admin description",
+    "name": "OpenAIRE mapping",
+    "description": "To klasiko mapping tou openaire me ta entities pou den vgazoun noima",
     "primary": true,
     "file": "mapping.json"
   },
   {
-    "name": "User",
-    "description": "User description",
+    "name": "Flat mapping",
+    "description": "Flat mapping apo ton vaggela",
     "primary": false,
-    "file": "mapping.json"
+    "file": "mapping_flat.json"
   }
 ]
