@@ -6,13 +6,15 @@ public class Query {
     private List<Filter> filters;
     private List<Select> select;
     private String entity;
+    private String profile;
 
     public Query() {}
 
-    public Query(List<Filter> filters, List<Select> select, String entity) {
+    public Query(List<Filter> filters, List<Select> select, String entity, String profile) {
         this.filters = filters;
         this.select = select;
         this.entity = entity;
+        this.profile = profile;
     }
 
     public List<Filter> getFilters() {
@@ -37,5 +39,13 @@ public class Query {
 
     public void setEntity(String entity) {
         this.entity = entity;
+    }
+
+    public String getProfile() {
+        return profile;
+    }
+
+    public void setProfile(String profile) {
+        this.profile = profile;
     }
 }

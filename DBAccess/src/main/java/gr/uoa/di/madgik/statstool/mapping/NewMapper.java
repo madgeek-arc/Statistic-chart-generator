@@ -20,13 +20,8 @@ import gr.uoa.di.madgik.statstool.domain.Select;
 @Component
 public class NewMapper {
 
-    private final HashMap<String, Table> tables = new HashMap<>();
-    private final HashMap<String, Field> fields = new HashMap<>();
-    private final HashMap<String, List<Join>> relations = new HashMap<>();
-
-    private final HashMap<String, HashMap<String, Entity>> entities = new HashMap<>();
-
     private final List<Profile> profiles = new ArrayList<>();
+    private final HashMap<String, ProfileConfiguration> profileConfigurations = new HashMap<>();
 
     private String primaryProfile;
 
@@ -36,13 +31,14 @@ public class NewMapper {
             MappingProfile[] mappings = mapper.readValue(getClass().getClassLoader().getResource("mappings.json"), MappingProfile[].class);
             for(MappingProfile mappingProfile : mappings) {
                 profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription()));
+                ProfileConfiguration profileConfiguration = new ProfileConfiguration();
+                buildConfiguration(mappingProfile.getFile(), profileConfiguration);
+
                 if(mappingProfile.isPrimary()) {
-                    initMapper(mappingProfile.getFile());
                     primaryProfile = mappingProfile.getName();
                 }
 
                 Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingProfile.getFile()), Mapping.class);
-                HashMap<String, Entity> entityHashMap = new HashMap<>();
                 for(MappingEntity entity : mapping.getEntities()) {
                     Entity schemaEntity = new Entity(entity.getName());
                     for(MappingField field : entity.getFields()) {
@@ -51,16 +47,17 @@ public class NewMapper {
                     for(String relation : entity.getRelations()) {
                         schemaEntity.addRelation(relation);
                     }
-                    entityHashMap.put(entity.getName(), schemaEntity);
+                    profileConfiguration.entities.put(entity.getName(), schemaEntity);
                 }
-                entities.put(mappingProfile.getName(), entityHashMap);
+                profileConfigurations.put(mappingProfile.getName(), profileConfiguration);
+                //entities.put(mappingProfile.getName(), entityHashMap);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void initMapper(String mappingFile) {
+    private void buildConfiguration(String mappingFile, ProfileConfiguration profileConfiguration) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingFile), Mapping.class);
@@ -70,16 +67,16 @@ public class NewMapper {
                     for (MappingFilter filter : entity.getFilters()) {
                         filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
                     }
-                    tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
+                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
                 } else {
-                    tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
+                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
                 }
 
                 for(MappingField field : entity.getFields()) {
                     if(field.getSqlTable() != null) {
-                        fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
                     } else {
-                        fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
                     }
                 }
             }
@@ -138,8 +135,8 @@ public class NewMapper {
                     }
                 }
 
-                relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
-                relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
+                profileConfiguration.relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
+                profileConfiguration.relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -168,7 +165,13 @@ public class NewMapper {
         List<Filter> mappedFilters = new ArrayList<>();
         Set<String> filteredEntities = new HashSet<>();
 
-        Table entityTable = tables.get(query.getEntity());
+        String profile = query.getProfile();
+        if(profile == null) {
+            profile = primaryProfile;
+        }
+        ProfileConfiguration profileConfiguration = profileConfigurations.get(profile);
+
+        Table entityTable = profileConfiguration.tables.get(query.getEntity());
 
         int selectCount = 1;
         for(Select select : selects) {
@@ -180,10 +183,10 @@ public class NewMapper {
                 //String fieldPath = "";
                 String fieldPath = query.getEntity();
                 for(int i = 0; i < fldPath.size() - 2; i++) {
-                    fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
+                    fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities, profileConfiguration), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities, profileConfiguration), profileConfiguration);
                 }
                 //mappedSelects.add(new Select(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), select.getAggregate()));
-                mappedSelects.add(new Select(mapField(fieldPath, fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), select.getAggregate(), selectCount));
+                mappedSelects.add(new Select(mapField(fieldPath, fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1), profileConfiguration), select.getAggregate(), selectCount));
             }
             selectCount++;
         }
@@ -194,28 +197,35 @@ public class NewMapper {
             String fieldPath = query.getEntity();
             //String fieldPath = "";
             for(int i = 0; i < fldPath.size() - 2; i++) {
-                fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities));
+                fieldPath += mapRelation(mapTable(fldPath.get(i), entityTable.getTable(), mappedFilters,filteredEntities, profileConfiguration), mapTable(fldPath.get(i+1), entityTable.getTable(), mappedFilters, filteredEntities, profileConfiguration), profileConfiguration);
             }
             //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
-            mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValues(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
+            mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1), profileConfiguration), filter.getType(), filter.getValues(), profileConfiguration.fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
         }
-        return new Query(mappedFilters, mappedSelects, entityTable.getTable());
+
+        if(entityTable.getFilters() != null && !filteredEntities.contains(query.getEntity())) {
+            for(Filter filter : entityTable.getFilters()) {
+                mappedFilters.add(new Filter(entityTable.getTable() + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
+            }
+            filteredEntities.add(query.getEntity());
+        }
+        return new Query(mappedFilters, mappedSelects, entityTable.getTable(), query.getProfile());
     }
 
-    private String mapTable(String t, String agg, List<Filter> mappedFilters, Set<String> filteredEntities) {
-        Table table = tables.get(t);
+    private String mapTable(String t, String agg, List<Filter> mappedFilters, Set<String> filteredEntities, ProfileConfiguration profileConfiguration) {
+        Table table = profileConfiguration.tables.get(t);
         if(table.getFilters() != null && !filteredEntities.contains(t)) {
             for(Filter filter : table.getFilters()) {
-                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable()) + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
+                mappedFilters.add(new Filter(agg + mapRelation(agg, table.getTable(), profileConfiguration) + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
             }
             filteredEntities.add(t);
         }
         return table.getTable();
     }
 
-    private String mapField(String fldPath, String f) {
-        Table table = tables.get(f.substring(0, f.indexOf(".")));
-        Field field = fields.get(f);
+    private String mapField(String fldPath, String f, ProfileConfiguration profileConfiguration) {
+        Table table = profileConfiguration.tables.get(f.substring(0, f.indexOf(".")));
+        Field field = profileConfiguration.fields.get(f);
         /*
         String result = fldPath;
         if(!table.getTable().equals(field.getTable())) {
@@ -223,8 +233,9 @@ public class NewMapper {
         }
         return result + "." + field.getColumn();
         */
-        return fldPath + mapRelation(table.getTable(), field.getTable()) + "." + field.getColumn();
+        return fldPath + mapRelation(table.getTable(), field.getTable(), profileConfiguration) + "." + field.getColumn();
     }
+    /*
     private String mapField(String f) {
         Table table = tables.get(f.substring(0, f.indexOf(".")));
         Field field = fields.get(f);
@@ -235,10 +246,11 @@ public class NewMapper {
             return mapRelation(table.getTable(), field.getTable()) + "." + field.getColumn();
         }
     }
+    */
 
-    private String mapRelation(String table1, String table2) {
+    private String mapRelation(String table1, String table2, ProfileConfiguration profileConfiguration) {
         //System.out.println(table1 + " - " + table2);
-        List<Join> joins = relations.get(table1+"."+table2);
+        List<Join> joins = profileConfiguration.relations.get(table1+"."+table2);
         String result = "";
         if(joins == null) {
             return result;
@@ -251,6 +263,7 @@ public class NewMapper {
         return result;
     }
 
+    /*
     public void printMapper() {
         System.out.println("tables");
         for(Map.Entry<String, Table> entry : tables.entrySet()) {
@@ -278,24 +291,21 @@ public class NewMapper {
             }
         }
     }
+    */
 
-    public HashMap<String, Table> getTables() {
-        return tables;
-    }
-
-    public HashMap<String, Field> getFields() {
-        return fields;
-    }
-
-    public HashMap<String, List<Join>> getRelations() {
-        return relations;
+    public HashMap<String, Field> getFields(String profile) {
+        if(profile != null) {
+            return profileConfigurations.get(profile).fields;
+        } else {
+            return profileConfigurations.get(primaryProfile).fields;
+        }
     }
 
     public HashMap<String, Entity> getEntities(String profile) {
         if(profile != null) {
-            return entities.get(profile);
+            return profileConfigurations.get(profile).entities;
         } else {
-            return entities.get(primaryProfile);
+            return profileConfigurations.get(primaryProfile).entities;
         }
     }
 

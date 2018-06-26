@@ -17,7 +17,7 @@ public class MapperTest {
     public void testMapper() {
         NewMapper mapper = new NewMapper();
         //Mapper mapper = new Mapper();
-        mapper.printMapper();
+        //mapper.printMapper();
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             Query query = objectMapper.readValue(getClass().getClassLoader().getResource("query_test.json"), Query.class);

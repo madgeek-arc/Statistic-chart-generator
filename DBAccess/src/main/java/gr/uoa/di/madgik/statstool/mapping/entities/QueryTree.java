@@ -73,7 +73,11 @@ public class QueryTree {
         List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
         for(int i = 0; i < fldPath.size() - 2; i++) {
             if(i == 0) {
-                parent = addEdge(parent, fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                if(fldPath.size() > 3) {
+                    parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
+                } else {
+                    parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1));
+                }
             } else if (i != fldPath.size() - 3){
                 parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
             } else {
@@ -90,7 +94,11 @@ public class QueryTree {
         List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
         for(int i = 0; i < fldPath.size() - 2; i++) {
             if(i == 0) {
-                parent = addEdge(parent, fldPath.get(i), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+                if(fldPath.size() > 3) {
+                    parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
+                } else {
+                    parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1));
+                }
             } else if (i != fldPath.size() - 3){
                 parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
             } else {

@@ -81,9 +81,9 @@ public class SchemaServiceImpl implements SchemaService{
     }
 
     @Override
-    public FieldValues getFieldValues(String field, String like) {
+    public FieldValues getFieldValues(String profile, String field, String like) {
         List<String> fld = new ArrayList<>(Arrays.asList(field.split("\\.")));
-        Field actualField = mapper.getFields().get(fld.get(fld.size()-2) + "." + fld.get(fld.size()-1));
+        Field actualField = mapper.getFields(profile).get(fld.get(fld.size()-2) + "." + fld.get(fld.size()-1));
 
         String query = "SELECT DISTINCT ";
         query += actualField.getColumn();

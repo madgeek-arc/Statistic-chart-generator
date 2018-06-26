@@ -236,7 +236,7 @@ public class Mapper {
             //mappedFilters.add(new Filter(fieldPath + mapField(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValue1(), filter.getValue2()));
             mappedFilters.add(new Filter(mapField(fieldPath,fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)), filter.getType(), filter.getValues(), fields.get(fldPath.get(fldPath.size()-2) + "." + fldPath.get(fldPath.size()-1)).getDatatype()));
         }
-        return new Query(mappedFilters, mappedSelects, entityTable.getTable());
+        return new Query(mappedFilters, mappedSelects, entityTable.getTable(), query.getProfile());
     }
 
     private String mapTable(String t, String agg, List<Filter> mappedFilters, Set<String> filteredEntities) {

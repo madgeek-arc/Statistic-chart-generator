@@ -41,6 +41,16 @@ public class SchemaController {
         return schemaService.getEntity(profile, entity);
     }
 
+    @RequestMapping(value = "{profile}/fields/{field}")
+    public FieldValues getMappingField(@PathVariable(value = "profile") String profile, @PathVariable(value = "field") String field) {
+        return schemaService.getFieldValues(profile, field, "");
+    }
+
+    @RequestMapping(value = "{profile}/fields/{field}/{like}")
+    public FieldValues getMappingFieldLike(@PathVariable(value = "profile") String profile, @PathVariable(value = "field") String field, @PathVariable(value = "like") String like) {
+        return schemaService.getFieldValues(profile, field, like);
+    }
+
     @RequestMapping(value = "entities")
     public List<String> getEntities() {
         return schemaService.getEntities(null);
@@ -53,11 +63,11 @@ public class SchemaController {
 
     @RequestMapping(value = "fields/{field}")
     public FieldValues getField(@PathVariable(value = "field") String field) {
-        return schemaService.getFieldValues(field, "");
+        return schemaService.getFieldValues(null, field, "");
     }
 
     @RequestMapping(value = "fields/{field}/{like}")
     public FieldValues getFieldLike(@PathVariable(value = "field") String field, @PathVariable(value = "like") String like) {
-        return schemaService.getFieldValues(field, like);
+        return schemaService.getFieldValues(null, field, like);
     }
 }

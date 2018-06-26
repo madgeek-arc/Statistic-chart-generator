@@ -15,5 +15,5 @@ public interface SchemaService {
 
     SchemaEntity getEntity(String profile, String entity);
 
-    FieldValues getFieldValues(String field, String like);
+    FieldValues getFieldValues(String profile, String field, String like);
 }
