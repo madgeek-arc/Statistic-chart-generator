@@ -54,7 +54,7 @@ function handleAdminSideData(dataJSONobj)
                 dataJSONobj.chartDescription.queries.
                 forEach(element => {
                     var ChartInfoObj = new Object();
-                    ChartInfoObj.query = element.query;
+                    ChartInfoObj.query = element;
                     RequestInfoObj.chartsInfo.push(ChartInfoObj);
                 });
 
