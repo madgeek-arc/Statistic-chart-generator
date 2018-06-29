@@ -52,7 +52,9 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 if (xValuetoY.containsKey(xValue)) {
 
                     String yValue = xValuetoY.get(xValue);
-                    if (yValue.contains("."))
+                    if(yValue == null)
+                        ValuesArray.add(null);
+                    else if (yValue.contains("."))
                         ValuesArray.add(Float.parseFloat(yValue));
                     else
                         ValuesArray.add(Integer.parseInt(yValue));
@@ -119,7 +121,9 @@ public class GoogleChartsDataFormatter extends DataFormatter {
             String yValue = row.get(1);
 
             valuesArray.add(xValue);
-            if (yValue.contains("."))
+            if(yValue == null)
+                valuesArray.add(null);
+            else if( yValue.contains("."))
                 valuesArray.add(Float.parseFloat(yValue));
             else
                 valuesArray.add(Integer.parseInt(yValue));

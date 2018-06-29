@@ -30,8 +30,9 @@ public class HighChartsDataFormatter extends DataFormatter{
          * ~ Results and Chart Types match 1-1
          */
 
-        if (dbAccessResults.size() == 1 && chartsType.size() == 1)
+        if (dbAccessResults.size() == 1 && chartsType.size() == 1) {
             return singleToHighchartsJsonResponse(dbAccessResults.get(0), chartsType.get(0));
+        }
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");
 
@@ -64,7 +65,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (xValuetoY.containsKey(xValue)) {
 
                             String yValue = xValuetoY.get(xValue);
-                            if (yValue.contains("."))
+                            if(yValue == null)
+                                yValuesArray.add(null);
+                            else if (yValue.contains("."))
                                 yValuesArray.add(Float.parseFloat(yValue));
                             else
                                 yValuesArray.add(Integer.parseInt(yValue));
@@ -81,8 +84,10 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (xValuetoY.containsKey(xValue)) {
 
                             String yValue = xValuetoY.get(xValue);
-                            if (yValue.contains("."))
-                                yObjectValuesArray.add(new DataObject(xValue, Float.parseFloat(yValue)));
+                            if(yValue == null)
+                                yObjectValuesArray.add(new DataObject(xValue , null));
+                            else if (yValue.contains("."))
+                                yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
                             else
                                 yObjectValuesArray.add(new DataObject(xValue, Integer.parseInt(yValue)));
                         } else
@@ -144,8 +149,10 @@ public class HighChartsDataFormatter extends DataFormatter{
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
-        if(result.getRows().isEmpty())
+        //There are no Results
+        if(result.getRows().isEmpty()) {
             return null;
+        }
 
         switch (chartType) {
             case area:
@@ -161,7 +168,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     String yValue = row.get(1);
-                    if (yValue.contains("."))
+                    if(yValue == null)
+                        yValuesArray.add(null);
+                    else if (yValue.contains("."))
                         yValuesArray.add(Float.parseFloat(yValue));
                     else
                         yValuesArray.add(Integer.parseInt(yValue));
@@ -179,7 +188,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     String yValue = row.get(1);
-                    if (yValue.contains("."))
+                    if(yValue == null)
+                        yObjectValuesArray.add(new DataObject(xValue , null));
+                    else if (yValue.contains("."))
                         yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
                     else
                         yObjectValuesArray.add(new DataObject(xValue ,Integer.parseInt(yValue)));
@@ -191,8 +202,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                 return null;
         }
 
-        if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
+        if(dataSeries.isEmpty() || xAxis_categories.isEmpty()) {
             return null;
+        }
 
         return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
     }
