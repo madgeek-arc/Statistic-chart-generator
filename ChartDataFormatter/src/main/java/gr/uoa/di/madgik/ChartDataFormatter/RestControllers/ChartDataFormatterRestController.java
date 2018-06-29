@@ -24,6 +24,12 @@ import java.util.Arrays;
 @CrossOrigin(methods = {RequestMethod.GET,RequestMethod.POST} , origins = "*")
 public class ChartDataFormatterRestController {
 
+    private RequestBodyHandler requestBodyHandler;
+
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler) {
+        this.requestBodyHandler = requestBodyHandler;
+    }
+
     @GetMapping
     public ModelAndView content(Model model){
 
@@ -41,7 +47,6 @@ public class ChartDataFormatterRestController {
     public @ResponseBody ResponseEntity<JsonResponse>
     postFullChartRepresentation(@NotNull @RequestBody RequestInfo requestJson)  {
 
-        RequestBodyHandler requestBodyHandler = new RequestBodyHandler();
         JsonResponse responseData;
 
         try {

@@ -9,14 +9,24 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonR
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.statstool.db.DBAccess;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.services.StatsService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
  * Handles the Request Body and propagates the workload to the correct {@link DataFormatter}.
  */
+@Service
 public class RequestBodyHandler {
+
+    private StatsService statsService;
+
+    public RequestBodyHandler(StatsService statsService) {
+        this.statsService = statsService;
+    }
 
     /**
      * @param requestJson Holds the appropriate info to correctly format the queried data.
@@ -25,15 +35,13 @@ public class RequestBodyHandler {
      */
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException{
 
-        List<Result> dbAccessResults;
+        List<Result> statsServiceResults = this.statsService.query(requestJson.getChartQueries());
 
-        dbAccessResults = new DBAccess().query(requestJson.getChartQueries());
-
-        if (dbAccessResults == null)
-            throw new RequestBodyException("DBAccess Error", HttpStatus.INTERNAL_SERVER_ERROR);
+//        if (statsServiceResults == null)
+//            throw new RequestBodyException("Stats Service Error", HttpStatus.INTERNAL_SERVER_ERROR);
         int resultNo = 0;
-        for(Result res : dbAccessResults) {
-            System.out.println("DBAccess Results ["+resultNo+"]: " + res.getRows().toString());
+        for(Result res : statsServiceResults) {
+            System.out.println("Stats Service Results ["+resultNo+"]: " + res.getRows().toString());
             resultNo++;
         }
 
@@ -44,7 +52,7 @@ public class RequestBodyHandler {
 
                     HighChartsJsonResponse highChartsJsonResponse;
                     try {
-                        highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(dbAccessResults,requestJson.getChartTypes());
+                        highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(statsServiceResults,requestJson.getChartTypes());
                          
                     }catch (DataFormatter.DataFormationException e){
                         throw new RequestBodyException("Results and chart types were not matched 1-1",HttpStatus.UNPROCESSABLE_ENTITY);
@@ -59,7 +67,7 @@ public class RequestBodyHandler {
                     GoogleChartsJsonResponse googleChartsJsonResponse;
                     try{
                         //Google Charts data is independent of type, hence chartsType = null
-                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(dbAccessResults,null);
+                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults,null);
 
                     } catch (DataFormatter.DataFormationException e) {
                         e.printStackTrace();
