@@ -1,7 +1,6 @@
 package gr.uoa.di.madgik.statstool.services;
 
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
-import gr.uoa.di.madgik.statstool.mapping.NewMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,9 +18,9 @@ public class StatsServiceImpl implements StatsService{
 
     private StatsRedisRepository statsRedisRepository;
 
-    private NewMapper mapper;
+    private Mapper mapper;
 
-    public StatsServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository, NewMapper mapper) {
+    public StatsServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository, Mapper mapper) {
         this.statsRepository = statsRepository;
         this.statsRedisRepository = statsRedisRepository;
         this.mapper = mapper;

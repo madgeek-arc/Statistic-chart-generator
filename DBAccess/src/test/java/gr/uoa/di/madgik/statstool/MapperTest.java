@@ -2,21 +2,19 @@ package gr.uoa.di.madgik.statstool;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import gr.uoa.di.madgik.statstool.mapping.NewMapper;
+import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.domain.Query;
 
 public class MapperTest {
 
     @Test
     public void testMapper() {
-        NewMapper mapper = new NewMapper();
-        //Mapper mapper = new Mapper();
+        Mapper mapper = new Mapper();
         //mapper.printMapper();
         try {
             ObjectMapper objectMapper = new ObjectMapper();

@@ -1,7 +1,7 @@
 package gr.uoa.di.madgik.statstool.services;
 
 import gr.uoa.di.madgik.statstool.domain.FieldValues;
-import gr.uoa.di.madgik.statstool.mapping.NewMapper;
+import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.Profile;
 import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.Field;
@@ -22,25 +22,9 @@ public class SchemaServiceImpl implements SchemaService{
 
     //private StatsService statsService;
 
-    //private Mapper mapper;
-    private NewMapper mapper;
+    private Mapper mapper;
 
-    /*
-    public SchemaServiceImpl(StatsService statsService) {
-        this.statsService = statsService;
-        this.mapper = new Mapper();
-    }
-    */
-
-    /*
-    public SchemaServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository) {
-        this.statsRepository = statsRepository;
-        this.statsRedisRepository = statsRedisRepository;
-        this.mapper = new Mapper();
-    }
-    */
-
-    public SchemaServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository, NewMapper mapper) {
+    public SchemaServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository, Mapper mapper) {
         this.statsRepository = statsRepository;
         this.statsRedisRepository = statsRedisRepository;
         this.mapper = mapper;
