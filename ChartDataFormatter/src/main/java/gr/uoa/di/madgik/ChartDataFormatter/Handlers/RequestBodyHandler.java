@@ -7,7 +7,6 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.Googl
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
-import gr.uoa.di.madgik.statstool.db.DBAccess;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import org.springframework.beans.factory.annotation.Autowired;
