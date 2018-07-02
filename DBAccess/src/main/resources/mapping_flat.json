@@ -163,7 +163,7 @@
           "datatype": "text"
         }
       ],
-      "relations": [ "publication", "dataset", "software", "project", "datasource"]
+      "relations": []
     }
   ],
   "relations": [
