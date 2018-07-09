@@ -1,6 +1,6 @@
 package gr.uoa.di.madgik.statstool.domain;
 
-import java.util.List;
+import java.util.*;
 
 public class Filter {
     private String field;
@@ -47,5 +47,34 @@ public class Filter {
 
     public void setDatatype(String datatype) {
         this.datatype = datatype;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (!Filter.class.isAssignableFrom(obj.getClass())) {
+            return false;
+        }
+        final Filter other = (Filter) obj;
+        if ((this.field == null) ? (other.field != null) : !this.field.equals(other.field)) {
+            return false;
+        }
+        if ((this.type == null) ? (other.type != null) : !this.type.equals(other.type)) {
+            return false;
+        }
+        if ((this.datatype == null) ? (other.datatype != null) : !this.datatype.equals(other.datatype)) {
+            return false;
+        }
+        if ((this.values == null) ? (other.values != null) : !this.values.equals(other.values)) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(field, type, datatype);
     }
 }
