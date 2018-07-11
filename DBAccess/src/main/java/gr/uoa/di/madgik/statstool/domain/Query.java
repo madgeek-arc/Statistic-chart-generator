@@ -7,14 +7,16 @@ public class Query {
     private List<Select> select;
     private String entity;
     private String profile;
+    private int limit;
 
     public Query() {}
 
-    public Query(List<Filter> filters, List<Select> select, String entity, String profile) {
+    public Query(List<Filter> filters, List<Select> select, String entity, String profile, int limit) {
         this.filters = filters;
         this.select = select;
         this.entity = entity;
         this.profile = profile;
+        this.limit = limit;
     }
 
     public List<Filter> getFilters() {
@@ -47,5 +49,13 @@ public class Query {
 
     public void setProfile(String profile) {
         this.profile = profile;
+    }
+
+    public int getLimit() {
+        return limit;
+    }
+
+    public void setLimit(int limit) {
+        this.limit = limit;
     }
 }

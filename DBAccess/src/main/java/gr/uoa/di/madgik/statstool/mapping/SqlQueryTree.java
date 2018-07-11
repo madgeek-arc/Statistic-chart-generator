@@ -9,6 +9,7 @@ import java.util.*;
 public class SqlQueryTree {
     private final Node root;
     private int count;
+    private int limit;
 
     public SqlQueryTree(Query query) {
         this.root = new Node();
@@ -21,6 +22,7 @@ public class SqlQueryTree {
         for (Filter filter : query.getFilters()) {
             addFilter(filter);
         }
+        this.limit = query.getLimit();
     }
 
     private static class Node {
@@ -214,6 +216,9 @@ public class SqlQueryTree {
             } else {
                 query += ", " + gp;
             }
+        }
+        if(limit != 0) {
+            query += " LIMIT " + limit;
         }
         query += ";";
 
