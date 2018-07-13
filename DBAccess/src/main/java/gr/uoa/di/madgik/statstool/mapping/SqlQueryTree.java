@@ -175,26 +175,29 @@ public class SqlQueryTree {
             }
         }
         query += " FROM " + joins;
-        query += "WHERE ";
-        first = true;
-        for (List<String> multipleFilters : mapFilters(filters, parameters)) {
-            if (first) {
-                first = false;
-            } else {
-                query += " AND ";
-            }
-            boolean first_filter = true;
-            for (String filter : multipleFilters) {
-                if (first_filter && multipleFilters.size() > 1) {
-                    query += "(";
-                    first_filter = false;
-                } else if (multipleFilters.size() > 1) {
-                    query += " or ";
+        List<List<String>> allTheFilters = mapFilters(filters, parameters);
+        if(allTheFilters != null && !allTheFilters.isEmpty()) {
+            query += "WHERE ";
+            first = true;
+            for (List<String> multipleFilters : allTheFilters) {
+                if (first) {
+                    first = false;
+                } else {
+                    query += " AND ";
                 }
-                query += filter;
-            }
-            if (multipleFilters.size() > 1) {
-                query += ")";
+                boolean first_filter = true;
+                for (String filter : multipleFilters) {
+                    if (first_filter && multipleFilters.size() > 1) {
+                        query += "(";
+                        first_filter = false;
+                    } else if (multipleFilters.size() > 1) {
+                        query += " or ";
+                    }
+                    query += filter;
+                }
+                if (multipleFilters.size() > 1) {
+                    query += ")";
+                }
             }
         }
         query += " GROUP BY ";
