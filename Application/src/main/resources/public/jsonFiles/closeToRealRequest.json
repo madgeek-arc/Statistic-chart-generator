@@ -1,5 +1,5 @@
 {
-    "library" : "Highcharts",
+    "library" : "HighCharts",
 
     "chartDescription": 
     {
@@ -14,8 +14,7 @@
             "text": "# of Publications"
             }
         },
-        "series": [{
-            "name": "H2020",
+        "queries": [{
             "query": {
                 "filters": [
                     {
@@ -30,11 +29,11 @@
                 ],
                 "select": [
                     {
-                        "field": "project.publication.year"
+                        "aggregate": "count",
+                        "field": "project"
                     },
                     {
-                      "aggregate": "count",
-                      "field": "project"
+                        "field": "project.publication.year"
                     }
                 ],
                 "entity": "project"

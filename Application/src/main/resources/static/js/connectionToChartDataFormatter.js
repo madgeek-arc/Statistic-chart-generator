@@ -16,14 +16,21 @@ function fetchChart(jsonData){
 //Function for loading(= appending to the head) a JS file
 function loadJS(url, afterLoadCallback){
     
+    // $.getScript(url, afterLoadCallback);
+
     var fileref=document.createElement('script');
-    fileref.onload = afterLoadCallback;
+    var firstHeadTaginDOM = document.getElementsByTagName('head')[0];
+    var callback = ()=>{
+        console.log("Library "+document.getElementsByTagName('head')[0].lastChild.getAttribute("src")+" about to be loaded!");
+        afterLoadCallback();
+    };
+
+    fileref.onload = callback;
+    fileref.onreadystatechange = callback;
     fileref.setAttribute("type","text/javascript");
     fileref.setAttribute("src", url);
-    var firstHeadTaginDOM = document.getElementsByTagName('head')[0];
-    firstHeadTaginDOM.appendChild(fileref);
-        
-    console.log("Library "+firstHeadTaginDOM.lastChild.getAttribute("src")+" loaded!");
+    
+    firstHeadTaginDOM.appendChild(fileref);        
 }
 
 //Callback that handles the data sent from the Admin part of the app
@@ -68,7 +75,8 @@ function handleAdminSideData(dataJSONobj)
     {
                 
         //Dynamically add JS library
-        loadJS("https://code.highcharts.com/6.0/highcharts.js",
+        loadJS("https://code.highcharts.com/highcharts.js",        
+        () => loadJS("https://code.highcharts.com/modules/drilldown.js",
         
         function(){ 
             //Hold the Library state
@@ -81,25 +89,26 @@ function handleAdminSideData(dataJSONobj)
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array
             RequestInfoObj.chartsInfo = [];
-    
+
             //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
             //along with the requested Chart type
-            dataJSONobj.chartDescription.series.
+            dataJSONobj.chartDescription.queries.
             forEach(element => {
                 var ChartInfoObj = new Object();
-    
+
                 if(element.type === undefined)
                     ChartInfoObj.type = defaultType;
                 else
                     ChartInfoObj.type = element.type;
-                
+
                 ChartInfoObj.query = element.query;
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
 
             passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                         domainLink+"/chart"); }
-        );
+        ));
+        
         break;
     }
     default:
@@ -152,6 +161,11 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
         var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
         console.log(chartJson);
         console.log("Drawing HighCharts");
+        Highcharts.setOptions({
+            lang: {
+                drillUpText: '<< Back'
+            }
+        })
         Highcharts.chart('container',chartJson);
     }
 
@@ -176,13 +190,34 @@ function fillGoogleChartsDataTable(responseData, originJson){
 function convertToValidHighchartJson(responseData, originJson){
 
     var convertedJson = originJson.chartDescription;
-    if(Object.keys(convertedJson.series).length != Object.keys(responseData.series).length)
-        return null;
-    
-    for (let index = 0; index < Object.keys(convertedJson.series).length; index++){
-        convertedJson.series[index].data = responseData.series[index].data;
-        convertedJson.series[index].query = null;
-    } 
+    convertedJson.series = new Array( Object.keys(responseData.series).length );
+
+    for (let index = 0; index < Object.keys(responseData.series).length; index++){
+        var seriesInstance = new Object();
+        seriesInstance.data = responseData.series[index].data;
+        
+        if(responseData.dataSeriesNames !== null)
+            seriesInstance.name = responseData.dataSeriesNames[index];
+        
+        if(responseData.dataSeriesTypes !== null)
+            seriesInstance.type = responseData.dataSeriesTypes[index];
+
+        convertedJson.series[index] = seriesInstance;
+    }
+
+    if(responseData.drilldown !== null){
+        convertedJson.drilldown = new Object();
+        convertedJson.drilldown.series = new Array( Object.keys(responseData.drilldown).length );
+
+        for (let index = 0; index < Object.keys(responseData.drilldown).length; index++){
+        
+            convertedJson.drilldown.series[index] = new Object();
+            convertedJson.drilldown.series[index].data = responseData.drilldown[index].data;
+            convertedJson.drilldown.series[index].id = responseData.series[0].data[index].drilldown;
+            convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
+        }
+    }
+
     if(convertedJson.xAxis === undefined)
         convertedJson.xAxis = {};    
     convertedJson.xAxis.categories = responseData.xAxis_categories;

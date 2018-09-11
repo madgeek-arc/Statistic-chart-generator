@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import org.springframework.lang.NonNull;
 
@@ -25,14 +26,14 @@ public class HighChartsDataFormatter extends DataFormatter{
     public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType) throws DataFormationException {
 
         /* ASSUMPTIONS:
-         * ~ Results have a [x,y] format.
+         * ~ Results have a [y,x] or a [y,x1,x2] format.
          * ~ Dates are returned as a String format
          * ~ Results and Chart Types match 1-1
          */
 
-        if (dbAccessResults.size() == 1 && chartsType.size() == 1) {
-            return singleToHighchartsJsonResponse(dbAccessResults.get(0), chartsType.get(0));
-        }
+        if (dbAccessResults.size() == 1 && chartsType.size() == 1)
+            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0));
+
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");
 
@@ -46,6 +47,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         List<HashMap<String, String>> allRowsXValueToYValueMappings = xAxis_CategoriesToXYMapping.getValue();
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
+        ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
         // Create the necessary AbsData object by mapping to all the possible xValues their corresponding yValues.
         // Fill with null if need be.
@@ -75,6 +77,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                             yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
+                    dataSeriesTypes.add(chartType.name());
                     break;
 
                 case pie:
@@ -94,10 +97,12 @@ public class HighChartsDataFormatter extends DataFormatter{
                             yObjectValuesArray.add(new DataObject(xValue, null));
                     }
                     dataSeries.add(new ArrayOfObjects(yObjectValuesArray));
+                    dataSeriesTypes.add(chartType.name());
                     break;
 
                 default:
                     dataSeries.add(null);
+                    dataSeriesTypes.add(null);
                     break;
             }
         }
@@ -105,7 +110,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         if(dataSeries.isEmpty() || xAxis_Categories.isEmpty())
             return null;
 
-        return new HighChartsJsonResponse(dataSeries,xAxis_Categories);
+        return new HighChartsJsonResponse(dataSeries,xAxis_Categories, null, dataSeriesTypes);
     }
 
     private AbstractMap.SimpleEntry<List<String>,List<HashMap<String,String>>>
@@ -124,8 +129,9 @@ public class HighChartsDataFormatter extends DataFormatter{
             HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
             for(ArrayList<String> row : result.getRows()){
 
-                String xValue = row.get(0);
-                String yValue = row.get(1);
+                // I assume that always the first value of the row is for the Y value
+                String yValue = row.get(0);
+                String xValue = row.get(1);
 
                 //Finding a xValue and registering it in the xAxis_categories
                 if (!xAxis_categories.contains(xValue))
@@ -144,15 +150,27 @@ public class HighChartsDataFormatter extends DataFormatter{
         return new AbstractMap.SimpleEntry<>(sortedXAxis_Categories,allRowsXValueToYValueMappings);
     }
 
-    private HighChartsJsonResponse singleToHighchartsJsonResponse(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+
+
+    private HighChartsJsonResponse singleToHighChartsJsonResponse(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+
+        //There are no Results
+        if(result.getRows().isEmpty())
+            return null;
+
+        if(result.getRows().get(0).size() == 2)
+            return singleHCSingleGroupBy(result, chartType);
+        else if(result.getRows().get(0).size() == 3)
+            return singleHCDoubleGroupBy(result, chartType);
+        else
+            return null;
+    }
+
+    private HighChartsJsonResponse singleHCSingleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType){
 
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
-        //There are no Results
-        if(result.getRows().isEmpty()) {
-            return null;
-        }
 
         switch (chartType) {
             case area:
@@ -162,12 +180,13 @@ public class HighChartsDataFormatter extends DataFormatter{
                 ArrayList<Number> yValuesArray = new ArrayList<>();
                 for (ArrayList<String> row : result.getRows()) {
 
-                    String xValue = row.get(0);
+                    String xValue = row.get(1);
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
-                    String yValue = row.get(1);
+                    // I assume that always the first value of the row is for the Y value
+                    String yValue = row.get(0);
                     if(yValue == null)
                         yValuesArray.add(null);
                     else if (yValue.contains("."))
@@ -182,12 +201,13 @@ public class HighChartsDataFormatter extends DataFormatter{
                 ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
                 for (ArrayList<String> row : result.getRows()) {
 
-                    String xValue = row.get(0);
+                    String xValue = row.get(1);
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
-                    String yValue = row.get(1);
+                    // I assume that always the first value of the row is for the Y value
+                    String yValue = row.get(0);
                     if(yValue == null)
                         yObjectValuesArray.add(new DataObject(xValue , null));
                     else if (yValue.contains("."))
@@ -207,5 +227,124 @@ public class HighChartsDataFormatter extends DataFormatter{
         }
 
         return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+    }
+
+    private HighChartsJsonResponse singleHCDoubleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+
+        LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
+        LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
+        ArrayList<AbsData> dataSeries = new ArrayList<>();
+        ArrayList<String> dataSeriesTypes = new ArrayList<>();
+
+        HashMap<String, String> rowXValueToYValueMapping = null;
+        for (ArrayList<String> row : result.getRows()) {
+
+            // Create a map with the unique values for the group by
+            String groupByValue = row.get(2);
+            String xValueA = row.get(1);
+            // I assume that always the first value of the row is for the Y value
+            String yValue = row.get(0);
+
+            if (!groupByMap.containsKey(groupByValue)) {
+
+                rowXValueToYValueMapping = new HashMap<>();
+                groupByMap.put(groupByValue, rowXValueToYValueMapping);
+            }
+            if(rowXValueToYValueMapping != null)
+                rowXValueToYValueMapping.put(xValueA, yValue);
+
+            // Create a map with the unique values on the X axis
+            if (!xAxis_categories.containsKey(xValueA))
+                xAxis_categories.put(xValueA, xAxis_categories.size());
+
+        }
+
+        switch (chartType) {
+            case area:
+            case bar:
+            case column:
+            case line:
+
+                for (HashMap<String, String> XValueToYValueMapping : groupByMap.values()) {
+
+                    ArrayList<Number> yValuesArray = new ArrayList<>();
+                    for (String xValue : xAxis_categories.keySet()) {
+
+                        if (XValueToYValueMapping.containsKey(xValue)) {
+
+                            String yValue = XValueToYValueMapping.get(xValue);
+
+                            if (yValue == null)
+                                yValuesArray.add(null);
+                            else if (yValue.contains("."))
+                                yValuesArray.add(Float.parseFloat(yValue));
+                            else
+                                yValuesArray.add(Integer.parseInt(yValue));
+                        }
+                        else
+                            yValuesArray.add(null);
+                    }
+                    dataSeries.add(new ArrayOfValues(yValuesArray));
+                    dataSeriesTypes.add(chartType.name());
+                }
+
+                if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
+                    return null;
+                else
+                    return new HighChartsJsonResponse(dataSeries,
+                            new ArrayList<>(xAxis_categories.keySet()),
+                            new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
+
+            case pie:
+
+                ArrayList<DataObject> mainSlicesValuesArray = new ArrayList<>();
+                ArrayList<AbsData> drillDownArray = new ArrayList<>();
+
+                for (String groupByX : groupByMap.keySet()) {
+
+                    HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
+
+                    Float pieSliceSum = new Float(0);
+                    ArrayList<DataObject> drillDownSliceValuesArray = new ArrayList<>();
+
+                    for (String xValue : xAxis_categories.keySet()) {
+
+                        String yValue = XValueToYValueMapping.get(xValue);
+
+                        if (yValue == null)
+                            drillDownSliceValuesArray.add(new DataObject(xValue, null));
+                        else if (yValue.contains(".")) {
+                            Float value = Float.parseFloat(yValue);
+                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                            pieSliceSum += value;
+                        }
+                        else {
+                            Integer value = Integer.parseInt(yValue);
+                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                            pieSliceSum += value;
+                        }
+                    }
+                    drillDownArray.add(new ArrayOfObjects(drillDownSliceValuesArray));
+
+                    DataObject pieSlice = new DataObject(groupByX, pieSliceSum);
+                    pieSlice.setDrilldown(groupByX);
+
+                    mainSlicesValuesArray.add(pieSlice);
+                }
+
+                dataSeries.add(new ArrayOfObjects(mainSlicesValuesArray));
+                dataSeriesTypes.add(chartType.name());
+
+                if(!dataSeries.isEmpty() && !drillDownArray.isEmpty()) {
+                    HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+                    ret.setDrilldown(drillDownArray);
+                    return ret;
+                }
+                else
+                    return null;
+
+            default:
+                return null;
+        }
     }
 }

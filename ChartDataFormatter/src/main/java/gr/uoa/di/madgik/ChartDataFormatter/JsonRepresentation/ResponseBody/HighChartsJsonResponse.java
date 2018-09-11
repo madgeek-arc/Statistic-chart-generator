@@ -13,11 +13,30 @@ public class HighChartsJsonResponse extends JsonResponse {
 
     private List<String> xAxis_categories;
 
+    // dataSeriesNames list must be of the same size as dataSeries list
+    private List<String> dataSeriesNames;
+
+    // dataSeriesType list must be of the same size as dataSeries list
+    private List<String> dataSeriesTypes;
+
+    private List<AbsData> drilldown;
+
     public HighChartsJsonResponse() {}
 
     public HighChartsJsonResponse(List<AbsData> dataSeries, List<String> xAxis_categories) {
         this.dataSeries = dataSeries;
         this.xAxis_categories = xAxis_categories;
+        this.dataSeriesNames = null;
+        this.dataSeriesTypes = null;
+        this.drilldown = null;
+    }
+
+    public HighChartsJsonResponse(List<AbsData> dataSeries, List<String> xAxis_categories, List<String> dataSeriesNames, List<String> dataSeriesTypes) {
+        this.dataSeries = dataSeries;
+        this.xAxis_categories = xAxis_categories;
+        this.dataSeriesNames = dataSeriesNames;
+        this.dataSeriesTypes = dataSeriesTypes;
+        this.drilldown = null;
     }
 
     public List<AbsData> getDataSeries() {
@@ -36,4 +55,15 @@ public class HighChartsJsonResponse extends JsonResponse {
         this.xAxis_categories = xAxis_categories;
     }
 
+    public List<String> getDataSeriesNames() { return dataSeriesNames; }
+
+    public void setDataSeriesNames(List<String> dataSeriesNames) { this.dataSeriesNames = dataSeriesNames; }
+
+    public List<String> getDataSeriesTypes() { return dataSeriesTypes; }
+
+    public void setDataSeriesTypes(List<String> dataSeriesType) { this.dataSeriesTypes = dataSeriesType; }
+
+    public List<AbsData> getDrilldown() { return drilldown; }
+
+    public void setDrilldown(List<AbsData> drilldown) { this.drilldown = drilldown; }
 }

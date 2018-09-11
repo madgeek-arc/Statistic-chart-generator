@@ -26,4 +26,9 @@ public class ArrayOfValues extends AbsData {
     public void setData(ArrayList<Number> data) {
         this.data = data;
     }
+
+    @Override
+    public String toString() {
+        return data.toString();
+    }
 }

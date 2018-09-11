@@ -4,6 +4,10 @@
     <meta charset="utf-8"/>
     <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <!-- <script src="https://code.highcharts.com/highcharts.js"></script> -->
+    <!-- <script src="https://code.highcharts.com/modules/no-data-to-display.js"></script> -->
+    <!-- <script src="https://code.highcharts.com/modules/drilldown.js"></script> -->
+    
     <script type="text/javascript" src="js/connectionToChartDataFormatter.js"></script>
     <title>Chart Giver</title>
     <script th:inline="javascript">
@@ -37,11 +41,12 @@
                 }
 
             }
-
+            
+            fetchChart("http://localhost:8080/jsonFiles/groupByXRequest.json");
             /*Close to real request file*/
             // fetchChart("http://localhost:8080/jsonFiles/closeToRealRequest.json");
             /*Close to real request file multiple queries*/
-            //fetchChart("http://localhost:8080/jsonFiles/closeToRealRequestMultiple.json");
+            // fetchChart("http://localhost:8080/jsonFiles/closeToRealRequestMultiple.json");
             /*Dates request file*/
             // fetchChart("http://localhost:8080/jsonFiles/datesRequest.json");
             /*Google Charts Single Request*/
