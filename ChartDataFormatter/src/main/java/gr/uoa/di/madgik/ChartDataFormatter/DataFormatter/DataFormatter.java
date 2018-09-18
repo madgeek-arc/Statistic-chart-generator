@@ -14,12 +14,11 @@ public abstract class DataFormatter {
      * Objects of the dbAccessResults and chartsType Lists are <i>supposed</i> to be matched 1-1.
      *
      * @param dbAccessResults A List of {@link Result} originating from DBAccess.
-     * @param chartsType A List with the types of Chart that the List of Results will be formatted into.
-     *                  Each type of this List should be one of {@link SupportedChartTypes}.
+     * @param args Optional parameters for the implementations of the class to take advantage of.
+     *             Such an optional parameter could be a List with the types of Chart that the List of Results will be formatted into.
      * @return The return object should follow the guidelines of {@link JsonResponse}.
      */
-    public abstract JsonResponse toJsonResponse(@NonNull List<Result> dbAccessResults,
-                                                @NonNull List<SupportedChartTypes> chartsType) throws DataFormationException;
+    public abstract JsonResponse toJsonResponse(@NonNull List<Result> dbAccessResults, Object... args) throws DataFormationException;
 
     /**
      * An exception signifying an error in the process of Data Formation.

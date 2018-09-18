@@ -18,14 +18,14 @@ public class GoogleChartsDataFormatter extends DataFormatter {
      * @return A {@link GoogleChartsJsonResponse} ready to be passed as a response body.
      */
     @Override
-    public GoogleChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType) throws DataFormationException {
+    public GoogleChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException {
 
         /* ASSUMPTIONS:
          * ~ Results have a [x,y] format.
          * ~ Dates are returned as a String format
          */
-        if(chartsType != null)
-            throw new DataFormationException("Expected null chartsType List: Google Charts data is independent of type");
+        if(args.length > 0)
+            throw new DataFormationException("Expected no Argument List: Google Charts data is independent of type");
         if(dbAccessResults.size() == 1)
             return singleToGoogleChartsJsonResponse(dbAccessResults.get(0));
 
