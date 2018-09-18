@@ -7,6 +7,8 @@ public class ChartInfo {
 
     @JsonProperty(value = "type")
     private String chartType;
+    @JsonProperty(value = "name")
+    private String chartName;
     @JsonProperty
     private Query query;
 
@@ -24,4 +26,8 @@ public class ChartInfo {
     public Query getQuery() { return query; }
 
     public void setQuery(Query query) { this.query = query; }
+
+    public String getChartName() { return chartName; }
+
+    public void setChartName(String chartName) { this.chartName = chartName; }
 }

@@ -2,11 +2,11 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import org.springframework.lang.NonNull;
 
 import java.util.*;
+
 
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
@@ -23,38 +23,86 @@ public class HighChartsDataFormatter extends DataFormatter{
      * @return A {@link HighChartsJsonResponse} ready to be passed as a response body.
      */
     @Override
-    public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType) throws DataFormationException {
+    @SuppressWarnings("unchecked")
+    public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException {
 
         /* ASSUMPTIONS:
-         * ~ Results have a [y,x] or a [y,x1,x2] format.
+         * ~ Results have a CONSISTENT [y,x] or a [y,x1,x2] format.
          * ~ Dates are returned as a String format
          * ~ Results and Chart Types match 1-1
          */
 
+        if(args[0] == null || args[1] == null)
+            throw new DataFormationException("No ChartType and ChartNames list given.");
+
+        List<SupportedChartTypes> chartsType = (List<SupportedChartTypes>) args[0];
+        List<String> chartNames = (List<String>) args[1];
+
         if (dbAccessResults.size() == 1 && chartsType.size() == 1)
-            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0));
+            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0));
 
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");
 
-        AbstractMap.SimpleEntry<List<String>, List<HashMap<String, String>>> xAxis_CategoriesToXYMapping
-                = assembleXAxisCategoriesToXYMapping(dbAccessResults);
-
         //A sorted List with all the possible x values occurring from the Queries.
-        List<String> xAxis_Categories = xAxis_CategoriesToXYMapping.getKey();
+        List<String> xAxis_Categories = this.getXAxisCategories(dbAccessResults);
 
-        //A List which holds every Result in a HashMap, mapping y values to x values ([x,y]).
-        List<HashMap<String, String>> allRowsXValueToYValueMappings = xAxis_CategoriesToXYMapping.getValue();
+        HashMap<String, HashMap<String, String>> namesToDataSeries = new HashMap<>();
+        HashMap<String, SupportedChartTypes> namesToTypes = new HashMap<>();
+
+        for( int i=0; i < dbAccessResults.size(); i++ ){
+            Result result = dbAccessResults.get(i);
+
+            if (result.getRows().isEmpty())
+                break;
+
+            if( result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
+                throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
+
+
+            HashMap<String, String> XtoYMapping = null;
+            if(result.getRows().get(0).size() == 2) {
+
+                XtoYMapping = new HashMap<>();
+                String chartName = chartNames.get(i) == null ? "Series " + (i+1) : chartNames.get(i);
+                namesToDataSeries.put(chartName, XtoYMapping);
+                namesToTypes.put(chartName, chartsType.get(i));
+            }
+
+            for (ArrayList<String> row : result.getRows()) {
+
+                if(row.size() == 3){
+                    // The value of the 2nd Group BY
+                    String xValueB = row.get(2);
+                    if (!namesToDataSeries.containsKey(xValueB)) {
+                        namesToDataSeries.put(xValueB, new HashMap<>());
+                        namesToTypes.put(xValueB, chartsType.get(i));
+                    }
+
+                    XtoYMapping = namesToDataSeries.get(xValueB);
+                }
+
+                // Get the first groupBy of the result row
+                String yValue = row.get(0);
+                String xValue = row.get(1);
+
+                if(XtoYMapping != null)
+                    XtoYMapping.put(xValue, yValue);
+                else
+                    throw new DataFormationException("XtoYMapping HashMap is NULL");
+            }
+        }
+        System.out.println("DataSeries Names: " + namesToDataSeries.keySet().toString());
+        System.out.println("DataSeries Types: " + namesToTypes.values().toString());
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
+        ArrayList<String> dataSeriesNames = new ArrayList<>(namesToDataSeries.keySet());
 
-        // Create the necessary AbsData object by mapping to all the possible xValues their corresponding yValues.
-        // Fill with null if need be.
-        for (int i = 0; i < allRowsXValueToYValueMappings.size(); i++){
+        for (String dataSeriesName: dataSeriesNames) {
 
-            HashMap<String, String> xValuetoY = allRowsXValueToYValueMappings.get(i);
-            SupportedChartTypes chartType = chartsType.get(i);
+            HashMap<String, String> XtoYMapping = namesToDataSeries.get(dataSeriesName);
+            SupportedChartTypes chartType = namesToTypes.get(dataSeriesName);
 
             switch (chartType) {
                 case area:
@@ -64,9 +112,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                     ArrayList<Number> yValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_Categories) {
-                        if (xValuetoY.containsKey(xValue)) {
+                        if (XtoYMapping.containsKey(xValue)) {
 
-                            String yValue = xValuetoY.get(xValue);
+                            String yValue = XtoYMapping.get(xValue);
                             if(yValue == null)
                                 yValuesArray.add(null);
                             else if (yValue.contains("."))
@@ -84,9 +132,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                     ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_Categories) {
-                        if (xValuetoY.containsKey(xValue)) {
+                        if (XtoYMapping.containsKey(xValue)) {
 
-                            String yValue = xValuetoY.get(xValue);
+                            String yValue = XtoYMapping.get(xValue);
                             if(yValue == null)
                                 yObjectValuesArray.add(new DataObject(xValue , null));
                             else if (yValue.contains("."))
@@ -110,67 +158,61 @@ public class HighChartsDataFormatter extends DataFormatter{
         if(dataSeries.isEmpty() || xAxis_Categories.isEmpty())
             return null;
 
-        return new HighChartsJsonResponse(dataSeries,xAxis_Categories, null, dataSeriesTypes);
+        return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
-    private AbstractMap.SimpleEntry<List<String>,List<HashMap<String,String>>>
-        assembleXAxisCategoriesToXYMapping(List<Result> dbAccessResults){
+    private List<String> getXAxisCategories(List<Result> dbAccessResults) {
+
+        return this.getXAxisCategories(dbAccessResults, true);
+    }
+    private List<String> getXAxisCategories(List<Result> dbAccessResults, boolean sort) {
 
         //A HashSet with all the possible x values occurring from the Queries.
         LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
 
-        //A List which holds every Result in a HashMap, mapping y values to x values ([x,y]).
-        ArrayList<HashMap<String,String>> allRowsXValueToYValueMappings = new ArrayList<>();
+        for(Result result: dbAccessResults) {
 
-        for(Result result : dbAccessResults) {
             if (result.getRows().isEmpty())
                 break;
 
-            HashMap<String, String> rowXValueToYValueMapping = new HashMap<>();
-            for(ArrayList<String> row : result.getRows()){
-
-                // I assume that always the first value of the row is for the Y value
-                String yValue = row.get(0);
+            for (ArrayList<String> row : result.getRows()) {
+                // Get the first groupBy of the result row
                 String xValue = row.get(1);
 
-                //Finding a xValue and registering it in the xAxis_categories
+                //Find a xAxis value and register it in the xAxis_categories
                 if (!xAxis_categories.contains(xValue))
                     xAxis_categories.add(xValue);
-
-                //Filling the HashMap with the y value to x value map
-                rowXValueToYValueMapping.put(xValue,yValue);
             }
-            //Adding the finished HashMap to the List
-            allRowsXValueToYValueMappings.add(rowXValueToYValueMapping);
         }
 
-        ArrayList<String> sortedXAxis_Categories = new ArrayList<>(xAxis_categories);
-        sortedXAxis_Categories.sort(String::compareToIgnoreCase);
+        ArrayList<String> xAxis_Categories = new ArrayList<>(xAxis_categories);
 
-        return new AbstractMap.SimpleEntry<>(sortedXAxis_Categories,allRowsXValueToYValueMappings);
+        if(sort)
+            xAxis_Categories.sort(String::compareToIgnoreCase);
+
+        return xAxis_Categories;
     }
 
-
-
-    private HighChartsJsonResponse singleToHighChartsJsonResponse(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+    private HighChartsJsonResponse singleToHighChartsJsonResponse(@NonNull Result result,
+                                                                  @NonNull SupportedChartTypes chartType,
+                                                                  String chartName) throws DataFormationException {
 
         //There are no Results
         if(result.getRows().isEmpty())
             return null;
 
         if(result.getRows().get(0).size() == 2)
-            return singleHCSingleGroupBy(result, chartType);
+            return singleHCSingleGroupBy(result, chartType, chartName);
         else if(result.getRows().get(0).size() == 3)
             return singleHCDoubleGroupBy(result, chartType);
         else
-            return null;
+            throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
     }
 
-    private HighChartsJsonResponse singleHCSingleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+    private HighChartsJsonResponse singleHCSingleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType, String chartName){
 
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
-
 
         switch (chartType) {
             case area:
@@ -225,8 +267,10 @@ public class HighChartsDataFormatter extends DataFormatter{
         if(dataSeries.isEmpty() || xAxis_categories.isEmpty()) {
             return null;
         }
+        ArrayList<String> chartNames = new ArrayList<>();
+        chartNames.add(chartName);
 
-        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, null);
     }
 
     private HighChartsJsonResponse singleHCDoubleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType){
@@ -256,7 +300,6 @@ public class HighChartsDataFormatter extends DataFormatter{
             // Create a map with the unique values on the X axis
             if (!xAxis_categories.containsKey(xValueA))
                 xAxis_categories.put(xValueA, xAxis_categories.size());
-
         }
 
         switch (chartType) {
@@ -291,8 +334,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
                     return null;
                 else
-                    return new HighChartsJsonResponse(dataSeries,
-                            new ArrayList<>(xAxis_categories.keySet()),
+                    return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
                             new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
 
             case pie:

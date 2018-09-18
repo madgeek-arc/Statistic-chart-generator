@@ -45,8 +45,19 @@ public class RequestBodyHandler {
      */
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException {
 
-        if(DEBUGMODE)
-            System.out.println("Chart types: " + requestJson.getChartTypes());
+        if(DEBUGMODE) {
+            System.out.println("Chart Types: " + requestJson.getChartTypes());
+            System.out.println("Chart Names: " + requestJson.getChartNames());
+        }
+
+//        ObjectMapper mapper = new ObjectMapper();
+//        List<Result> statsServiceResults = null;
+//        try {
+//            RequestInfo rq = mapper.readValue(this.getClass().getResource("/q_2groupby_1groupby.json"), RequestInfo.class);
+//            statsServiceResults = this.statsService.query(rq.getChartQueries());
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
         List<Result> statsServiceResults = this.statsService.query(requestJson.getChartQueries());
 
@@ -58,6 +69,7 @@ public class RequestBodyHandler {
             resultNo++;
         }
 
+
         try {
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
@@ -65,11 +77,12 @@ public class RequestBodyHandler {
 
                     HighChartsJsonResponse highChartsJsonResponse;
                     try {
-                        highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(statsServiceResults,requestJson.getChartTypes());
+                        highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(statsServiceResults,
+                                requestJson.getChartTypes(), requestJson.getChartNames());
 
                     }catch (DataFormatter.DataFormationException e){
                         e.printStackTrace();
-                        throw new RequestBodyException("Results and chart types were not matched 1-1",HttpStatus.UNPROCESSABLE_ENTITY);
+                        throw new RequestBodyException(e.getMessage(),HttpStatus.UNPROCESSABLE_ENTITY);
                     }
                     if(highChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
@@ -94,11 +107,11 @@ public class RequestBodyHandler {
                     GoogleChartsJsonResponse googleChartsJsonResponse;
                     try{
                         //Google Charts data is independent of type, hence chartsType = null
-                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults,null);
+                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults);
 
                     } catch (DataFormatter.DataFormationException e) {
                         e.printStackTrace();
-                        throw new RequestBodyException(HttpStatus.UNPROCESSABLE_ENTITY);
+                        throw new RequestBodyException(e.getMessage(), HttpStatus.UNPROCESSABLE_ENTITY);
                     }
                     if(googleChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);

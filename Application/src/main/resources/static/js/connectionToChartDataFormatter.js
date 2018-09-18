@@ -101,6 +101,11 @@ function handleAdminSideData(dataJSONobj)
                 else
                     ChartInfoObj.type = element.type;
 
+                if(element.name === undefined)
+                    ChartInfoObj.name = null;
+                else
+                    ChartInfoObj.name = element.name;
+
                 ChartInfoObj.query = element.query;
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
@@ -201,6 +206,9 @@ function convertToValidHighchartJson(responseData, originJson){
         
         if(responseData.dataSeriesTypes !== null)
             seriesInstance.type = responseData.dataSeriesTypes[index];
+            
+        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
+            seriesInstance.color = originJson.chartDescription.queries[index].color;
 
         convertedJson.series[index] = seriesInstance;
     }

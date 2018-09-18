@@ -49,7 +49,16 @@ public class RequestInfo {
             }
 
         return retList;
+    }
 
+    public List<String> getChartNames(){
+
+        ArrayList<String> retList = new ArrayList<>();
+
+        for (ChartInfo chartInfo : chartsInfo)
+            retList.add(chartInfo.getChartName());
+
+        return retList;
     }
 
     public List<Query> getChartQueries(){
