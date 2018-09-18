@@ -1,8 +1,11 @@
 package gr.uoa.di.madgik.statstool.controllers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
@@ -21,7 +24,7 @@ public class QueryController {
         this.statsService = statsService;
     }
 
-    @RequestMapping(value = "/query")
+    @RequestMapping(value = "/queryTest")
     public List<Result> query() {
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -51,5 +54,10 @@ public class QueryController {
             e.printStackTrace();
             return null;
         }
+    }
+
+    @RequestMapping(value = "/query", method = RequestMethod.POST)
+    public List<Result> query(@RequestBody List<Query> queryList) {
+        return statsService.query(queryList);
     }
 }
