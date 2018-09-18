@@ -10,5 +10,11 @@
     "description": "Flat mapping apo ton vaggela",
     "primary": false,
     "file": "mapping_flat.json"
+  },
+  {
+    "name": "Stats db",
+    "description": "Opos einai h vasi",
+    "primary": false,
+    "file": "openaire_db.json"
   }
 ]
