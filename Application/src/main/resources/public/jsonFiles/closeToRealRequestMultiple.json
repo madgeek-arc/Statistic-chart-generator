@@ -15,6 +15,7 @@
             }
         },
         "queries": [{
+            "color": "#00ff00",
             "query": {
                 "filters": [
                     {
@@ -40,7 +41,8 @@
             }
 
         },
-        {
+        {   
+            "color": "#FFD700",
             "query":{
             "filters": [
                 {

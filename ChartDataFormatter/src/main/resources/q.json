@@ -1,0 +1,26 @@
+{
+    "filters": [
+    	{	"field": "publication.project.funder",
+        	"type": "=",
+        	"values": ["European Commission"]
+        },
+        {
+        	"field": "publication.year",
+        	"type": "between",
+        	"values": [2000, 2018]
+        }
+    ],
+    "select": [
+	    {
+            "aggregate": "count",
+            "field": "publication"
+        },
+        {
+		    "field": "publication.project.funding level 2"
+        },
+        {
+          "field": "publication.year"
+        }
+    ],
+    "entity": "publication"
+}
