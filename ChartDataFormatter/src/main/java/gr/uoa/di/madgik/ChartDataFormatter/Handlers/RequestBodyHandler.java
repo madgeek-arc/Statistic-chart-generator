@@ -50,23 +50,14 @@ public class RequestBodyHandler {
             System.out.println("Chart Names: " + requestJson.getChartNames());
         }
 
-//        ObjectMapper mapper = new ObjectMapper();
-//        List<Result> statsServiceResults = null;
-//        try {
-//            RequestInfo rq = mapper.readValue(this.getClass().getResource("/q_2groupby_1groupby.json"), RequestInfo.class);
-//            statsServiceResults = this.statsService.query(rq.getChartQueries());
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
         List<Result> statsServiceResults = this.statsService.query(requestJson.getChartQueries());
 
         if (statsServiceResults == null)
             throw new RequestBodyException("Stats Service Error", HttpStatus.INTERNAL_SERVER_ERROR);
-        int resultNo = 0;
-        for(Result res : statsServiceResults) {
-            System.out.println("Stats Service Results ["+resultNo+"]: " + res.getRows().toString());
-            resultNo++;
+
+        for(int i =0; i< statsServiceResults.size(); i++) {
+            Result res = statsServiceResults.get(i);
+            System.out.println("Stats Service Results ["+i+"]: " + res.getRows().toString());
         }
 
 
@@ -106,7 +97,6 @@ public class RequestBodyHandler {
 
                     GoogleChartsJsonResponse googleChartsJsonResponse;
                     try{
-                        //Google Charts data is independent of type, hence chartsType = null
                         googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults);
 
                     } catch (DataFormatter.DataFormationException e) {

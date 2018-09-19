@@ -280,7 +280,6 @@ public class HighChartsDataFormatter extends DataFormatter{
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
-        HashMap<String, String> rowXValueToYValueMapping = null;
         for (ArrayList<String> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
@@ -289,13 +288,10 @@ public class HighChartsDataFormatter extends DataFormatter{
             // I assume that always the first value of the row is for the Y value
             String yValue = row.get(0);
 
-            if (!groupByMap.containsKey(groupByValue)) {
+            if (!groupByMap.containsKey(groupByValue))
+                groupByMap.put(groupByValue, new HashMap<>());
 
-                rowXValueToYValueMapping = new HashMap<>();
-                groupByMap.put(groupByValue, rowXValueToYValueMapping);
-            }
-            if(rowXValueToYValueMapping != null)
-                rowXValueToYValueMapping.put(xValueA, yValue);
+            groupByMap.get(groupByValue).put(xValueA, yValue);
 
             // Create a map with the unique values on the X axis
             if (!xAxis_categories.containsKey(xValueA))
