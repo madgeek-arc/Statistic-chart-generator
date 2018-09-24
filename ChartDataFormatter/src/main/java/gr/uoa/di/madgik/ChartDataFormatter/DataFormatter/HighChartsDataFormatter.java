@@ -3,7 +3,6 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.springframework.lang.NonNull;
 
 import java.util.*;
 
