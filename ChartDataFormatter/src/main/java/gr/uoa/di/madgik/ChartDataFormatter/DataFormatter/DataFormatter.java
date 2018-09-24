@@ -18,7 +18,7 @@ public abstract class DataFormatter {
      *             Such an optional parameter could be a List with the types of Chart that the List of Results will be formatted into.
      * @return The return object should follow the guidelines of {@link JsonResponse}.
      */
-    public abstract JsonResponse toJsonResponse(@NonNull List<Result> dbAccessResults, Object... args) throws DataFormationException;
+    public abstract JsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException;
 
     /**
      * An exception signifying an error in the process of Data Formation.

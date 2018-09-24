@@ -87,7 +87,8 @@ public class RequestBodyHandler {
                             System.out.println(highChartsJsonResponse.getxAxis_categories().toString());
                         if(highChartsJsonResponse.getDataSeries() != null) {
                             System.out.println(highChartsJsonResponse.getDataSeries().toString());
-                            System.out.println("DataSeries row size: " + ((ArrayList<Number>) highChartsJsonResponse.getDataSeries().get(0).getData()).size());
+                            if(highChartsJsonResponse.getDataSeries().size() > 0 )
+                                System.out.println("DataSeries row size: " + ((ArrayList<Number>) highChartsJsonResponse.getDataSeries().get(0).getData()).size());
                         }
                     }
 

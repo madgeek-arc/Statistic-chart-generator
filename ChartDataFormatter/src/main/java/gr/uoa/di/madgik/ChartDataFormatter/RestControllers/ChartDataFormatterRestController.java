@@ -45,7 +45,7 @@ public class ChartDataFormatterRestController {
     @PostMapping(consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")
     public @ResponseBody ResponseEntity<JsonResponse>
-    postFullChartRepresentation(@NotNull @RequestBody RequestInfo requestJson)  {
+    postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
 
         JsonResponse responseData;
 

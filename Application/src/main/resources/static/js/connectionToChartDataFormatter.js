@@ -5,6 +5,7 @@ var domainName = "localhost";
 var protocol = "http";
 
 var domainLink = protocol+"://"+domainName+":"+port;
+const DEBUGMODE = false;
 
 function fetchChart(jsonData){
     $.getJSON(jsonData, handleAdminSideData)
@@ -21,7 +22,8 @@ function loadJS(url, afterLoadCallback){
     var fileref=document.createElement('script');
     var firstHeadTaginDOM = document.getElementsByTagName('head')[0];
     var callback = ()=>{
-        console.log("Library "+document.getElementsByTagName('head')[0].lastChild.getAttribute("src")+" about to be loaded!");
+        if(DEBUGMODE)
+            console.log("Library "+document.getElementsByTagName('head')[0].lastChild.getAttribute("src")+" about to be loaded!");
         afterLoadCallback();
     };
 
@@ -38,7 +40,8 @@ function handleAdminSideData(dataJSONobj)
 {   
     // dataJSONobj holds the option-ready version of the JSON that will be passed to the Chart library,
     // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
-    console.log(dataJSONobj);
+    if(DEBUGMODE)
+        console.log(dataJSONobj);
 
     switch(dataJSONobj.library){
     case "GoogleCharts":
@@ -77,6 +80,7 @@ function handleAdminSideData(dataJSONobj)
         //Dynamically add JS library
         loadJS("https://code.highcharts.com/highcharts.js",        
         () => loadJS("https://code.highcharts.com/modules/drilldown.js",
+        () => loadJS("https://code.highcharts.com/modules/no-data-to-display.js",
         
         function(){ 
             //Hold the Library state
@@ -112,21 +116,24 @@ function handleAdminSideData(dataJSONobj)
 
             passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                         domainLink+"/chart"); }
-        ));
+        )));
         
         break;
     }
     default:
-        console.log("Unsupported Library: "+ dataJSONobj.library);
+        if(DEBUGMODE)
+            console.log("Unsupported Library: "+ dataJSONobj.library);
     }
 }
 
 //Post the admin-side json to the ChartDataFormatter
 function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,ChartDataFormatterUrl)
 {
-    console.log("Passing to CDF:");
-    console.log(ChartDataFormatterReadyJSONobj);
-
+    if(DEBUGMODE) {
+        console.log("Passing to CDF:");
+        console.log(ChartDataFormatterReadyJSONobj);
+    }
+    
     $.ajax(
     {url: this.ChartDataFormatterUrl,
     type: "POST",
@@ -143,8 +150,10 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 
 function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
 {   
-    console.log("Got from CDF:");
-    console.log(responseData);
+    if(DEBUGMODE) {
+        console.log("Got from CDF:");
+        console.log(responseData);
+    }
     
     //Hide children elements of container
     $("#container").children().remove();
@@ -164,8 +173,12 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
     }
     if(libraryType === "HighCharts"){
         var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
-        console.log(chartJson);
-        console.log("Drawing HighCharts");
+
+        if(DEBUGMODE) {
+            console.log(chartJson);
+            console.log("Drawing HighCharts");
+        }
+        
         Highcharts.setOptions({
             lang: {
                 drillUpText: '<< Back'

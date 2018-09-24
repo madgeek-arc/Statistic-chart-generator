@@ -17,6 +17,8 @@ public class HighChartsDataFormatter extends DataFormatter{
 
     //TODO Testing on extreme results
 
+    private static boolean DEBUGMODE = false;
+
     /**
      * {@inheritDoc}
      *
@@ -92,8 +94,11 @@ public class HighChartsDataFormatter extends DataFormatter{
                     throw new DataFormationException("XtoYMapping HashMap is NULL");
             }
         }
-        System.out.println("DataSeries Names: " + namesToDataSeries.keySet().toString());
-        System.out.println("DataSeries Types: " + namesToTypes.values().toString());
+
+        if(DEBUGMODE) {
+            System.out.println("DataSeries Names: " + namesToDataSeries.keySet().toString());
+            System.out.println("DataSeries Types: " + namesToTypes.values().toString());
+        }
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
@@ -155,9 +160,6 @@ public class HighChartsDataFormatter extends DataFormatter{
             }
         }
 
-        if(dataSeries.isEmpty() || xAxis_Categories.isEmpty())
-            return null;
-
         return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
@@ -193,13 +195,13 @@ public class HighChartsDataFormatter extends DataFormatter{
         return xAxis_Categories;
     }
 
-    private HighChartsJsonResponse singleToHighChartsJsonResponse(@NonNull Result result,
-                                                                  @NonNull SupportedChartTypes chartType,
+    private HighChartsJsonResponse singleToHighChartsJsonResponse(Result result,
+                                                                  SupportedChartTypes chartType,
                                                                   String chartName) throws DataFormationException {
 
         //There are no Results
         if(result.getRows().isEmpty())
-            return null;
+            return singleHCSingleGroupBy(result, chartType, chartName);
 
         if(result.getRows().get(0).size() == 2)
             return singleHCSingleGroupBy(result, chartType, chartName);
@@ -209,7 +211,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
     }
 
-    private HighChartsJsonResponse singleHCSingleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType, String chartName){
+    private HighChartsJsonResponse singleHCSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
 
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
@@ -264,16 +266,13 @@ public class HighChartsDataFormatter extends DataFormatter{
                 return null;
         }
 
-        if(dataSeries.isEmpty() || xAxis_categories.isEmpty()) {
-            return null;
-        }
         ArrayList<String> chartNames = new ArrayList<>();
         chartNames.add(chartName);
 
         return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, null);
     }
 
-    private HighChartsJsonResponse singleHCDoubleGroupBy(@NonNull Result result,@NonNull SupportedChartTypes chartType){
+    private HighChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType){
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
@@ -327,11 +326,8 @@ public class HighChartsDataFormatter extends DataFormatter{
                     dataSeriesTypes.add(chartType.name());
                 }
 
-                if(dataSeries.isEmpty() || xAxis_categories.isEmpty())
-                    return null;
-                else
-                    return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
-                            new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
+                return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
+                        new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
 
             case pie:
 
@@ -373,13 +369,10 @@ public class HighChartsDataFormatter extends DataFormatter{
                 dataSeries.add(new ArrayOfObjects(mainSlicesValuesArray));
                 dataSeriesTypes.add(chartType.name());
 
-                if(!dataSeries.isEmpty() && !drillDownArray.isEmpty()) {
-                    HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
-                    ret.setDrilldown(drillDownArray);
-                    return ret;
-                }
-                else
-                    return null;
+                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+                ret.setDrilldown(drillDownArray);
+                return ret;
+
 
             default:
                 return null;
