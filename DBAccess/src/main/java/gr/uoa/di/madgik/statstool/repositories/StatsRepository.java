@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Connection;
@@ -15,6 +16,8 @@ import gr.uoa.di.madgik.statstool.domain.Result;
 public class StatsRepository {
 
     private final DataSource dataSource;
+
+    private final Logger log = Logger.getLogger(this.getClass());
 
     public StatsRepository(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -47,7 +50,7 @@ public class StatsRepository {
             connection.close();
             return result;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
             return null;
         }
     }
@@ -67,7 +70,7 @@ public class StatsRepository {
             connection.close();
             return fullQuery;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
             return "";
         }
     }

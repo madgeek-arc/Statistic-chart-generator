@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.repositories.StatsRedisRepository;
@@ -20,6 +22,8 @@ public class StatsServiceImpl implements StatsService{
 
     private Mapper mapper;
 
+    private final Logger log = Logger.getLogger(this.getClass());
+
     public StatsServiceImpl(StatsRepository statsRepository, StatsRedisRepository statsRedisRepository, Mapper mapper) {
         this.statsRepository = statsRepository;
         this.statsRedisRepository = statsRedisRepository;
@@ -33,7 +37,7 @@ public class StatsServiceImpl implements StatsService{
             List<Object> parameters = new ArrayList<>();
             String querySql = mapper.map(query, parameters);
             String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
-            System.out.println("SQL: " + fullSqlQuery);
+            log.info("SQL: " + fullSqlQuery);
             Result result = statsRedisRepository.get(fullSqlQuery);
             if(result != null) {
                 results.add(result);

@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.statstool.repositories;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.Result;
 
+import org.apache.log4j.Logger;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,8 @@ public class StatsRedisRepository {
     private RedisTemplate<String, String> redisTemplate;
     private HashOperations<String, String, String> jedis;
 
+    private Logger log = Logger.getLogger(this.getClass());
+
     public StatsRedisRepository(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
         this.jedis = redisTemplate.opsForHash();
@@ -30,7 +33,7 @@ public class StatsRedisRepository {
                 result = new ObjectMapper().readValue(redisResponse, Result.class);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
 
         return result;
@@ -44,7 +47,7 @@ public class StatsRedisRepository {
                 result = new ObjectMapper().readValue(redisResponse, new ObjectMapper().getTypeFactory().constructCollectionType(List.class, String.class));
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
 
         return result;
@@ -57,7 +60,7 @@ public class StatsRedisRepository {
             jedis.put(key, "query", fullSqlQuery);
             jedis.put(key, "result", new ObjectMapper().writeValueAsString(result));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 
@@ -66,7 +69,7 @@ public class StatsRedisRepository {
         try {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         md.update(string.getBytes());
 

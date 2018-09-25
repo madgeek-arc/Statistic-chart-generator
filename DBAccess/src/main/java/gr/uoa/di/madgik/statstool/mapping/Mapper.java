@@ -2,6 +2,8 @@ package gr.uoa.di.madgik.statstool.mapping;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.*;
+
+import org.apache.log4j.Logger;
 import org.springframework.stereotype.Component;
 
 import gr.uoa.di.madgik.statstool.mapping.entities.*;
@@ -23,6 +25,8 @@ public class Mapper {
     private final HashMap<String, ProfileConfiguration> profileConfigurations = new HashMap<>();
 
     private String primaryProfile;
+
+    private final Logger log = Logger.getLogger(this.getClass());
 
     public Mapper() {
         try {
@@ -51,7 +55,7 @@ public class Mapper {
                 profileConfigurations.put(mappingProfile.getName(), profileConfiguration);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 
@@ -137,7 +141,7 @@ public class Mapper {
                 profileConfiguration.relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error(e.getMessage());
         }
     }
 
