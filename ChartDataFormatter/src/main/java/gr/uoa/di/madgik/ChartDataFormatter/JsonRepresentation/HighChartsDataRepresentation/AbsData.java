@@ -28,7 +28,6 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
         ObjectNode root = mapper.readTree(jsonParser);
 
         JsonNode dataNode = root.get("data");
-//        System.out.println("AbsDataDeserializer | Node to deserialize: " + mapper.writeValueAsString(dataNode));
 
         if (dataNode != null){
             switch (dataNode.get(0).getNodeType()){

@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import org.apache.log4j.Logger;
 
 import java.util.*;
 
@@ -14,9 +15,7 @@ import java.util.*;
  */
 public class HighChartsDataFormatter extends DataFormatter{
 
-    //TODO Testing on extreme results
-
-    private static boolean DEBUGMODE = false;
+    private final Logger log = Logger.getLogger(this.getClass());
 
     /**
      * {@inheritDoc}
@@ -94,9 +93,9 @@ public class HighChartsDataFormatter extends DataFormatter{
             }
         }
 
-        if(DEBUGMODE) {
-            System.out.println("DataSeries Names: " + namesToDataSeries.keySet().toString());
-            System.out.println("DataSeries Types: " + namesToTypes.values().toString());
+        if(log.isInfoEnabled()) {
+            log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
+            log.info("DataSeries Types: " + namesToTypes.values().toString());
         }
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();

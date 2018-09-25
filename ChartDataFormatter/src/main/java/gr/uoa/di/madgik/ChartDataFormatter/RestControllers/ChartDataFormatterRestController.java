@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 
+import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
@@ -25,6 +26,7 @@ import java.util.Arrays;
 public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
+    private final Logger log = Logger.getLogger(this.getClass());
 
     public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler) {
         this.requestBodyHandler = requestBodyHandler;
@@ -52,8 +54,8 @@ public class ChartDataFormatterRestController {
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyHandler.RequestBodyException e) {
-            System.err.println(e.getMessage());
-            e.getStackTrace();
+            log.error(e.getMessage());
+            log.error(e.getStackTrace());
             return new ResponseEntity<>(e.getHttpStatus());
         }
 

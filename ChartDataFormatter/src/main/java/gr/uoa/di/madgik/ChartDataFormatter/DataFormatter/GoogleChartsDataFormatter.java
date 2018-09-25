@@ -25,7 +25,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
          * ~ Dates are returned as a String format
          */
         if(args.length > 0)
-            throw new DataFormationException("Expected no Argument List: Google Charts data is independent of type");
+            throw new DataFormationException("Expected no Argument List: Google Charts data is independent of chart type");
         if(dbAccessResults.size() == 1)
             return singleToGoogleChartsJsonResponse(dbAccessResults.get(0));
 
@@ -130,8 +130,6 @@ public class GoogleChartsDataFormatter extends DataFormatter {
 
             formattedDataTable.add(valuesArray);
         }
-
-
 
         return new GoogleChartsJsonResponse(formattedDataTable);
     }
