@@ -69,7 +69,7 @@ function handleAdminSideData(dataJSONobj)
                 });
 
                 passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                    domainLink+"/chart");
+                            domainLink+"/chart");
             });            
         });
         break;
@@ -115,7 +115,9 @@ function handleAdminSideData(dataJSONobj)
             });
 
             passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                        domainLink+"/chart"); }
+                        domainLink+"/chart");
+        }
+            
         )));
         
         break;
@@ -141,10 +143,26 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
     contentType: 'application/json; charset=utf-8',
     data: JSON.stringify(ChartDataFormatterReadyJSONobj),
     cache: false,
-    success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj) }            
-    })
-    .done()
-    .fail()
+    success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj) },
+    error: function( jqXHR, textStatus, errorThrown) { 
+
+        $('#loadingImg').hide();
+        if (jqXHR.status === 0) {
+            $('#errorSpan').show().html('Not connected.\nPlease verify your network connection.');
+        } else if (jqXHR.status == 404) {
+            $('#errorSpan').show().html('The requested page not found [404]');
+        } else if (jqXHR.status == 500) {
+            $('#errorSpan').show().html('Internal Server Error [500]');
+        } else if (jqXHR.status == 422) {
+            $('#errorSpan').show().html('Chart generation went wrong [422]');
+        }
+        else {
+            $('#errorSpan').show().html('Something unexpected happened');
+        }
+
+     }
+    }).done()
+    .fail() 
     .always();
 }
 
