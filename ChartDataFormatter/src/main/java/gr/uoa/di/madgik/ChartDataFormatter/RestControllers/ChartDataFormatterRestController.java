@@ -54,8 +54,7 @@ public class ChartDataFormatterRestController {
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyHandler.RequestBodyException e) {
-            log.error(e.getMessage());
-            log.error(e.getStackTrace());
+            log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
         }
 

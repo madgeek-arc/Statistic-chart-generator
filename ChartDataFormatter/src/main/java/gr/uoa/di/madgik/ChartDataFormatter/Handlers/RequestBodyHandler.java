@@ -41,19 +41,18 @@ public class RequestBodyHandler {
         if (statsServiceResults == null)
             throw new RequestBodyException("Stats Service Error", HttpStatus.INTERNAL_SERVER_ERROR);
 
-        if(log.isInfoEnabled()) {
-            System.out.println(log.getAllAppenders());
-            log.info("Chart Types: " + requestJson.getChartTypes());
-            log.info("Chart Names: " + requestJson.getChartNames());
-
-            for (int i = 0; i < statsServiceResults.size(); i++) {
-                Result res = statsServiceResults.get(i);
-                log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
-            }
-        }
-
-
         try {
+
+            if(log.isInfoEnabled()) {
+                log.info("Chart Types: " + requestJson.getChartTypes());
+                log.info("Chart Names: " + requestJson.getChartNames());
+
+                for (int i = 0; i < statsServiceResults.size(); i++) {
+                    Result res = statsServiceResults.get(i);
+                    log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
+                }
+            }
+
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
                 case HighCharts:
