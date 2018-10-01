@@ -60,7 +60,7 @@
                     "datatype": "text"
                 }
             ],
-            "relations": [ "project", "datasource", "organization"]
+            "relations": [ "project", "datasource", "organization", "result" ]
         },
         {
             "from": "project",
@@ -313,6 +313,24 @@
                     "from": "result",
                     "fromField": "id",
                     "to": "result_pids",
+                    "toField": "id"
+                }
+            ]
+        },
+        {
+            "from": "result",
+            "to": "result",
+            "joins": [
+                {
+                    "from": "result",
+                    "fromField": "id",
+                    "to": "result_results",
+                    "toField": "id"
+                },
+                {
+                    "from": "result_results",
+                    "fromField": "result",
+                    "to": "result",
                     "toField": "id"
                 }
             ]

@@ -90,7 +90,7 @@ public class SqlQueryBuilder {
             addEntityFilters(fldPath.get(fldPath.size() - 2), path);
             Field field1 = profileConfiguration.fields.get(fldPath.get(fldPath.size() - 2) + "." + fldPath.get(fldPath.size() - 1));
             if (field1 != null) {
-                if (field1.getTable() != null) {
+                if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
                     path += joinTables(table1.getTable(), field1.getTable());
                 }
                 path += "." + field1.getColumn();
