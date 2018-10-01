@@ -155,9 +155,11 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
             $('#errorSpan').show().html('Internal Server Error [500]');
         } else if (jqXHR.status == 422) {
             $('#errorSpan').show().html('Chart generation went wrong [422]');
+        } else if (jqXHR.status == 504) {
+            $('#errorSpan').show().html('Server took unusually too long to respond [504]');
         }
         else {
-            $('#errorSpan').show().html('Something unexpected happened');
+            $('#errorSpan').show().html('Something unexpected happened [' + jqXHR.status + ']');
         }
 
      }
