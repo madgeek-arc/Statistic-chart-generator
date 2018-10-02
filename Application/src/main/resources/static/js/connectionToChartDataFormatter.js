@@ -17,8 +17,6 @@ function fetchChart(jsonData){
 //Function for loading(= appending to the head) a JS file
 function loadJS(url, afterLoadCallback){
     
-    // $.getScript(url, afterLoadCallback);
-
     var fileref=document.createElement('script');
     var firstHeadTaginDOM = document.getElementsByTagName('head')[0];
     var callback = ()=>{

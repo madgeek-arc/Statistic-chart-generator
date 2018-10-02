@@ -9,7 +9,6 @@
     <script th:inline="javascript">
     /*<![CDATA[*/
         $( document ).ready(function(){
-            //Setting container's height & <width></width>
             $("#container").height(window.innerHeight);
             $("#container").width(window.innerWidth);
 
@@ -31,26 +30,10 @@
                     let decodedJsonParam = decodeURI(jsonParam)
                     console.log(decodedJsonParam);
                     handleAdminSideData(JSON.parse(decodedJsonParam));
-                // catches a malformed URI
                 } catch(e) {
                   console.error(e);
                 }
-
             }
-            // fetchChart("http://localhost:8080/jsonFiles/q_2groupby_1groupby.json");
-            // fetchChart("http://localhost:8080/jsonFiles/groupByXRequest.json");
-            /*Close to real request file*/
-            // fetchChart("http://localhost:8080/jsonFiles/closeToRealRequest.json");
-            /*Close to real request file multiple queries*/
-            // fetchChart("http://localhost:8080/jsonFiles/closeToRealRequestMultiple.json");
-            /*Dates request file*/
-            // fetchChart("http://localhost:8080/jsonFiles/datesRequest.json");
-            /*Google Charts Single Request*/
-            // fetchChart("http://localhost:8080/jsonFiles/googleChartsSingleRequest.json");
-            /*Google Charts Multiple Request*/
-            // fetchChart("http://localhost:8080/jsonFiles/googleChartsMultipleRequest.json");
-            /*Google Charts Multiple Request Dates*/
-            // fetchChart("http://localhost:8080/jsonFiles/googleChartsDateRequest.json");
         });    
     /*]]>*/
     </script>
@@ -61,8 +44,7 @@
 <div id="container" style="margin: 0 auto; text-align: center; max-width:100%; display: block">
     <span class="centerer" style="display: inline-block;vertical-align: middle; height: 100%;"></span>
     <img id="loadingImg" src="images/ajaxloader.gif" alt="Loading" style="display: none"/>
-         <!--style="display: inline-block; vertical-align: middle;"-->
-    <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;">Awaiting Query</span>
+    <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;">Waiting for Query</span>
 </div>
 
 </body>
