@@ -3,17 +3,21 @@ package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ShortenUrlInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 
 import org.apache.log4j.Logger;
+import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.validation.constraints.NotNull;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 
 
@@ -22,7 +26,7 @@ import java.util.Arrays;
  */
 @RestController
 @RequestMapping("/chart")
-@CrossOrigin(methods = {RequestMethod.GET,RequestMethod.POST} , origins = "*")
+@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
 public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
@@ -81,5 +85,31 @@ public class ChartDataFormatterRestController {
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
 
+    @PostMapping( path = "/shorten",
+                consumes = "application/json; charset=UTF-8",
+                produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity<JSONObject> shortenChartUrl(@RequestBody ShortenUrlInfo request) {
+
+        String url = request.getUrlToShorten();
+        String getUrl = "https://tinyurl.com/api-create.php?url="+url;
+
+        RestTemplate rt = new RestTemplate();
+        String shortenedUrl = null;
+        JSONObject response = new JSONObject();
+        try {
+            URI getUri = new URI(getUrl);
+            ResponseEntity responseEntity =  rt.getForEntity(getUri,String.class);
+            shortenedUrl = responseEntity.getBody().toString();
+            log.info(shortenedUrl);
+
+        } catch (URISyntaxException e) {
+            log.error(e.getMessage(), e);
+            response.put("shortUrl", shortenedUrl);
+            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        }
+
+        response.put("shortUrl", shortenedUrl);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
 }
