@@ -266,8 +266,10 @@ public class HighChartsDataFormatter extends DataFormatter{
 
         ArrayList<String> chartNames = new ArrayList<>();
         chartNames.add(chartName);
+        ArrayList<String> chartTypes = new ArrayList<>();
+        chartTypes.add(chartType.name());
 
-        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, null);
+        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
     private HighChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType){
