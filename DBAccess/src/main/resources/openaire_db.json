@@ -136,6 +136,11 @@
                     "column": "code",
                     "name": "code",
                     "datatype": "text"
+                },
+                {
+                    "column": "sc39",
+                    "name": "sc39",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "result", "organization"]
