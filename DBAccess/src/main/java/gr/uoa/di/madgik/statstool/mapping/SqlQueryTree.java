@@ -134,6 +134,7 @@ public class SqlQueryTree {
         List<String> group = new ArrayList<>();
 
         stack.push(this.root);
+        //joins += "public." + this.root.table + " " + this.root.alias + " ";
         joins += this.root.table + " " + this.root.alias + " ";
 
         while (!stack.empty()) {
@@ -157,6 +158,7 @@ public class SqlQueryTree {
 
             for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
                 joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
+                //joins += "JOIN public." + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
                 if (!tables.contains(entry.getValue().node.alias)) {
                     stack.push(entry.getValue().node);
                 }
@@ -200,24 +202,26 @@ public class SqlQueryTree {
                 }
             }
         }
-        query += " GROUP BY ";
-        first = true;
-        for (String gp : group) {
-            if (first) {
-                query += gp;
-                first = false;
-            } else {
-                query += ", " + gp;
+        if(!group.isEmpty()) {
+            query += " GROUP BY ";
+            first = true;
+            for (String gp : group) {
+                if (first) {
+                    query += gp;
+                    first = false;
+                } else {
+                    query += ", " + gp;
+                }
             }
-        }
-        query += " ORDER BY ";
-        first = true;
-        for (String gp : group) {
-            if (first) {
-                query += gp;
-                first = false;
-            } else {
-                query += ", " + gp;
+            query += " ORDER BY ";
+            first = true;
+            for (String gp : group) {
+                if (first) {
+                    query += gp;
+                    first = false;
+                } else {
+                    query += ", " + gp;
+                }
             }
         }
         if(limit != 0) {

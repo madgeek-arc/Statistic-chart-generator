@@ -161,7 +161,7 @@
                     "datatype": "text"
                 },
                 {
-                    "column": "name",
+                    "column": "type",
                     "name": "type",
                     "datatype": "text"
                 },
