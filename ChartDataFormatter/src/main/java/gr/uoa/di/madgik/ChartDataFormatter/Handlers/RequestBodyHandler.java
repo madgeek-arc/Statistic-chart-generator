@@ -88,7 +88,8 @@ public class RequestBodyHandler {
 
                     GoogleChartsJsonResponse googleChartsJsonResponse;
                     try{
-                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults);
+                        googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults,
+                                requestJson.getChartTypes(), requestJson.getChartNames());
 
                     } catch (DataFormatter.DataFormationException e) {
                         throw new RequestBodyException(e.getMessage(),e, HttpStatus.UNPROCESSABLE_ENTITY);

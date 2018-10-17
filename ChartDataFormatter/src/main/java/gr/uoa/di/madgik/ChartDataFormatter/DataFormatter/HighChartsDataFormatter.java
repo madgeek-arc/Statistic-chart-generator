@@ -32,7 +32,7 @@ public class HighChartsDataFormatter extends DataFormatter{
          * ~ Results and Chart Types match 1-1
          */
 
-        if(args[0] == null || args[1] == null)
+        if (args[0] == null || args[1] == null)
             throw new DataFormationException("No ChartType and ChartNames list given.");
 
         List<SupportedChartTypes> chartsType = (List<SupportedChartTypes>) args[0];
@@ -50,28 +50,29 @@ public class HighChartsDataFormatter extends DataFormatter{
         HashMap<String, HashMap<String, String>> namesToDataSeries = new HashMap<>();
         HashMap<String, SupportedChartTypes> namesToTypes = new HashMap<>();
 
-        for( int i=0; i < dbAccessResults.size(); i++ ){
+        for (int i = 0; i < dbAccessResults.size(); i++) {
             Result result = dbAccessResults.get(i);
 
             if (result.getRows().isEmpty())
-                break;
+                continue;
 
-            if( result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
+
+            if (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
 
 
             HashMap<String, String> XtoYMapping = null;
-            if(result.getRows().get(0).size() == 2) {
+            if (result.getRows().get(0).size() == 2) {
 
                 XtoYMapping = new HashMap<>();
-                String chartName = chartNames.get(i) == null ? "Series " + (i+1) : chartNames.get(i);
+                String chartName = chartNames.get(i) == null ? "Series " + (i + 1) : chartNames.get(i);
                 namesToDataSeries.put(chartName, XtoYMapping);
                 namesToTypes.put(chartName, chartsType.get(i));
             }
 
             for (ArrayList<String> row : result.getRows()) {
 
-                if(row.size() == 3){
+                if (row.size() == 3) {
                     // The value of the 2nd Group BY
                     String xValueB = row.get(2);
                     if (!namesToDataSeries.containsKey(xValueB)) {
@@ -86,23 +87,21 @@ public class HighChartsDataFormatter extends DataFormatter{
                 String yValue = row.get(0);
                 String xValue = row.get(1);
 
-                if(XtoYMapping != null)
+                if (XtoYMapping != null)
                     XtoYMapping.put(xValue, yValue);
                 else
                     throw new DataFormationException("XtoYMapping HashMap is NULL");
             }
         }
 
-        if(log.isInfoEnabled()) {
-            log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
-            log.info("DataSeries Types: " + namesToTypes.values().toString());
-        }
+        log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
+        log.info("DataSeries Types: " + namesToTypes.values().toString());
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
         ArrayList<String> dataSeriesNames = new ArrayList<>(namesToDataSeries.keySet());
 
-        for (String dataSeriesName: dataSeriesNames) {
+        for (String dataSeriesName : dataSeriesNames) {
 
             HashMap<String, String> XtoYMapping = namesToDataSeries.get(dataSeriesName);
             SupportedChartTypes chartType = namesToTypes.get(dataSeriesName);
@@ -118,7 +117,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (XtoYMapping.containsKey(xValue)) {
 
                             String yValue = XtoYMapping.get(xValue);
-                            if(yValue == null)
+                            if (yValue == null)
                                 yValuesArray.add(null);
                             else if (yValue.contains("."))
                                 yValuesArray.add(Float.parseFloat(yValue));
@@ -138,10 +137,10 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (XtoYMapping.containsKey(xValue)) {
 
                             String yValue = XtoYMapping.get(xValue);
-                            if(yValue == null)
-                                yObjectValuesArray.add(new DataObject(xValue , null));
+                            if (yValue == null)
+                                yObjectValuesArray.add(new DataObject(xValue, null));
                             else if (yValue.contains("."))
-                                yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
+                                yObjectValuesArray.add(new DataObject(xValue, Float.parseFloat(yValue)));
                             else
                                 yObjectValuesArray.add(new DataObject(xValue, Integer.parseInt(yValue)));
                         } else
@@ -164,33 +163,6 @@ public class HighChartsDataFormatter extends DataFormatter{
     private List<String> getXAxisCategories(List<Result> dbAccessResults) {
 
         return this.getXAxisCategories(dbAccessResults, true);
-    }
-    private List<String> getXAxisCategories(List<Result> dbAccessResults, boolean sort) {
-
-        //A HashSet with all the possible x values occurring from the Queries.
-        LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
-
-        for(Result result: dbAccessResults) {
-
-            if (result.getRows().isEmpty())
-                break;
-
-            for (ArrayList<String> row : result.getRows()) {
-                // Get the first groupBy of the result row
-                String xValue = row.get(1);
-
-                //Find a xAxis value and register it in the xAxis_categories
-                if (!xAxis_categories.contains(xValue))
-                    xAxis_categories.add(xValue);
-            }
-        }
-
-        ArrayList<String> xAxis_Categories = new ArrayList<>(xAxis_categories);
-
-        if(sort)
-            xAxis_Categories.sort(String::compareToIgnoreCase);
-
-        return xAxis_Categories;
     }
 
     private HighChartsJsonResponse singleToHighChartsJsonResponse(Result result,

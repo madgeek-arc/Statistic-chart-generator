@@ -19,6 +19,34 @@ public abstract class DataFormatter {
      */
     public abstract JsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException;
 
+    public List<String> getXAxisCategories(List<Result> dbAccessResults, boolean sort) {
+
+        //A HashSet with all the possible x values occurring from the Queries.
+        LinkedHashSet<String> xAxis_categories = new LinkedHashSet<>();
+
+        for(Result result: dbAccessResults) {
+
+            if (result.getRows().isEmpty())
+                break;
+
+            for (ArrayList<String> row : result.getRows()) {
+                // Get the first groupBy of the result row
+                String xValue = row.get(1);
+
+                //Find a xAxis value and register it in the xAxis_categories
+                if (!xAxis_categories.contains(xValue))
+                    xAxis_categories.add(xValue);
+            }
+        }
+
+        ArrayList<String> xAxis_Categories = new ArrayList<>(xAxis_categories);
+
+        if(sort)
+            xAxis_Categories.sort(String::compareToIgnoreCase);
+
+        return xAxis_Categories;
+    }
+
     /**
      * An exception signifying an error in the process of Data Formation.
      */

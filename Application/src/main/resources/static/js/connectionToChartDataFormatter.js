@@ -59,12 +59,7 @@ function handleAdminSideData(dataJSONobj)
                 RequestInfoObj.chartsInfo = [];
                 //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
                 //along with the requested Chart type
-                dataJSONobj.chartDescription.queries.
-                forEach(element => {
-                    var ChartInfoObj = new Object();
-                    ChartInfoObj.query = element;
-                    RequestInfoObj.chartsInfo.push(ChartInfoObj);
-                });
+                RequestInfoObj.chartsInfo = dataJSONobj.chartDescription.queriesInfo;
 
                 passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                             domainLink+"/chart");
@@ -180,7 +175,11 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
     if(libraryType === "GoogleCharts"){
 
         var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
-       
+        if(DEBUGMODE) {
+            console.log('Options:');
+            console.log(originalDataJSONobj.chartDescription.options);
+        }
+
         var wrapper = new google.visualization.ChartWrapper({
             chartType: originalDataJSONobj.chartDescription.chartType,
             dataTable: data,
@@ -211,15 +210,26 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
 function fillGoogleChartsDataTable(responseData, originJson){
 
     var data = new google.visualization.DataTable();
-    var dataColumns = originJson.chartDescription.columns;
+    var dataColumns = responseData.columns;
+    var columnsType = responseData.columnsType;
+    
+    // datacolumns has the same size of columnsType PLUS a header column
+    if(dataColumns.length > 0 && ( columnsType === null || ((columnsType !== null) && (dataColumns.length === (columnsType.length + 1))))){
 
-    for(let index = 0; index < dataColumns.length; index++){
-        if(index == 0)
-            data.addColumn('string', dataColumns[index]);
-        else
-            data.addColumn('number', dataColumns[index]);
+        if(columnsType !== null) 
+            originJson.chartDescription.options.series = new Array(columnsType.length);
+
+        for(let index = 0; index < dataColumns.length; index++){
+            if(index == 0)
+                data.addColumn('string', dataColumns[index]);
+            else{
+                data.addColumn('number', dataColumns[index]);
+                if(columnsType !== null)
+                    originJson.chartDescription.options.series[index-1] = {type: columnsType[index-1]};
+            }
+        }
+        data.addRows(responseData.dataTable);
     }
-    data.addRows(responseData.dataTable);
 
     return data;
 }
