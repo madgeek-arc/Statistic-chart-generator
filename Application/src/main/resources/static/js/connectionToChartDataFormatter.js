@@ -75,6 +75,7 @@ function handleAdminSideData(dataJSONobj)
         () => loadJS("https://code.highcharts.com/modules/drilldown.js",
         () => loadJS("https://code.highcharts.com/modules/no-data-to-display.js",
         () => loadJS("https://code.highcharts.com/highcharts-3d.js",
+        () => loadJS("https://code.highcharts.com/modules/exporting.js",
         
         function(){ 
             //Hold the Library state
@@ -112,7 +113,7 @@ function handleAdminSideData(dataJSONobj)
                         domainLink+"/chart");
         }
             
-        ))));
+        )))));
         
         break;
     }
@@ -186,6 +187,26 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             options: originalDataJSONobj.chartDescription.options,
             containerId: 'container'
             });
+
+        if(originalDataJSONobj.chartDescription.options.exporting) {
+
+            google.visualization.events.addListener(wrapper, 'ready', function () {
+
+                // Create a DOM element that saves the chart
+                var buttonElement = document.createElement("button");
+                buttonElement.innerHTML = "Download as PNG";
+                buttonElement.onclick = () => {
+                    const element = document.createElement('a');
+                    element.setAttribute('href', wrapper.getChart().getImageURI() );
+                    element.setAttribute('download', 'chart.png');
+                    element.style.display = 'none';
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                }
+                $("#container").before(buttonElement);
+            });
+        }
 
         wrapper.draw();
     }
