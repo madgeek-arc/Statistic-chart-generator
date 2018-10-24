@@ -47,7 +47,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         //A sorted List with all the possible x values occurring from the Queries.
         List<String> xAxis_Categories = this.getXAxisCategories(dbAccessResults);
 
-        HashMap<String, HashMap<String, String>> namesToDataSeries = new HashMap<>();
+        HashMap<String, HashMap<String, String>> namesToDataSeries = new LinkedHashMap<>();
         HashMap<String, SupportedChartTypes> namesToTypes = new HashMap<>();
 
         for (int i = 0; i < dbAccessResults.size(); i++) {
