@@ -181,30 +181,41 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             console.log(originalDataJSONobj.chartDescription.options);
         }
 
-        var wrapper = new google.visualization.ChartWrapper({
-            chartType: originalDataJSONobj.chartDescription.chartType,
-            dataTable: data,
-            options: originalDataJSONobj.chartDescription.options,
-            containerId: 'container'
+        var wrapper;
+        if( !originalDataJSONobj.chartDescription.tableForm ) {
+            
+            wrapper = new google.visualization.ChartWrapper({
+                chartType: originalDataJSONobj.chartDescription.chartType,
+                dataTable: data,
+                options: originalDataJSONobj.chartDescription.options,
+                containerId: 'container'
             });
 
-        if(originalDataJSONobj.chartDescription.options.exporting) {
+            if(originalDataJSONobj.chartDescription.options.exporting) {
 
-            google.visualization.events.addListener(wrapper, 'ready', function () {
+                google.visualization.events.addListener(wrapper, 'ready', function () {
 
-                // Create a DOM element that saves the chart
-                var buttonElement = document.createElement("button");
-                buttonElement.innerHTML = "Download as PNG";
-                buttonElement.onclick = () => {
-                    const element = document.createElement('a');
-                    element.setAttribute('href', wrapper.getChart().getImageURI() );
-                    element.setAttribute('download', 'chart.png');
-                    element.style.display = 'none';
-                    document.body.appendChild(element);
-                    element.click();
-                    document.body.removeChild(element);
-                }
-                $("#container").before(buttonElement);
+                    // Create a DOM element that saves the chart
+                    var buttonElement = document.createElement("button");
+                    buttonElement.innerHTML = "Download as PNG";
+                    buttonElement.onclick = () => {
+                        const element = document.createElement('a');
+                        element.setAttribute('href', wrapper.getChart().getImageURI() );
+                        element.setAttribute('download', 'chart.png');
+                        element.style.display = 'none';
+                        document.body.appendChild(element);
+                        element.click();
+                        document.body.removeChild(element);
+                    }
+                    $("#container").before(buttonElement);
+                });
+            }
+        } else {
+            wrapper = new google.visualization.ChartWrapper({
+            chartType: 'Table',
+            dataTable: data,
+            options: {width: '100%', height: '100%'},
+            containerId: 'container'
             });
         }
 
