@@ -214,7 +214,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             wrapper = new google.visualization.ChartWrapper({
             chartType: 'Table',
             dataTable: data,
-            options: {width: '100%', height: '100%'},
+            options: {width: '100%', height: '150px'},
             containerId: 'container'
             });
         }
