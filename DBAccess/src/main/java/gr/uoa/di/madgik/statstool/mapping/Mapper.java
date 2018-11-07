@@ -31,7 +31,9 @@ public class Mapper {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(getClass().getClassLoader().getResource("mappings.json"), MappingProfile[].class);
             for(MappingProfile mappingProfile : mappings) {
-                profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
+                if(!mappingProfile.isHidden()) {
+                    profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
+                }
                 ProfileConfiguration profileConfiguration = new ProfileConfiguration();
                 buildConfiguration(mappingProfile.getFile(), profileConfiguration);
 
