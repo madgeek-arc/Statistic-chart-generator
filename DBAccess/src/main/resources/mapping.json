@@ -14,11 +14,6 @@
             "key": "id",
             "fields": [
                 {
-                    "column": "title",
-                    "name": "title",
-                    "datatype": "text"
-                },
-                {
                     "column": "publisher",
                     "name": "publisher",
                     "datatype": "text"
@@ -66,11 +61,6 @@
             "key": "id",
             "fields": [
                 {
-                    "column": "title",
-                    "name": "title",
-                    "datatype": "text"
-                },
-                {
                     "column": "publisher",
                     "name": "publisher",
                     "datatype": "text"
@@ -117,11 +107,6 @@
             ],
             "key": "id",
             "fields": [
-                {
-                    "column": "title",
-                    "name": "title",
-                    "datatype": "text"
-                },
                 {
                     "column": "publisher",
                     "name": "publisher",

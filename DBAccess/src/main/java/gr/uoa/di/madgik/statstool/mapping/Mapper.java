@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 import gr.uoa.di.madgik.statstool.mapping.entities.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +15,6 @@ import java.util.Set;
 
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.Query;
-import gr.uoa.di.madgik.statstool.domain.Select;
 
 @Component
 public class Mapper {
@@ -33,7 +31,7 @@ public class Mapper {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(getClass().getClassLoader().getResource("mappings.json"), MappingProfile[].class);
             for(MappingProfile mappingProfile : mappings) {
-                profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription()));
+                profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
                 ProfileConfiguration profileConfiguration = new ProfileConfiguration();
                 buildConfiguration(mappingProfile.getFile(), profileConfiguration);
 

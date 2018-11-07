@@ -2,18 +2,18 @@
   {
     "name": "OpenAIRE mapping",
     "description": "To klasiko mapping tou openaire me ta entities pou den vgazoun noima",
+    "usage": "blah blah",
+    "shareholders": ["egw", "esi", "autos"],
+    "complexity": 0,
     "primary": true,
     "file": "mapping.json"
   },
   {
-    "name": "Flat mapping",
-    "description": "Flat mapping apo ton vaggela",
-    "primary": false,
-    "file": "mapping_flat.json"
-  },
-  {
     "name": "Stats db",
     "description": "Opos einai h vasi",
+    "usage": "blah blah",
+    "shareholders": ["egw", "esi", "autos"],
+    "complexity": 0,
     "primary": false,
     "file": "openaire_db.json"
   }
