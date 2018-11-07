@@ -1,18 +1,18 @@
 [
   {
-    "name": "OpenAIRE mapping",
-    "description": "To klasiko mapping tou openaire me ta entities pou den vgazoun noima",
-    "usage": "blah blah",
-    "shareholders": ["egw", "esi", "autos"],
+    "name": "OpenAIRE All-inclusive",
+    "description": "Contains all the OpenAIRE information space and is compatible with the view in www.openaire.eu",
+    "usage": "Best used to create statistics for the entire information space",
+    "shareholders": ["all"],
     "complexity": 0,
     "primary": true,
     "file": "mapping.json"
   },
   {
-    "name": "Stats db",
-    "description": "Opos einai h vasi",
-    "usage": "blah blah",
-    "shareholders": ["egw", "esi", "autos"],
+    "name": "OpenAIRE original",
+    "description": "Contains all the OpenAIRE information space but its entities correspond to the original OpenAIRE schema",
+    "usage": "Best used to navigate the whole information space",
+    "shareholders": ["OpenAIRE admins", "OpenAIRE moderators"],
     "complexity": 0,
     "primary": false,
     "file": "openaire_db.json"
