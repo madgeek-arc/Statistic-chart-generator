@@ -141,20 +141,20 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
     success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj) },
     error: function( jqXHR, textStatus, errorThrown) { 
 
-        $('#loadingImg').hide();
+        $('#loader').hide();
         if (jqXHR.status === 0) {
             $('#errorSpan').show().html('Not connected.\nPlease verify your network connection.');
         } else if (jqXHR.status == 404) {
-            $('#errorSpan').show().html('The requested page not found [404]');
+            $('#errorSpan').show().html('The requested page not found.\nPlease try again or <a href="https://www.openaire.eu/support/helpdesk">contact us</a>, if the problem persists.');
         } else if (jqXHR.status == 500) {
-            $('#errorSpan').show().html('Internal Server Error [500]');
+            $('#errorSpan').show().html('Internal Server Error.\nPlease try again or <a href="https://www.openaire.eu/support/helpdesk">contact us</a>, if the problem persists.');
         } else if (jqXHR.status == 422) {
-            $('#errorSpan').show().html('Chart generation went wrong [422]');
+            $('#errorSpan').show().html('Unable to fetch data from the database.\nPlease try again or <a href="https://www.openaire.eu/support/helpdesk">contact us</a>, if the problem persists.');
         } else if (jqXHR.status == 504) {
-            $('#errorSpan').show().html('Server took unusually too long to respond [504]');
+            $('#errorSpan').show().html('Server took unusually too long to respond.\nPlease try again or <a href="https://www.openaire.eu/support/helpdesk">contact us</a>, if the problem persists.');
         }
         else {
-            $('#errorSpan').show().html('Something unexpected happened [' + jqXHR.status + ']');
+            $('#errorSpan').show().html('An unexpected error has occurred [' + jqXHR.status + '].\nPlease try again or <a href="https://www.openaire.eu/support/helpdesk">contact us</a>, if the problem persists.');
         }
 
      }

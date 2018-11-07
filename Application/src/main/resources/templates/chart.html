@@ -15,7 +15,7 @@
             let params = new URLSearchParams(document.location.search.substring(1));
             let jsonParam = params.get("json");
             let errorElement = document.getElementById("errorSpan");
-            let loadingElement = document.getElementById("loadingImg");
+            let loadingElement = document.getElementById("loader");
 
             if(!jsonParam){
                 loadingElement.style.display = "none";
@@ -43,7 +43,10 @@
 
 <div id="container" style="margin: 0 auto; text-align: center; max-width:100%; display: block">
     <span class="centerer" style="display: inline-block;vertical-align: middle; height: 100%;"></span>
-    <img id="loadingImg" src="images/ajaxloader.gif" alt="Loading" style="display: none"/>
+    <div id="loader" style="display: none">
+        <div style="font-family: 'Lato', sans-serif;">Depending on your data selection, this may take some time.</div>
+        <img src="images/ajaxloader.gif" alt="Loading"/>
+    </div>
     <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;"></span>
 </div>
 
