@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import gr.uoa.di.madgik.statstool.domain.Filter;
-import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Select;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
@@ -20,8 +19,7 @@ public class SqlQueryBuilder {
     private final ProfileConfiguration profileConfiguration;
 
     private final List<Select> mappedSelects = new ArrayList<>();
-    private final List<FilterGroup> mappedFilters = new ArrayList<>();
-    private final List<Filter> entityFilters = new ArrayList<>();
+    private final List<Filter> mappedFilters = new ArrayList<>();
 
     public SqlQueryBuilder(Query query, ProfileConfiguration profileConfiguration) {
         this.query = query;
@@ -45,17 +43,11 @@ public class SqlQueryBuilder {
         }
 
         if (query.getFilters() != null) {
-            for (FilterGroup filterGroup : query.getFilters()) {
-                List<Filter> filters = new ArrayList<>();
-                for (Filter filter : filterGroup.getGroupFilters()) {
-                    String path = mapField(filter.getField());
-                    filters.add(new Filter(path, filter.getType(), filter.getValues(), getDataType(filter.getField())));
-                }
-                mappedFilters.add(new FilterGroup(filters, filterGroup.getOp().toUpperCase()));
+            for (Filter filter : query.getFilters()) {
+                String path = mapField(filter.getField());
+                mappedFilters.add(new Filter(path, filter.getType(), filter.getValues(), getDataType(filter.getField())));
             }
         }
-
-        mappedFilters.add(new FilterGroup(entityFilters, "AND"));
 
         Table entityTable = profileConfiguration.tables.get(query.getEntity());
         return new Query(mappedFilters, mappedSelects, entityTable.getTable(), query.getProfile(), query.getLimit());
@@ -70,7 +62,7 @@ public class SqlQueryBuilder {
         List<Filter> filters = profileConfiguration.tables.get(entity).getFilters();
         if (filters != null) {
             for (Filter filter : filters) {
-                entityFilters.add(new Filter(path + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
+                mappedFilters.add(new Filter(path + "." + filter.getField(), filter.getType(), filter.getValues(), filter.getDatatype()));
             }
         }
     }
