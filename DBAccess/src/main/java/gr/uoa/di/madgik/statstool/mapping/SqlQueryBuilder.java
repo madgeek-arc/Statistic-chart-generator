@@ -110,7 +110,16 @@ public class SqlQueryBuilder {
         if (joins != null) {
             for (Join join : joins) {
                 path += "(" + join.getFirst_field() + ")";
-                path += ".(" + join.getSecond_field() + ")";
+                if(join.getArray() != null) {
+                    if(join.getArray().equals("to")) {
+                        path += "<";
+                    } else if (join.getArray().equals("from")) {
+                        path += ">";
+                    }
+                } else {
+                    path += ".";
+                }
+                path += "(" + join.getSecond_field() + ")";
                 path += join.getSecond_table();
             }
         }

@@ -37,10 +37,12 @@ public class SqlQueryTree {
         final String from;
         final String to;
         final Node node;
+        final String array;
 
-        Edge(String from, String to, Node node) {
+        Edge(String from, String to, String array, Node node) {
             this.from = from;
             this.to = to;
+            this.array = array;
             this.node = node;
         }
     }
@@ -55,7 +57,7 @@ public class SqlQueryTree {
         }
     }
 
-    private Node addEdge(Node parent, String from, String to) {
+    private Node addEdge(Node parent, String from, String to, String array) {
         String fromTable = from.substring(0, from.indexOf("("));
         String fromField = from.substring(from.indexOf("(") + 1, from.indexOf(")"));
 
@@ -75,7 +77,7 @@ public class SqlQueryTree {
             toNode.table = toTable;
             toNode.alias = toTable.substring(0, 1) + Integer.toString(this.count);
             this.count++;
-            toEdge = new Edge(fromField, toField, toNode);
+            toEdge = new Edge(fromField, toField, array, toNode);
             parent.children.put(toTable, toEdge);
         }
         return toEdge.node;
@@ -83,7 +85,7 @@ public class SqlQueryTree {
 
     private void addFilter(Filter filter) {
         Node parent = this.root;
-        List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
+        List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("<|>|\\.")));
         for (int i = 0; i < fldPath.size() - 2; i++) {
             String from;
             String to;
@@ -97,7 +99,7 @@ public class SqlQueryTree {
             } else {
                 to = fldPath.get(i + 1);
             }
-            parent = addEdge(parent, from, to);
+            parent = addEdge(parent, from, to, filter.getField().substring(filter.getField().indexOf(from) + from.length(), filter.getField().indexOf(from) + from.length() + 1));
         }
         String field = fldPath.get(fldPath.size() - 1);
         parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype()));
@@ -105,7 +107,7 @@ public class SqlQueryTree {
 
     private void addSelect(Select select) {
         Node parent = this.root;
-        List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
+        List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("<|>|\\.")));
         for (int i = 0; i < fldPath.size() - 2; i++) {
             String from;
             String to;
@@ -119,7 +121,8 @@ public class SqlQueryTree {
             } else {
                 to = fldPath.get(i + 1);
             }
-            parent = addEdge(parent, from, to);
+
+            parent = addEdge(parent, from, to, select.getField().substring(select.getField().indexOf(from) + from.length(), select.getField().indexOf(from) + from.length() + 1));
         }
         String field = fldPath.get(fldPath.size() - 1);
         parent.selects.add(new Select(parent.alias + "." + field, select.getAggregate(), select.getOrder()));
@@ -157,7 +160,13 @@ public class SqlQueryTree {
             }
 
             for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
-                joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
+                if(entry.getValue().array.equals(".")) {
+                    joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
+                } else if (entry.getValue().array.equals(">")) {
+                    joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + " @> ARRAY[" + entry.getValue().node.alias + "." + entry.getValue().to + "]::text[] ";
+                } else if (entry.getValue().array.equals("<")) {
+                    joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON ARRAY[" + nd.alias + "." + entry.getValue().from + "]::text[] <@ " + entry.getValue().node.alias + "." + entry.getValue().to + " ";
+                }
                 //joins += "JOIN public." + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
                 if (!tables.contains(entry.getValue().node.alias)) {
                     stack.push(entry.getValue().node);

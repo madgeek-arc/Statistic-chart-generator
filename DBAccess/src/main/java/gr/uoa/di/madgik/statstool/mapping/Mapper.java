@@ -86,7 +86,7 @@ public class Mapper {
                 if(relation.getFrom().equals(relation.getTo())) {
                     for (MappingJoin join : relation.getJoins()) {
                         List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
+                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField(), join.getArray()));
                     }
                     String tempFrom = relation.getFrom();
                     List<Join> joinList = new ArrayList<>();
@@ -114,10 +114,16 @@ public class Mapper {
                 } else {
                     for (MappingJoin join : relation.getJoins()) {
                         List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
+                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField(), join.getArray()));
 
                         joins = joinsMap.computeIfAbsent(join.getTo(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField()));
+                        if(join.getArray() != null && join.getArray().equals("to")) {
+                            joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField(), "from"));
+                        } else if (join.getArray() != null && join.getArray().equals("from")) {
+                            joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField(), "to"));
+                        } else {
+                            joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField(), join.getArray()));
+                        }
                     }
                     String tempFrom = relation.getFrom();
                     List<Join> joinList = new ArrayList<>();

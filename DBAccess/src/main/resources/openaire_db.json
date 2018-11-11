@@ -213,16 +213,11 @@
             "to": "project",
             "joins": [
                 {
-                    "from": "result",
+                    "from": "project",
                     "fromField": "id",
-                    "to": "project_results",
-                    "toField": "result"
-                },
-                {
-                    "from": "project_results",
-                    "fromField": "id",
-                    "to": "project",
-                    "toField": "id"
+                    "to": "result",
+                    "toField": "projects",
+                    "array": "to"
                 }
             ]
         },

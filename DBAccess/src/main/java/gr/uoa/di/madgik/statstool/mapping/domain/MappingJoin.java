@@ -5,6 +5,7 @@ public class MappingJoin {
     private String fromField;
     private String to;
     private String toField;
+    private String array;
 
     MappingJoin() {}
 
@@ -38,5 +39,13 @@ public class MappingJoin {
 
     public void setToField(String toField) {
         this.toField = toField;
+    }
+
+    public String getArray() {
+        return array;
+    }
+
+    public void setArray(String array) {
+        this.array = array;
     }
 }
