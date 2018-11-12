@@ -11,6 +11,7 @@ public class MappingProfile {
     private List<String> shareholders;
     private int complexity;
     private boolean primary;
+    private boolean hidden;
     private String file;
 
     MappingProfile() {}
@@ -37,6 +38,14 @@ public class MappingProfile {
 
     public void setPrimary(boolean primary) {
         this.primary = primary;
+    }
+
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    public void setHidden(boolean hidden) {
+        this.hidden = hidden;
     }
 
     public String getFile() {
