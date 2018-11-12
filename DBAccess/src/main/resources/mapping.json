@@ -210,6 +210,11 @@
                     "column": "code",
                     "name": "code",
                     "datatype": "text"
+                },
+                {
+                    "column": "numpubs",
+                    "name": "number of publications",
+                    "datatype": "int"
                 }
             ],
             "relations": [ "publication", "dataset", "software", "organization"]
