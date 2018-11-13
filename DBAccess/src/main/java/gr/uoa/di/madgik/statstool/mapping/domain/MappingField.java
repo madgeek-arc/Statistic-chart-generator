@@ -5,6 +5,7 @@ public class MappingField {
     private String name;
     private String datatype;
     private String sqlTable;
+    private String array;
 
     MappingField() {}
 
@@ -38,5 +39,13 @@ public class MappingField {
 
     public void setSqlTable(String sqlTable) {
         this.sqlTable = sqlTable;
+    }
+
+    public String getArray() {
+        return array;
+    }
+
+    public void setArray(String array) {
+        this.array = array;
     }
 }

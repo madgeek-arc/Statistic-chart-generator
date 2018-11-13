@@ -37,14 +37,14 @@ public class SqlQueryBuilder {
 
         int selectCount = 1;
         for (Select select : query.getSelect()) {
-            String path = mapField(select.getField());
+            String path = mapField(select.getField(), true);
             mappedSelects.add(new Select(path, select.getAggregate(), selectCount));
             selectCount++;
         }
 
         if (query.getFilters() != null) {
             for (Filter filter : query.getFilters()) {
-                String path = mapField(filter.getField());
+                String path = mapField(filter.getField(), false);
                 mappedFilters.add(new Filter(path, filter.getType(), filter.getValues(), getDataType(filter.getField())));
             }
         }
@@ -67,7 +67,7 @@ public class SqlQueryBuilder {
         }
     }
 
-    private String mapField(String field) {
+    private String mapField(String field, Boolean select) {
         String path = "";
         List<String> fldPath = new ArrayList<>(Arrays.asList(field.split("\\.")));
         if (fldPath.size() == 1) {
@@ -90,10 +90,14 @@ public class SqlQueryBuilder {
             addEntityFilters(fldPath.get(fldPath.size() - 2), path);
             Field field1 = profileConfiguration.fields.get(fldPath.get(fldPath.size() - 2) + "." + fldPath.get(fldPath.size() - 1));
             if (field1 != null) {
-                if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
-                    path += joinTables(table1.getTable(), field1.getTable());
+                if(field1.getArray() != null && !select) {
+                    path += ">" + field1.getArray();
+                } else {
+                    if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
+                        path += joinTables(table1.getTable(), field1.getTable());
+                    }
+                    path += "." + field1.getColumn();
                 }
-                path += "." + field1.getColumn();
             } else {
                 Table table2 = profileConfiguration.tables.get(fldPath.get(fldPath.size() - 1));
                 path += joinTables(table1.getTable(), table2.getTable());

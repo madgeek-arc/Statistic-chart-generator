@@ -58,6 +58,20 @@
                     "name": "pid type",
                     "sqlTable": "result_pids",
                     "datatype": "text"
+                },
+                {
+                    "column": "funder",
+                    "name": "funder",
+                    "sqlTable": "project",
+                    "array": "funders",
+                    "datatype": "text"
+                },
+                {
+                    "column": "funding_lvl0",
+                    "name": "funding level 0",
+                    "sqlTable": "project",
+                    "array": "funding_lvl0",
+                    "datatype": "text"
                 }
             ],
             "relations": [ "project", "datasource", "organization", "result" ]

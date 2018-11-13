@@ -74,9 +74,9 @@ public class Mapper {
 
                 for(MappingField field : entity.getFields()) {
                     if(field.getSqlTable() != null) {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype(), field.getArray()));
                     } else {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype(), field.getArray()));
                     }
                 }
             }
