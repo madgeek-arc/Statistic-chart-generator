@@ -2,39 +2,23 @@
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
     <meta charset="utf-8"/>
+    <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet"/>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript" src="js/exportToTable.js"></script>
-    <title>Table</title>
+    <title>Table Generator</title>
     <script th:inline="javascript">
     /*<![CDATA[*/
 
-        function drawTable() {
-            var data = new google.visualization.DataTable();
-            data.addColumn('string', 'Name');
-            data.addColumn('number', 'Salary');
-            data.addColumn('boolean', 'Full Time Employee');
-            data.addRows([
-            ['Mike',  {v: 10000, f: '$10,000'}, true],
-            ['Jim',   {v:8000,   f: '$8,000'},  false],
-            ['Alice', {v: 12500, f: '$12,500'}, true],
-            ['Bob',   {v: 7000,  f: '$7,000'},  true]
-            ]);
-
-            var table = new google.visualization.Table(document.getElementById('container'));
-
-            table.draw(data, {page:'enable', allowHtml:true, showRowNumber: true, width: '100%', height: 'auto'});
-        }
-
         $( document ).ready(function(){
-            //Setting container's height & <width></width>
+            //Setting container's height & width
             $("#container").height =  window.innerHeight;
             $("#container").width = window.innerWidth;
 
             let params = new URLSearchParams(document.location.search.substring(1));
             let jsonParam = params.get("json");
             let errorElement = document.getElementById("errorSpan");
-            let loadingElement = document.getElementById("loadingImg");
+            let loadingElement = document.getElementById("loader");
 
             if(!jsonParam){
                 loadingElement.style.display = "none";
@@ -48,9 +32,8 @@
                 try {
                     let decodedJsonParam = decodeURI(jsonParam)
                     console.log(decodedJsonParam);
-
-                    google.charts.load('current', {'packages':['table']});
-                    google.charts.setOnLoadCallback(drawTable);
+                    
+                    drawTable(JSON.parse(decodedJsonParam));
 
                 // catches a malformed URI
                 } catch(e) {
@@ -65,10 +48,13 @@
 
 <body style="margin: 0 auto">
 
-<div id="container" style="margin: 0 auto; text-align: center; max-width:100%; height: 600px; display: block">
+<div id="container" style="margin: 0 auto; text-align: center; max-width:100%; display: block">
     <span class="centerer" style="display: inline-block;vertical-align: middle; height: 100%;"></span>
-    <img id="loadingImg" src="/images/ajaxloader.gif" alt="Loading" style="display: none"/>
-    <span id="errorSpan" style="display: none">Unavailable Query</span>
+    <div id="loader" style="display: none">
+        <div style="font-family: 'Lato', sans-serif;">Depending on your data selection, this may take some time.</div>
+        <div><img src="images/ajaxloader.gif" alt="Loading"/></div>
+    </div>
+    <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;"></span>
 </div>
     
 </body>
