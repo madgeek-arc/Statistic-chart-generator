@@ -102,7 +102,12 @@ public class SqlQueryTree {
             parent = addEdge(parent, from, to, filter.getField().substring(filter.getField().indexOf(from) + from.length(), filter.getField().indexOf(from) + from.length() + 1));
         }
         String field = fldPath.get(fldPath.size() - 1);
-        parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype()));
+        String type = filter.getField().substring(filter.getField().indexOf(field) - 1, filter.getField().indexOf(field));
+        if(type.equals(">")) {
+            parent.filters.add(new Filter(parent.alias + "." + field, "@>", filter.getValues(), filter.getDatatype()));
+        } else {
+            parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype()));
+        }
     }
 
     private void addSelect(Select select) {
@@ -270,6 +275,12 @@ public class SqlQueryTree {
                 for (String value : filter.getValues()) {
                     multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
                     parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                }
+            } else if(filter.getType().equals("@>")) {
+                for (String value : filter.getValues()) {
+                    multipleFilters.add(filter.getField() + filter.getType() + "ARRAY[?]::text[]");
+                    parameters.add(mapType(value, filter.getDatatype()));
+                    break;
                 }
             }
             if (!multipleFilters.isEmpty()) {

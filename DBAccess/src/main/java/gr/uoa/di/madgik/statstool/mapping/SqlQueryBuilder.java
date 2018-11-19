@@ -37,14 +37,14 @@ public class SqlQueryBuilder {
 
         int selectCount = 1;
         for (Select select : query.getSelect()) {
-            String path = mapField(select.getField(), true);
+            String path = mapField(select.getField(), null);
             mappedSelects.add(new Select(path, select.getAggregate(), selectCount));
             selectCount++;
         }
 
         if (query.getFilters() != null) {
             for (Filter filter : query.getFilters()) {
-                String path = mapField(filter.getField(), false);
+                String path = mapField(filter.getField(), filter.getType());
                 mappedFilters.add(new Filter(path, filter.getType(), filter.getValues(), getDataType(filter.getField())));
             }
         }
@@ -67,7 +67,7 @@ public class SqlQueryBuilder {
         }
     }
 
-    private String mapField(String field, Boolean select) {
+    private String mapField(String field, String fType) {
         String path = "";
         List<String> fldPath = new ArrayList<>(Arrays.asList(field.split("\\.")));
         if (fldPath.size() == 1) {
@@ -90,7 +90,7 @@ public class SqlQueryBuilder {
             addEntityFilters(fldPath.get(fldPath.size() - 2), path);
             Field field1 = profileConfiguration.fields.get(fldPath.get(fldPath.size() - 2) + "." + fldPath.get(fldPath.size() - 1));
             if (field1 != null) {
-                if(field1.getArray() != null && !select) {
+                if(field1.getArray() != null && fType!=null && fType.equals("=")) {
                     path += ">" + field1.getArray();
                 } else {
                     if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
