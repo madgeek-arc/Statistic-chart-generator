@@ -278,7 +278,7 @@ public class SqlQueryTree {
                 }
             } else if(filter.getType().equals("@>")) {
                 for (String value : filter.getValues()) {
-                    multipleFilters.add(filter.getField() + filter.getType() + "ARRAY[?]::text[]");
+                    multipleFilters.add(filter.getField() + filter.getType() + "ARRAY[?]::" + filter.getDatatype() + "[]");
                     parameters.add(mapType(value, filter.getDatatype()));
                     break;
                 }

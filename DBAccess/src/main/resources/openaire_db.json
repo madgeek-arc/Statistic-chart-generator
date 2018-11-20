@@ -240,16 +240,11 @@
             "to": "datasource",
             "joins": [
                 {
-                    "from": "result",
+                    "from": "datasource",
                     "fromField": "id",
-                    "to": "result_datasources",
-                    "toField": "id"
-                },
-                {
-                    "from": "result_datasources",
-                    "fromField": "datasource",
-                    "to": "datasource",
-                    "toField": "id"
+                    "to": "result",
+                    "toField": "datasources",
+                    "array": "to"
                 }
             ]
         },
