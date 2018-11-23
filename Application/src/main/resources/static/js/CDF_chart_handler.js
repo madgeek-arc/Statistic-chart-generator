@@ -5,7 +5,7 @@ var domainName = "localhost";
 var protocol = "http";
 
 var domainLink = protocol+"://"+domainName+":"+port;
-const DEBUGMODE = false;
+const DEBUGMODE = true;
 
 function fetchChart(jsonData){
     $.getJSON(jsonData, handleAdminSideData)
