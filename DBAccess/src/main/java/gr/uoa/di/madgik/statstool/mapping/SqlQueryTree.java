@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
 import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Select;
 
@@ -10,6 +11,7 @@ public class SqlQueryTree {
     private final Node root;
     private int count;
     private int limit;
+    private List<FilterGroup> filterGroups = new ArrayList<>();
 
     public SqlQueryTree(Query query) {
         this.root = new Node();
@@ -19,8 +21,12 @@ public class SqlQueryTree {
         for (Select select : query.getSelect()) {
             addSelect(select);
         }
-        for (Filter filter : query.getFilters()) {
-            addFilter(filter);
+        for (FilterGroup filterGroup: query.getFilters()) {
+            List<Filter> filters = new ArrayList<>();
+            for (Filter filter : filterGroup.getGroupFilters()) {
+                filters.add(addFilter(filter));
+            }
+            filterGroups.add(new FilterGroup(filters, filterGroup.getOp()));
         }
         this.limit = query.getLimit();
     }
@@ -28,7 +34,7 @@ public class SqlQueryTree {
     private static class Node {
         String table;
         String alias;
-        final List<Filter> filters = new ArrayList<>();
+        //final List<Filter> filters = new ArrayList<>();
         final List<Select> selects = new ArrayList<>();
         final HashMap<String, Edge> children = new HashMap<>();
     }
@@ -83,7 +89,7 @@ public class SqlQueryTree {
         return toEdge.node;
     }
 
-    private void addFilter(Filter filter) {
+    private Filter addFilter(Filter filter) {
         Node parent = this.root;
         List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("<|>|\\.")));
         for (int i = 0; i < fldPath.size() - 2; i++) {
@@ -104,9 +110,9 @@ public class SqlQueryTree {
         String field = fldPath.get(fldPath.size() - 1);
         String type = filter.getField().substring(filter.getField().indexOf(field) - 1, filter.getField().indexOf(field));
         if(type.equals(">")) {
-            parent.filters.add(new Filter(parent.alias + "." + field, "@>", filter.getValues(), filter.getDatatype()));
+            return new Filter(parent.alias + "." + field, "@>", filter.getValues(), filter.getDatatype());
         } else {
-            parent.filters.add(new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype()));
+            return new Filter(parent.alias + "." + field, filter.getType(), filter.getValues(), filter.getDatatype());
         }
     }
 
@@ -138,7 +144,6 @@ public class SqlQueryTree {
         List<String> tables = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
         String joins = "";
-        Set<Filter> filters = new HashSet<>();
         List<String> group = new ArrayList<>();
 
         stack.push(this.root);
@@ -160,7 +165,6 @@ public class SqlQueryTree {
                         }
                     }
                 }
-                filters.addAll(nd.filters);
                 tables.add(nd.alias);
             }
 
@@ -191,29 +195,32 @@ public class SqlQueryTree {
             }
         }
         query += " FROM " + joins;
-        List<List<String>> allTheFilters = mapFilters(filters, parameters);
+        List<String> op = new ArrayList<>();
+        List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
         if(allTheFilters != null && !allTheFilters.isEmpty()) {
             query += "WHERE ";
             first = true;
-            for (List<String> multipleFilters : allTheFilters) {
+            int group_id = 0;
+            for (List<String> groupFilters : allTheFilters) {
                 if (first) {
                     first = false;
                 } else {
                     query += " AND ";
                 }
                 boolean first_filter = true;
-                for (String filter : multipleFilters) {
-                    if (first_filter && multipleFilters.size() > 1) {
+                for (String filter : groupFilters) {
+                    if (first_filter && groupFilters.size() > 1) {
                         query += "(";
                         first_filter = false;
-                    } else if (multipleFilters.size() > 1) {
-                        query += " or ";
+                    } else if (groupFilters.size() > 1) {
+                        query += " " + op.get(group_id) + " ";
                     }
                     query += filter;
                 }
-                if (multipleFilters.size() > 1) {
+                if (groupFilters.size() > 1) {
                     query += ")";
                 }
+                group_id++;
             }
         }
         if(!group.isEmpty()) {
@@ -246,45 +253,53 @@ public class SqlQueryTree {
         return query;
     }
 
-    private List<List<String>> mapFilters(Set<Filter> filters, List<Object> parameters) {
+    private List<List<String>> mapFilters(List<FilterGroup> filterGroups, List<Object> parameters, List<String> op) {
         List<List<String>> mappedFilters = new ArrayList<>();
-        for (Filter filter : filters) {
-            List<String> multipleFilters = new ArrayList<>();
-            if (filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
-                for (String value : filter.getValues()) {
-                    multipleFilters.add(filter.getField() + filter.getType() + "?");
-                    parameters.add(mapType(value, filter.getDatatype()));
+        for (FilterGroup filterGroup : filterGroups) {
+            List<String> groupFilters = new ArrayList<>();
+            for (Filter filter : filterGroup.getGroupFilters()) {
+                if (filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
+                    for (String value : filter.getValues()) {
+                        groupFilters.add(filter.getField() + filter.getType() + "?");
+                        parameters.add(mapType(value, filter.getDatatype()));
+                        break;
+                    }
+                } else if (filter.getType().equals("between")) {
+                    for (int i = 0; i < filter.getValues().size(); i += 2) {
+                        groupFilters.add(filter.getField() + " BETWEEN ? AND ?");
+                        parameters.add(mapType(filter.getValues().get(i), filter.getDatatype()));
+                        parameters.add(mapType(filter.getValues().get(i + 1), filter.getDatatype()));
+                        break;
+                    }
+                } else if (filter.getType().equals("contains")) {
+                    for (String value : filter.getValues()) {
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ? || \'%\'");
+                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                        break;
+                    }
+                } else if (filter.getType().equals("starts_with")) {
+                    for (String value : filter.getValues()) {
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE ? || \'%\'");
+                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                        break;
+                    }
+                } else if (filter.getType().equals("ends_with")) {
+                    for (String value : filter.getValues()) {
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
+                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
+                        break;
+                    }
+                } else if(filter.getType().equals("@>")) {
+                    for (String value : filter.getValues()) {
+                        groupFilters.add(filter.getField() + filter.getType() + "ARRAY[?]::" + filter.getDatatype() + "[]");
+                        parameters.add(mapType(value, filter.getDatatype()));
+                        break;
+                    }
                 }
-            } else if (filter.getType().equals("between")) {
-                for (int i = 0; i < filter.getValues().size(); i += 2) {
-                    multipleFilters.add(filter.getField() + " BETWEEN ? AND ?");
-                    parameters.add(mapType(filter.getValues().get(i), filter.getDatatype()));
-                    parameters.add(mapType(filter.getValues().get(i + 1), filter.getDatatype()));
                 }
-            } else if (filter.getType().equals("contains")) {
-                for (String value : filter.getValues()) {
-                    multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ? || \'%\'");
-                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                }
-            } else if (filter.getType().equals("starts_with")) {
-                for (String value : filter.getValues()) {
-                    multipleFilters.add("lower(" + filter.getField() + ") LIKE ? || \'%\'");
-                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                }
-            } else if (filter.getType().equals("ends_with")) {
-                for (String value : filter.getValues()) {
-                    multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
-                    parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                }
-            } else if(filter.getType().equals("@>")) {
-                for (String value : filter.getValues()) {
-                    multipleFilters.add(filter.getField() + filter.getType() + "ARRAY[?]::" + filter.getDatatype() + "[]");
-                    parameters.add(mapType(value, filter.getDatatype()));
-                    break;
-                }
-            }
-            if (!multipleFilters.isEmpty()) {
-                mappedFilters.add(multipleFilters);
+            if (!groupFilters.isEmpty()) {
+                mappedFilters.add(groupFilters);
+                op.add(filterGroup.getOp());
             }
         }
         return mappedFilters;

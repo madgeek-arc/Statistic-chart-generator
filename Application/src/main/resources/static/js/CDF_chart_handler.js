@@ -76,6 +76,7 @@ function handleAdminSideData(dataJSONobj)
         () => loadJS("https://code.highcharts.com/modules/no-data-to-display.js",
         () => loadJS("https://code.highcharts.com/highcharts-3d.js",
         () => loadJS("https://code.highcharts.com/modules/exporting.js",
+        () => loadJS("https://code.highcharts.com/modules/offline-exporting.js",
         
         function(){ 
             //Hold the Library state
@@ -113,7 +114,7 @@ function handleAdminSideData(dataJSONobj)
                         domainLink+"/chart");
         }
             
-        )))));
+        ))))));
         
         break;
     }

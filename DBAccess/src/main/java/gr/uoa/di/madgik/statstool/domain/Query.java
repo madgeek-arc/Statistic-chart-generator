@@ -3,7 +3,7 @@ package gr.uoa.di.madgik.statstool.domain;
 import java.util.List;
 
 public class Query {
-    private List<Filter> filters;
+    private List<FilterGroup> filters;
     private List<Select> select;
     private String entity;
     private String profile;
@@ -11,7 +11,7 @@ public class Query {
 
     public Query() {}
 
-    public Query(List<Filter> filters, List<Select> select, String entity, String profile, int limit) {
+    public Query(List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit) {
         this.filters = filters;
         this.select = select;
         this.entity = entity;
@@ -19,11 +19,11 @@ public class Query {
         this.limit = limit;
     }
 
-    public List<Filter> getFilters() {
+    public List<FilterGroup> getFilters() {
         return filters;
     }
 
-    public void setFilters(List<Filter> filters) {
+    public void setFilters(List<FilterGroup> filters) {
         this.filters = filters;
     }
 
