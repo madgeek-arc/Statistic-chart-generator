@@ -6,6 +6,7 @@
     "shareholders": ["All"],
     "complexity": 0,
     "primary": true,
+    "hidden": false,
     "file": "mapping.json"
   },
   {
@@ -15,6 +16,17 @@
     "shareholders": ["Admins", "Moderators"],
     "complexity": 0,
     "primary": false,
+    "hidden": false,
+    "file": "openaire_db.json"
+  },
+  {
+    "name": "Stats db",
+    "description": "Contains all the OpenAIRE information space but its entities correspond to the original OpenAIRE schema",
+    "usage": "Best used to navigate the whole information space",
+    "shareholders": ["Monitor Portal"],
+    "complexity": 0,
+    "primary": false,
+    "hidden": true,
     "file": "openaire_db.json"
   }
 ]

@@ -5,7 +5,7 @@ var domainName = "localhost";
 var protocol = "http";
 
 var domainLink = protocol+"://"+domainName+":"+port;
-const DEBUGMODE = false;
+const DEBUGMODE = true;
 
 function fetchChart(jsonData){
     $.getJSON(jsonData, handleAdminSideData)
@@ -180,42 +180,31 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             console.log('Options:');
             console.log(originalDataJSONobj.chartDescription.options);
         }
-
-        var wrapper;
-        if( !originalDataJSONobj.chartDescription.tableForm ) {
             
-            wrapper = new google.visualization.ChartWrapper({
-                chartType: originalDataJSONobj.chartDescription.chartType,
-                dataTable: data,
-                options: originalDataJSONobj.chartDescription.options,
-                containerId: 'container'
-            });
-
-            if(originalDataJSONobj.chartDescription.options.exporting) {
-
-                google.visualization.events.addListener(wrapper, 'ready', function () {
-
-                    // Create a DOM element that saves the chart
-                    var buttonElement = document.createElement("button");
-                    buttonElement.innerHTML = "Download as PNG";
-                    buttonElement.onclick = () => {
-                        const element = document.createElement('a');
-                        element.setAttribute('href', wrapper.getChart().getImageURI() );
-                        element.setAttribute('download', 'chart.png');
-                        element.style.display = 'none';
-                        document.body.appendChild(element);
-                        element.click();
-                        document.body.removeChild(element);
-                    }
-                    $("#container").before(buttonElement);
-                });
-            }
-        } else {
-            wrapper = new google.visualization.ChartWrapper({
-            chartType: 'Table',
+        var wrapper = new google.visualization.ChartWrapper({
+            chartType: originalDataJSONobj.chartDescription.chartType,
             dataTable: data,
-            options: {width: '100%', height: '150px'},
+            options: originalDataJSONobj.chartDescription.options,
             containerId: 'container'
+        });
+
+        if(originalDataJSONobj.chartDescription.options.exporting) {
+
+            google.visualization.events.addListener(wrapper, 'ready', function () {
+
+                // Create a DOM element that saves the chart
+                var buttonElement = document.createElement("button");
+                buttonElement.innerHTML = "Download as PNG";
+                buttonElement.onclick = () => {
+                    const element = document.createElement('a');
+                    element.setAttribute('href', wrapper.getChart().getImageURI() );
+                    element.setAttribute('download', 'chart.png');
+                    element.style.display = 'none';
+                    document.body.appendChild(element);
+                    element.click();
+                    document.body.removeChild(element);
+                }
+                $("#container").before(buttonElement);
             });
         }
 

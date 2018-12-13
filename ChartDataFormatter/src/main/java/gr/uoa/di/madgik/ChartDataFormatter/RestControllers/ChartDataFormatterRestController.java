@@ -22,7 +22,8 @@ import java.util.Arrays;
 
 
 /**
- * The entry point to the Chart Data Formatter. This class is responsible of handling and fulfilling the requests made.
+ * One of the two entry points to the Chart Data Formatter (the second being {@link TableDataFormatterRestController}.
+ * This class is responsible of handling and fulfilling the requests made for the creation of charts.
  */
 @RestController
 @RequestMapping("/chart")
