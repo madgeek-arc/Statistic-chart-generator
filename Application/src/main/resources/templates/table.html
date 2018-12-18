@@ -12,8 +12,8 @@
 
         $( document ).ready(function(){
             //Setting container's height & width
-            $("#container").height =  window.innerHeight;
-            $("#container").width = window.innerWidth;
+            $("#container").height(window.innerHeight);
+            $("#container").width(window.innerWidth);
 
             let params = new URLSearchParams(document.location.search.substring(1));
             let jsonParam = params.get("json");

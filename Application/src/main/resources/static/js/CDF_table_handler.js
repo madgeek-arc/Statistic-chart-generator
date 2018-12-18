@@ -18,7 +18,7 @@ function drawTable(dataJSONobj){
     RequestInfoObj.chartsInfo = [];
     //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
     //along with the requested Chart type
-    RequestInfoObj.chartsInfo = dataJSONobj.chartDescription.queriesInfo;
+    RequestInfoObj.chartsInfo = dataJSONobj.tableDescription.queriesInfo;
 
     passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                 domainLink+"/table");
@@ -60,7 +60,11 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
         }
 
      }
-    }).done()
+    }).done( 
+        () => {
+            parent.postMessage(document.getElementById('container').scrollHeight ,location.protocol + '//' + location.hostname + ':4200');
+        }
+    )
     .fail() 
     .always();
 }
@@ -78,16 +82,21 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
     var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
 
     var table = new google.visualization.Table(document.getElementById('container'));
+    //Reset container's height & width in order to host the table
+    $("#container").height('auto');
+    $("#container").width('auto');
+    
     if(data.getNumberOfRows() > 10) {
         table.draw(data, {   
                 page: 'enable',
+                pageSize: originalDataJSONobj.tableDescription.options.pageSize,
                 showRowNumber: true,
-                width: '100%', height: 'auto'});
+                width: '100%', height: '100%'});
         return;
     }
     table.draw(data, {
         showRowNumber: true,
-        width: '100%', height: 'auto'});
+        width: '100%', height: '100%'});
 }
 
 function fillGoogleChartsDataTable(responseData, originJson){
@@ -100,7 +109,7 @@ function fillGoogleChartsDataTable(responseData, originJson){
     if(dataColumns.length > 0 && ( columnsType === null || ((columnsType !== null) && (dataColumns.length === (columnsType.length + 1))))){
 
         if(columnsType !== null) 
-            originJson.chartDescription.options.series = new Array(columnsType.length);
+            originJson.tableDescription.options.series = new Array(columnsType.length);
 
         for(let index = 0; index < dataColumns.length; index++){
             if(index == 0)
@@ -108,7 +117,7 @@ function fillGoogleChartsDataTable(responseData, originJson){
             else{
                 data.addColumn('number', dataColumns[index]);
                 if(columnsType !== null)
-                    originJson.chartDescription.options.series[index-1] = {type: columnsType[index-1]};
+                    originJson.tableDescription.options.series[index-1] = {type: columnsType[index-1]};
             }
         }
         data.addRows(responseData.dataTable);
