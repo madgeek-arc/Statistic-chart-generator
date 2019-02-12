@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.GoogleChartsDataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.HighChartsDataFormatter;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
@@ -84,8 +85,27 @@ public class RequestBodyHandler {
                     return googleChartsJsonResponse;
                 case HighMaps:
 
-                    log.info("HighMaps data formation not implemented yet");
-                    return new HighChartsJsonResponse();
+                    this.logChartInfo(requestJson, statsServiceResults);
+
+                    GoogleChartsJsonResponse tempHighMapsJsonResponse;
+                    try{
+                        List<SupportedChartTypes> tempTypeList = new ArrayList<>();
+                        for (String chartName : requestJson.getChartNames())
+                            tempTypeList.add(SupportedChartTypes.area);
+
+                        tempHighMapsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults,
+                                tempTypeList, requestJson.getChartNames());
+
+                    } catch (DataFormatter.DataFormationException e) {
+                        throw new RequestBodyException(e.getMessage(),e, HttpStatus.UNPROCESSABLE_ENTITY);
+                    }
+                    if(tempHighMapsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+
+                    tempHighMapsJsonResponse.logJsonResponse();
+
+                    return tempHighMapsJsonResponse;
+
 
                 default:
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);

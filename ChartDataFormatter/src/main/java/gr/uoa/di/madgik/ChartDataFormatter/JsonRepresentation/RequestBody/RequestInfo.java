@@ -43,7 +43,10 @@ public class RequestInfo {
 
         for (ChartInfo chartInfo : chartsInfo)
             try {
-                retList.add(SupportedChartTypes.valueOf(chartInfo.getChartType()));
+                if(chartInfo.getChartType() != null)
+                    retList.add(SupportedChartTypes.valueOf(chartInfo.getChartType()));
+                else
+                    retList.add(null);
             }catch (IllegalArgumentException e){
                 retList.add(null);
             }

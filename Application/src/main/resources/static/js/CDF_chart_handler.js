@@ -237,14 +237,16 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
         {
             loadJS("https://code.highcharts.com/mapdata/custom/world-robinson-highres.js",
             () => {
-
+                
+                mapJson = originalDataJSONobj.mapDescription;
+                mapJson.series[0].data = responseData.dataTable;
 
                 if(DEBUGMODE) {
-                    console.log(chartJson);
+                    console.log(mapJson);
                     console.log("Drawing HighMaps");
                 }
 
-                // Highcharts.mapChart('container',chartJson);
+                Highcharts.mapChart('container',mapJson);
             });
 
 
