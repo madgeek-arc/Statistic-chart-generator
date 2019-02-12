@@ -340,8 +340,10 @@ public class HighChartsDataFormatter extends DataFormatter{
 
                 dataSeries.add(new ArrayOfObjects(mainSlicesValuesArray));
                 dataSeriesTypes.add(chartType.name());
+                log.info("Added " + chartType.name());
 
-                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()));
+                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
+                        null, dataSeriesTypes);
                 ret.setDrilldown(drillDownArray);
                 return ret;
 

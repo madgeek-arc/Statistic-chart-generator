@@ -77,6 +77,7 @@ function handleAdminSideData(dataJSONobj)
         () => loadJS("https://code.highcharts.com/highcharts-3d.js",
         () => loadJS("https://code.highcharts.com/modules/exporting.js",
         () => loadJS("https://code.highcharts.com/modules/offline-exporting.js",
+        () => loadJS("http://code.highcharts.com/modules/export-data.js",
         
         function(){ 
             //Hold the Library state
@@ -114,8 +115,45 @@ function handleAdminSideData(dataJSONobj)
                         domainLink+"/chart");
         }
             
-        ))))));
+        )))))));
         
+        break;
+    }
+    case "HighMaps":
+    {
+        loadJS("http://code.highcharts.com/maps/highmaps.js",
+        () => loadJS("https://code.highcharts.com/modules/exporting.js",
+        () => loadJS("https://code.highcharts.com/modules/offline-exporting.js",
+        () => loadJS("http://code.highcharts.com/modules/export-data.js",
+        function () {
+            console.log("Incoming JSON",dataJSONobj);
+            
+            //Hold the Library state
+            libraryType = dataJSONobj.library;
+
+            var RequestInfoObj = new Object();
+            //Pass the Chart library to ChartDataFormatter
+            RequestInfoObj.library = dataJSONobj.library;
+            //Create ChartInfo Object Array
+            RequestInfoObj.chartsInfo = [];
+
+            //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
+            dataJSONobj.mapDescription.queries.
+            forEach(element => {
+                var ChartInfoObj = new Object();
+
+                if(element.name === undefined)
+                    ChartInfoObj.name = null;
+                else
+                    ChartInfoObj.name = element.name;
+
+                ChartInfoObj.query = element.query;
+                RequestInfoObj.chartsInfo.push(ChartInfoObj);
+            });
+            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                domainLink+"/chart");
+        }))));
+
         break;
     }
     default:
@@ -171,60 +209,90 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
         console.log(responseData);
     }
     
+    
     //Hide children elements of container
     $("#container").children().remove();
     
-    if(libraryType === "GoogleCharts"){
-
-        var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
-        if(DEBUGMODE) {
-            console.log('Options:');
-            console.log(originalDataJSONobj.chartDescription.options);
-        }
+    switch(libraryType) {
+        case "HighCharts":
+        {
+            var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
             
-        var wrapper = new google.visualization.ChartWrapper({
-            chartType: originalDataJSONobj.chartDescription.chartType,
-            dataTable: data,
-            options: originalDataJSONobj.chartDescription.options,
-            containerId: 'container'
-        });
-
-        if(originalDataJSONobj.chartDescription.options.exporting) {
-
-            google.visualization.events.addListener(wrapper, 'ready', function () {
-
-                // Create a DOM element that saves the chart
-                var buttonElement = document.createElement("button");
-                buttonElement.innerHTML = "Download as PNG";
-                buttonElement.onclick = () => {
-                    const element = document.createElement('a');
-                    element.setAttribute('href', wrapper.getChart().getImageURI() );
-                    element.setAttribute('download', 'chart.png');
-                    element.style.display = 'none';
-                    document.body.appendChild(element);
-                    element.click();
-                    document.body.removeChild(element);
+            Highcharts.setOptions({
+                lang: {
+                    drillUpText: '<< Back'
                 }
-                $("#container").before(buttonElement);
-            });
-        }
+            })
 
-        wrapper.draw();
-    }
-    if(libraryType === "HighCharts"){
-        var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
-
-        if(DEBUGMODE) {
-            console.log(chartJson);
-            console.log("Drawing HighCharts");
-        }
-        
-        Highcharts.setOptions({
-            lang: {
-                drillUpText: '<< Back'
+            if(DEBUGMODE) {
+                console.log(chartJson);
+                console.log("Drawing HighCharts");
             }
-        })
-        Highcharts.chart('container',chartJson);
+
+            Highcharts.chart('container',chartJson);
+            
+            break;
+        }
+        case "HighMaps":
+        {
+            loadJS("https://code.highcharts.com/mapdata/custom/world-robinson-highres.js",
+            () => {
+
+
+                if(DEBUGMODE) {
+                    console.log(chartJson);
+                    console.log("Drawing HighMaps");
+                }
+
+                // Highcharts.mapChart('container',chartJson);
+            });
+
+
+            break;
+        }
+        case "GoogleCharts":
+        {
+            var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
+            if(DEBUGMODE) {
+                console.log("Drawing GoogleCharts");
+                console.log('Options:');
+                console.log(originalDataJSONobj.chartDescription.options);
+            }
+                
+            var wrapper = new google.visualization.ChartWrapper({
+                chartType: originalDataJSONobj.chartDescription.chartType,
+                dataTable: data,
+                options: originalDataJSONobj.chartDescription.options,
+                containerId: 'container'
+            });
+
+            if(originalDataJSONobj.chartDescription.options.exporting) {
+
+                google.visualization.events.addListener(wrapper, 'ready', function () {
+
+                    // Create a DOM element that saves the chart
+                    var buttonElement = document.createElement("button");
+                    buttonElement.innerHTML = "Download as PNG";
+                    buttonElement.onclick = () => {
+                        const element = document.createElement('a');
+                        element.setAttribute('href', wrapper.getChart().getImageURI() );
+                        element.setAttribute('download', 'chart.png');
+                        element.style.display = 'none';
+                        document.body.appendChild(element);
+                        element.click();
+                        document.body.removeChild(element);
+                    }
+                    $("#container").before(buttonElement);
+                });
+            }
+
+            wrapper.draw();
+            break;
+        }
+        default:
+            if(DEBUGMODE)
+                console.error("How did it end up here: "+ libraryType);
+
     }
 
 }
@@ -287,6 +355,9 @@ function convertToValidHighchartJson(responseData, originJson){
             convertedJson.drilldown.series[index].data = responseData.drilldown[index].data;
             convertedJson.drilldown.series[index].id = responseData.series[0].data[index].drilldown;
             convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
+            // ! Hardcoded Selection that a drilldown is always a pie !
+            // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
+            convertedJson.drilldown.series[index].type = "pie";
         }
     }
 

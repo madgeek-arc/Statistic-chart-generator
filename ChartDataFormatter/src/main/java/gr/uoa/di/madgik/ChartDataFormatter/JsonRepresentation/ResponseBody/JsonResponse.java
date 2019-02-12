@@ -20,6 +20,7 @@ import java.io.IOException;
 @JsonDeserialize(using=JsonResponseDeserializer.class)
 public abstract class JsonResponse {
 
+    public abstract void logJsonResponse();
 }
 
 /**

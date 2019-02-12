@@ -43,19 +43,11 @@ public class RequestBodyHandler {
 
         try {
 
-            if(log.isInfoEnabled()) {
-                log.info("Chart Types: " + requestJson.getChartTypes());
-                log.info("Chart Names: " + requestJson.getChartNames());
-
-                for (int i = 0; i < statsServiceResults.size(); i++) {
-                    Result res = statsServiceResults.get(i);
-                    log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
-                }
-            }
-
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
                 case HighCharts:
+
+                    this.logChartInfo(requestJson, statsServiceResults);
 
                     HighChartsJsonResponse highChartsJsonResponse;
                     try {
@@ -68,23 +60,13 @@ public class RequestBodyHandler {
                     if(highChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    if(log.isInfoEnabled()) {
-                        if(highChartsJsonResponse.getDataSeriesNames() != null)
-                            log.info(highChartsJsonResponse.getDataSeriesNames().toString());
-                        if(highChartsJsonResponse.getDataSeriesTypes() != null)
-                            log.info(highChartsJsonResponse.getDataSeriesTypes().toString());
-                        if(highChartsJsonResponse.getxAxis_categories() != null)
-                            log.info(highChartsJsonResponse.getxAxis_categories().toString());
-                        if(highChartsJsonResponse.getDataSeries() != null) {
-                            log.info(highChartsJsonResponse.getDataSeries().toString());
-                            if(highChartsJsonResponse.getDataSeries().size() > 0 )
-                                log.info("DataSeries row size: " + ((ArrayList<Number>) highChartsJsonResponse.getDataSeries().get(0).getData()).size());
-                        }
-                    }
+                    highChartsJsonResponse.logJsonResponse();
 
                     return highChartsJsonResponse;
 
                 case GoogleCharts:
+
+                    this.logChartInfo(requestJson, statsServiceResults);
 
                     GoogleChartsJsonResponse googleChartsJsonResponse;
                     try{
@@ -97,13 +79,31 @@ public class RequestBodyHandler {
                     if(googleChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
+                    googleChartsJsonResponse.logJsonResponse();
+
                     return googleChartsJsonResponse;
+                case HighMaps:
+
+                    log.info("HighMaps data formation not implemented yet");
+                    return new HighChartsJsonResponse();
 
                 default:
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
         } catch (RuntimeException e){
-            throw new RequestBodyException("Chart Data Formation Error", e, HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private void logChartInfo(RequestInfo requestJson, List<Result> statsServiceResults) {
+        if(log.isInfoEnabled()) {
+            log.info("Chart Types: " + requestJson.getChartTypes());
+            log.info("Chart Names: " + requestJson.getChartNames());
+
+            for (int i = 0; i < statsServiceResults.size(); i++) {
+                Result res = statsServiceResults.get(i);
+                log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
+            }
         }
     }
 
