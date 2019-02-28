@@ -4,9 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.*;
 
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import gr.uoa.di.madgik.statstool.mapping.entities.*;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,20 +21,22 @@ import java.util.Set;
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.Query;
 
+import javax.annotation.PostConstruct;
+
 @Component
 public class Mapper {
 
     private final List<Profile> profiles = new ArrayList<>();
     private final HashMap<String, ProfileConfiguration> profileConfigurations = new HashMap<>();
+    private final Logger log = Logger.getLogger(this.getClass());
 
     private String primaryProfile;
 
-    private final Logger log = Logger.getLogger(this.getClass());
-
-    public Mapper() {
+    @Autowired
+    public Mapper(@Value("${mappings.file.path:classpath:mappings.json}")String mappingsJson, ResourceLoader resourceLoader) {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            MappingProfile[] mappings = mapper.readValue(getClass().getClassLoader().getResource("mappings.json"), MappingProfile[].class);
+            MappingProfile[] mappings = mapper.readValue(resourceLoader.getResource(mappingsJson).getURL(), MappingProfile[].class);
             for(MappingProfile mappingProfile : mappings) {
                 if(!mappingProfile.isHidden()) {
                     profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
@@ -41,7 +48,7 @@ public class Mapper {
                     primaryProfile = mappingProfile.getName();
                 }
 
-                Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingProfile.getFile()), Mapping.class);
+                Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingProfile.getFile()).getURL(), Mapping.class);
                 for(MappingEntity entity : mapping.getEntities()) {
                     Entity schemaEntity = new Entity(entity.getName());
                     for(MappingField field : entity.getFields()) {

@@ -7,7 +7,7 @@
     "complexity": 0,
     "primary": true,
     "hidden": false,
-    "file": "mapping.json"
+    "file": "classpath:mapping.json"
   },
   {
     "name": "OpenAIRE original",
@@ -17,7 +17,7 @@
     "complexity": 0,
     "primary": false,
     "hidden": false,
-    "file": "openaire_db.json"
+    "file": "classpath:openaire_db.json"
   },
   {
     "name": "Stats db",
@@ -27,6 +27,6 @@
     "complexity": 0,
     "primary": false,
     "hidden": true,
-    "file": "openaire_db.json"
+    "file": "classpath:openaire_db.json"
   }
 ]
