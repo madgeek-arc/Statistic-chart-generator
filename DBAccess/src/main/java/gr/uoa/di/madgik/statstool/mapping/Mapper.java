@@ -31,9 +31,11 @@ public class Mapper {
     private final Logger log = Logger.getLogger(this.getClass());
 
     private String primaryProfile;
+    private ResourceLoader resourceLoader;
 
     @Autowired
     public Mapper(@Value("${mappings.file.path:classpath:mappings.json}")String mappingsJson, ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
         try {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(resourceLoader.getResource(mappingsJson).getURL(), MappingProfile[].class);
@@ -69,7 +71,7 @@ public class Mapper {
     private void buildConfiguration(String mappingFile, ProfileConfiguration profileConfiguration) {
         try {
             ObjectMapper mapper = new ObjectMapper();
-            Mapping mapping = mapper.readValue(getClass().getClassLoader().getResource(mappingFile), Mapping.class);
+            Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingFile).getURL(), Mapping.class);
             for(MappingEntity entity : mapping.getEntities()) {
                 if(entity.getFilters() != null) {
                     List<Filter> filters = new ArrayList<>();
