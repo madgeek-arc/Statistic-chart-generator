@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagramsService;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ShortenUrlInfo;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.ModelAndView;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.List;
 
 
 /**
@@ -31,10 +33,13 @@ import java.util.Arrays;
 public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
+    private SupportedDiagramsService supportedDiagramsService;
+
     private final Logger log = Logger.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService) {
         this.requestBodyHandler = requestBodyHandler;
+        this.supportedDiagramsService = supportedDiagramsService;
     }
 
     @GetMapping
@@ -82,8 +87,24 @@ public class ChartDataFormatterRestController {
             produces = "application/json; charset=UTF-8")
     public @ResponseBody ResponseEntity getSupportedChartTypes(){
 
-        String[] supportedTypes = getNames(SupportedChartTypes.class);
+        List<SupportedDiagramsService.SupportedChart> supportedTypes = this.supportedDiagramsService.getSupportedCharts();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
+    }
+
+    @GetMapping( path = "/maps",
+            produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity getSupportedMaps(){
+
+        List<SupportedDiagramsService.SupportedMap> supportedMaps = this.supportedDiagramsService.getSupportedMaps();
+        return new ResponseEntity<>(supportedMaps, HttpStatus.OK);
+    }
+
+    @GetMapping( path = "/special",
+            produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity getSupportedSpecialisedChartTypes(){
+
+        List<SupportedDiagramsService.SupportedSpecialDiagram> supportedSpecialCharts = this.supportedDiagramsService.getSupportedSpecialDiagrams();
+        return new ResponseEntity<>(supportedSpecialCharts, HttpStatus.OK);
     }
 
     @PostMapping( path = "/shorten",

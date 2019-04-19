@@ -145,7 +145,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
 
     private List<String> getXAxisCategories(List<Result> dbAccessResults) {
 
-        return this.getXAxisCategories(dbAccessResults, true);
+        return this.getXAxisCategories(dbAccessResults, false);
     }
 
     private GoogleChartsJsonResponse singleToGoogleChartsJsonResponse(Result result, String chartName, SupportedChartTypes chartType) throws DataFormationException {
@@ -164,9 +164,6 @@ public class GoogleChartsDataFormatter extends DataFormatter {
 
     private GoogleChartsJsonResponse singleGCSingleGroupBy(Result result, String chartName){
         List<List<Object>> formattedDataTable = new ArrayList<>();
-
-        if(result.getRows().isEmpty())
-            return null;
 
         ArrayList<String> headerValuesArray = new ArrayList<>();
         headerValuesArray.add(null);

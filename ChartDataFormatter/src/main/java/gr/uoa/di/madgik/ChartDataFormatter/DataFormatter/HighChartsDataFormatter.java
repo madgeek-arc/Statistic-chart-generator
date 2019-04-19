@@ -162,7 +162,7 @@ public class HighChartsDataFormatter extends DataFormatter{
 
     private List<String> getXAxisCategories(List<Result> dbAccessResults) {
 
-        return this.getXAxisCategories(dbAccessResults, true);
+        return this.getXAxisCategories(dbAccessResults, false);
     }
 
     private HighChartsJsonResponse singleToHighChartsJsonResponse(Result result,
