@@ -3,7 +3,9 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
+import org.apache.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class HighChartsJsonResponse extends JsonResponse {
@@ -21,6 +23,8 @@ public class HighChartsJsonResponse extends JsonResponse {
 
     private List<AbsData> drilldown;
 
+    private final Logger log = Logger.getLogger(this.getClass());
+
     public HighChartsJsonResponse() {}
 
     public HighChartsJsonResponse(List<AbsData> dataSeries, List<String> xAxis_categories) {
@@ -37,6 +41,23 @@ public class HighChartsJsonResponse extends JsonResponse {
         this.dataSeriesNames = dataSeriesNames;
         this.dataSeriesTypes = dataSeriesTypes;
         this.drilldown = null;
+    }
+
+    @Override
+    public void logJsonResponse() {
+        if(log.isInfoEnabled()) {
+            if(this.dataSeriesNames != null)
+                log.info("DataSeries Names: " + this.dataSeriesNames.toString());
+            if(this.dataSeriesTypes != null)
+                log.info("DataSeries Types: " + this.dataSeriesTypes.toString());
+            if(this.xAxis_categories != null)
+                log.info("DataSeries XAxis_Categories: " + this.xAxis_categories.toString());
+            if(this.dataSeries != null) {
+                log.info("DataSeries: " + this.dataSeries.toString());
+                if(this.getDataSeries().size() > 0 )
+                    log.info("DataSeries row size: " + ((ArrayList<Number>) this.dataSeries.get(0).getData()).size());
+            }
+        }
     }
 
     public List<AbsData> getDataSeries() {

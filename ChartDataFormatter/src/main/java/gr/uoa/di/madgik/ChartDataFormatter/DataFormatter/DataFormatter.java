@@ -41,6 +41,8 @@ public abstract class DataFormatter {
 
         ArrayList<String> xAxis_Categories = new ArrayList<>(xAxis_categories);
 
+
+
         if(sort)
             xAxis_Categories.sort(String::compareToIgnoreCase);
 

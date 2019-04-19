@@ -34,7 +34,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         List<String> chartNames = (List<String>) args[1];
 
         if(dbAccessResults.size() == 1 && chartNames.size() == 1)
-            return singleToGoogleChartsJsonResponse(dbAccessResults.get(0), chartNames.get(0));
+            return singleToGoogleChartsJsonResponse(dbAccessResults.get(0), chartNames.get(0), chartTypes.get(0));
 
         List<List<Object>> formattedDataTable = new ArrayList<>();
 
@@ -148,7 +148,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         return this.getXAxisCategories(dbAccessResults, true);
     }
 
-    private GoogleChartsJsonResponse singleToGoogleChartsJsonResponse(Result result, String chartName) throws DataFormationException {
+    private GoogleChartsJsonResponse singleToGoogleChartsJsonResponse(Result result, String chartName, SupportedChartTypes chartType) throws DataFormationException {
 
         //There are no Results
         if(result.getRows().isEmpty())
@@ -157,7 +157,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         if(result.getRows().get(0).size() == 2)
             return singleGCSingleGroupBy(result, chartName);
         else if(result.getRows().get(0).size() == 3)
-            return singleHCDoubleGroupBy(result);
+            return singleHCDoubleGroupBy(result, chartType);
         else
             throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
     }
@@ -192,7 +192,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         return new GoogleChartsJsonResponse(formattedDataTable, headerValuesArray, null);
     }
 
-    private GoogleChartsJsonResponse singleHCDoubleGroupBy(Result result){
+    private GoogleChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType){
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
 
@@ -238,6 +238,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 }
                 else
                     valuesArray.add(null);
+
             }
             formattedDataTable.add(valuesArray);
         }
