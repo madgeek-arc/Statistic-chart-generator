@@ -50,7 +50,7 @@ public class StatsRepository {
             connection.close();
             return result;
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error executing query", e);
             return null;
         }
     }
@@ -61,6 +61,7 @@ public class StatsRepository {
             PreparedStatement st = connection.prepareStatement(query);
             int count = 1;
             for(Object param : parameters) {
+                log.info("setting param " + count + " to " + param);
                 st.setObject(count, param);
                 count++;
             }
@@ -70,7 +71,7 @@ public class StatsRepository {
             connection.close();
             return fullQuery;
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error getting full query", e);
             return "";
         }
     }
