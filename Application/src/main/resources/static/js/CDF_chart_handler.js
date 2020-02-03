@@ -72,12 +72,12 @@ function handleAdminSideData(dataJSONobj)
                 
         //Dynamically add JS library
         loadJS("https://code.highcharts.com/highcharts.js",        
-        () => loadJS("https://code.highcharts.com/modules/drilldown.js",
-        () => loadJS("https://code.highcharts.com/modules/no-data-to-display.js",
-        () => loadJS("https://code.highcharts.com/highcharts-3d.js",
-        () => loadJS("https://code.highcharts.com/modules/exporting.js",
-        () => loadJS("https://code.highcharts.com/modules/offline-exporting.js",
-        () => loadJS("http://code.highcharts.com/modules/export-data.js",
+        () => loadJS("//code.highcharts.com/modules/drilldown.js",
+        () => loadJS("//code.highcharts.com/modules/no-data-to-display.js",
+        () => loadJS("//code.highcharts.com/highcharts-3d.js",
+        () => loadJS("//code.highcharts.com/modules/exporting.js",
+        () => loadJS("//code.highcharts.com/modules/offline-exporting.js",
+        () => loadJS("//code.highcharts.com/modules/export-data.js",
         
         function(){ 
             //Hold the Library state
@@ -122,9 +122,9 @@ function handleAdminSideData(dataJSONobj)
     case "HighMaps":
     {
         loadJS("http://code.highcharts.com/maps/highmaps.js",
-        () => loadJS("https://code.highcharts.com/modules/exporting.js",
-        () => loadJS("https://code.highcharts.com/modules/offline-exporting.js",
-        () => loadJS("http://code.highcharts.com/modules/export-data.js",
+        () => loadJS("//code.highcharts.com/modules/exporting.js",
+        () => loadJS("//code.highcharts.com/modules/offline-exporting.js",
+        () => loadJS("//code.highcharts.com/modules/export-data.js",
         function () {
             console.log("Incoming JSON",dataJSONobj);
             
@@ -235,7 +235,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
         }
         case "HighMaps":
         {
-            loadJS("https://code.highcharts.com/mapdata/custom/world-robinson-highres.js",
+            loadJS("//code.highcharts.com/mapdata/custom/world-robinson-highres.js",
             () => {
                 
                 mapJson = originalDataJSONobj.mapDescription;
