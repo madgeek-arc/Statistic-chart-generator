@@ -3,20 +3,33 @@ package gr.uoa.di.madgik.statstool.domain;
 import java.util.List;
 
 public class Query {
+    private String name;
     private List<FilterGroup> filters;
     private List<Select> select;
     private String entity;
     private String profile;
     private int limit;
+    private String orderBy;
 
     public Query() {}
 
-    public Query(List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit) {
+//    public Query(String name, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit) {
+//        this.name = name;
+//        this.filters = filters;
+//        this.select = select;
+//        this.entity = entity;
+//        this.profile = profile;
+//        this.limit = limit;
+//    }
+
+    public Query(String name, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy) {
+        this.name = name;
         this.filters = filters;
         this.select = select;
         this.entity = entity;
         this.profile = profile;
         this.limit = limit;
+        this.orderBy = orderBy;
     }
 
     public List<FilterGroup> getFilters() {
@@ -57,5 +70,21 @@ public class Query {
 
     public void setLimit(int limit) {
         this.limit = limit;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getOrderBy() {
+        return orderBy;
+    }
+
+    public void setOrderBy(String orderBy) {
+        this.orderBy = orderBy;
     }
 }

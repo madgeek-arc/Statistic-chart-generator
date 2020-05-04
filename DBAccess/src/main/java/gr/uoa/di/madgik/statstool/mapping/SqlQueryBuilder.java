@@ -58,7 +58,7 @@ public class SqlQueryBuilder {
         mappedFilters.add(new FilterGroup(entityFilters, "AND"));
 
         Table entityTable = profileConfiguration.tables.get(query.getEntity());
-        return new Query(mappedFilters, mappedSelects, entityTable.getTable(), query.getProfile(), query.getLimit());
+        return new Query(null, mappedFilters, mappedSelects, entityTable.getTable(), query.getProfile(), query.getLimit(), query.getOrderBy());
     }
 
     private String getDataType(String field) {

@@ -12,6 +12,7 @@ public class SqlQueryTree {
     private int count;
     private int limit;
     private List<FilterGroup> filterGroups = new ArrayList<>();
+    private String orderBy;
 
     public SqlQueryTree(Query query) {
         this.root = new Node();
@@ -29,6 +30,7 @@ public class SqlQueryTree {
             filterGroups.add(new FilterGroup(filters, filterGroup.getOp()));
         }
         this.limit = query.getLimit();
+        this.orderBy = query.getOrderBy();
     }
 
     private static class Node {

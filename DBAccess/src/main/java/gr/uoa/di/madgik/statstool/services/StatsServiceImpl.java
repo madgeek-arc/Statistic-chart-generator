@@ -36,9 +36,9 @@ public class StatsServiceImpl implements StatsService{
     @Override
     public List<Result> query(List<Query> queryList) {
         List<Result> results = new ArrayList<>();
-        List<Object> parameters = new ArrayList<>();
 
         for (Query query : queryList) {
+            List<Object> parameters = new ArrayList<>();
 
             log.info("query: " + query);
 
@@ -59,6 +59,10 @@ public class StatsServiceImpl implements StatsService{
                 }
             } else {
                 String querySql = getNamedQuery(queryName);
+
+                log.info("Query: " + queryName);
+                log.info("Query: " + querySql);
+
                 result = statsRedisRepository.get(querySql);
 
                 if (result == null) {

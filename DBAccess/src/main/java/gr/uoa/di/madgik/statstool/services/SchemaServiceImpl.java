@@ -67,7 +67,7 @@ public class SchemaServiceImpl implements SchemaService{
 
         List<Select> selects = new ArrayList<>();
         selects.add(new Select(lastFld, null, 1));
-        Query query = new Query(null, selects, fld.get(fld.size()-2), profile, 0);
+        Query query = new Query(null, null, selects, fld.get(fld.size()-2), profile, 0,null);
 
         List<Query> queries = new ArrayList<>();
         queries.add(query);
