@@ -40,6 +40,7 @@ public class SupportedDiagramsService {
         List<SupportedLibraries> chartLibs = new ArrayList<>();
         chartLibs.add(HighCharts);
         chartLibs.add(GoogleCharts);
+        chartLibs.add(eCharts);
         this.supportedCharts.add(new SupportedChart(area,chartLibs));
         this.supportedCharts.add(new SupportedChart(pie,chartLibs));
         this.supportedCharts.add(new SupportedChart(column,chartLibs));

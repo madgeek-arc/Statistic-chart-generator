@@ -1,7 +1,9 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.ArrayOfEChartDataObjects;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsDataObject;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import org.apache.log4j.Logger;
 
@@ -13,18 +15,18 @@ import java.util.*;
  * to a format convenient for HighCharts library.
  * @see DataFormatter
  */
-public class HighChartsDataFormatter extends DataFormatter{
+public class EChartsDataFormatter extends DataFormatter{
 
     private final Logger log = Logger.getLogger(this.getClass());
 
     /**
      * {@inheritDoc}
      *
-     * @return A {@link HighChartsJsonResponse} ready to be passed as a response body.
+     * @return A {@link EChartsJsonResponse} ready to be passed as a response body.
      */
     @Override
     @SuppressWarnings("unchecked")
-    public HighChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException {
+    public EChartsJsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException {
 
         /* ASSUMPTIONS:
          * ~ Results have a CONSISTENT [y,x] or a [y,x1,x2] format.
@@ -39,7 +41,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         List<String> chartNames = (List<String>) args[1];
 
         if (dbAccessResults.size() == 1 && chartsType.size() == 1)
-            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0));
+            return singleToEChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0));
 
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");
@@ -127,26 +129,33 @@ public class HighChartsDataFormatter extends DataFormatter{
                             yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
-                    dataSeriesTypes.add(chartType.name());
+                    // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+                    if(chartType.name().equals("column")) {
+                        dataSeriesTypes.add("bar");
+                        log.info("Added " + "bar");
+                    } else {
+                        dataSeriesTypes.add(chartType.name());
+                        log.info("Added " + chartType.name());
+                    }
                     break;
 
                 case pie:
-                    ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
+                    ArrayList<EChartsDataObject> yObjectValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_Categories) {
                         if (XtoYMapping.containsKey(xValue)) {
 
                             String yValue = XtoYMapping.get(xValue);
                             if (yValue == null)
-                                yObjectValuesArray.add(new DataObject(xValue, null));
+                                yObjectValuesArray.add(new EChartsDataObject(xValue, null));
                             else if (yValue.contains("."))
-                                yObjectValuesArray.add(new DataObject(xValue, Float.parseFloat(yValue)));
+                                yObjectValuesArray.add(new EChartsDataObject(xValue, Float.parseFloat(yValue)));
                             else
-                                yObjectValuesArray.add(new DataObject(xValue, Integer.parseInt(yValue)));
+                                yObjectValuesArray.add(new EChartsDataObject(xValue, Integer.parseInt(yValue)));
                         } else
-                            yObjectValuesArray.add(new DataObject(xValue, null));
+                            yObjectValuesArray.add(new EChartsDataObject(xValue, null));
                     }
-                    dataSeries.add(new ArrayOfDataObjects(yObjectValuesArray));
+                    dataSeries.add(new ArrayOfEChartDataObjects(yObjectValuesArray));
                     dataSeriesTypes.add(chartType.name());
                     break;
 
@@ -157,7 +166,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             }
         }
 
-        return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
+        return new EChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
     private List<String> getXAxisCategories(List<Result> dbAccessResults) {
@@ -165,23 +174,23 @@ public class HighChartsDataFormatter extends DataFormatter{
         return this.getXAxisCategories(dbAccessResults, false);
     }
 
-    private HighChartsJsonResponse singleToHighChartsJsonResponse(Result result,
-                                                                  SupportedChartTypes chartType,
-                                                                  String chartName) throws DataFormationException {
+    private EChartsJsonResponse singleToEChartsJsonResponse(Result result,
+                                                            SupportedChartTypes chartType,
+                                                            String chartName) throws DataFormationException {
 
         //There are no Results
         if(result.getRows().isEmpty())
-            return singleHCSingleGroupBy(result, chartType, chartName);
+            return singleECSingleGroupBy(result, chartType, chartName);
 
         if(result.getRows().get(0).size() == 2)
-            return singleHCSingleGroupBy(result, chartType, chartName);
+            return singleECSingleGroupBy(result, chartType, chartName);
         else if(result.getRows().get(0).size() == 3)
-            return singleHCDoubleGroupBy(result, chartType);
+            return singleECDoubleGroupBy(result, chartType);
         else
             throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
     }
 
-    private HighChartsJsonResponse singleHCSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
+    private EChartsJsonResponse singleECSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
 
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
@@ -212,7 +221,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 break;
 
             case pie:
-                ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
+                ArrayList<EChartsDataObject> yObjectValuesArray = new ArrayList<>();
                 for (ArrayList<String> row : result.getRows()) {
 
                     String xValue = row.get(1);
@@ -223,13 +232,13 @@ public class HighChartsDataFormatter extends DataFormatter{
                     // I assume that always the first value of the row is for the Y value
                     String yValue = row.get(0);
                     if(yValue == null)
-                        yObjectValuesArray.add(new DataObject(xValue , null));
+                        yObjectValuesArray.add(new EChartsDataObject(xValue , null));
                     else if (yValue.contains("."))
-                        yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
+                        yObjectValuesArray.add(new EChartsDataObject(xValue , Float.parseFloat(yValue)));
                     else
-                        yObjectValuesArray.add(new DataObject(xValue ,Integer.parseInt(yValue)));
+                        yObjectValuesArray.add(new EChartsDataObject(xValue ,Integer.parseInt(yValue)));
                 }
-                dataSeries.add(new ArrayOfDataObjects(yObjectValuesArray));
+                dataSeries.add(new ArrayOfEChartDataObjects(yObjectValuesArray));
                 break;
 
             default:
@@ -239,12 +248,16 @@ public class HighChartsDataFormatter extends DataFormatter{
         ArrayList<String> chartNames = new ArrayList<>();
         chartNames.add(chartName);
         ArrayList<String> chartTypes = new ArrayList<>();
-        chartTypes.add(chartType.name());
+        // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+        if(chartType.name().equals("column"))
+            chartTypes.add("bar");
+        else
+            chartTypes.add(chartType.name());
 
-        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
+        return new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
-    private HighChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType){
+    private EChartsJsonResponse singleECDoubleGroupBy(Result result, SupportedChartTypes chartType){
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
@@ -295,10 +308,17 @@ public class HighChartsDataFormatter extends DataFormatter{
                             yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
-                    dataSeriesTypes.add(chartType.name());
+                    // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+                    if(chartType.name().equals("column")) {
+                        dataSeriesTypes.add("bar");
+                        log.info("Added " + "bar");
+                    } else {
+                        dataSeriesTypes.add(chartType.name());
+                        log.info("Added " + chartType.name());
+                    }
                 }
 
-                return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
+                return new EChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
                         new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
 
             case pie:
@@ -311,26 +331,26 @@ public class HighChartsDataFormatter extends DataFormatter{
                     HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
 
                     Float pieSliceSum = new Float(0);
-                    ArrayList<DataObject> drillDownSliceValuesArray = new ArrayList<>();
+                    ArrayList<EChartsDataObject> drillDownSliceValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_categories.keySet()) {
 
                         String yValue = XValueToYValueMapping.get(xValue);
 
                         if (yValue == null)
-                            drillDownSliceValuesArray.add(new DataObject(xValue, null));
+                            drillDownSliceValuesArray.add(new EChartsDataObject(xValue, null));
                         else if (yValue.contains(".")) {
                             Float value = Float.parseFloat(yValue);
-                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                            drillDownSliceValuesArray.add(new EChartsDataObject(xValue, value));
                             pieSliceSum += value;
                         }
                         else {
                             Integer value = Integer.parseInt(yValue);
-                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                            drillDownSliceValuesArray.add(new EChartsDataObject(xValue, value));
                             pieSliceSum += value;
                         }
                     }
-                    drillDownArray.add(new ArrayOfDataObjects(drillDownSliceValuesArray));
+                    drillDownArray.add(new ArrayOfEChartDataObjects(drillDownSliceValuesArray));
 
                     DataObject pieSlice = new DataObject(groupByX, pieSliceSum);
                     pieSlice.setDrilldown(groupByX);
@@ -339,10 +359,17 @@ public class HighChartsDataFormatter extends DataFormatter{
                 }
 
                 dataSeries.add(new ArrayOfDataObjects(mainSlicesValuesArray));
-                dataSeriesTypes.add(chartType.name());
-                log.info("Added " + chartType.name());
 
-                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
+                // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+                if(chartType.name().equals("column")) {
+                    dataSeriesTypes.add("bar");
+                    log.info("Added " + "bar");
+                } else {
+                    dataSeriesTypes.add(chartType.name());
+                    log.info("Added " + chartType.name());
+                }
+
+                EChartsJsonResponse ret = new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
                         null, dataSeriesTypes);
                 ret.setDrilldown(drillDownArray);
                 return ret;

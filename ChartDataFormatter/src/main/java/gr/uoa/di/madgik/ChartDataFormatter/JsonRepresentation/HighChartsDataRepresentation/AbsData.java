@@ -37,7 +37,7 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
                     return mapper.treeToValue(root,ArrayOfValues.class);
                 case OBJECT:
                 case POJO:
-                    return mapper.treeToValue(root,ArrayOfObjects.class);
+                    return mapper.treeToValue(root, ArrayOfDataObjects.class);
                 default:
                     throw new JsonProcessingException("Unexpected JsonNodeType"){};
             }

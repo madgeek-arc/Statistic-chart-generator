@@ -61,6 +61,8 @@ public class ChartDataFormatterRestController {
 
         JsonResponse responseData;
 
+        log.info("requestJson: " + requestJson);
+
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyHandler.RequestBodyException e) {

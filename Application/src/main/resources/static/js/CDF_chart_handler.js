@@ -39,7 +39,7 @@ function handleAdminSideData(dataJSONobj)
     // dataJSONobj holds the option-ready version of the JSON that will be passed to the Chart library,
     // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
     if(DEBUGMODE)
-        console.log(dataJSONobj);
+        console.log("dataJSONobj", dataJSONobj);
 
     switch(dataJSONobj.library){
     case "GoogleCharts":
@@ -64,6 +64,53 @@ function handleAdminSideData(dataJSONobj)
                 passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                             domainLink+"/chart");
             });            
+        });
+        break;
+    }
+    case "eCharts":
+    {
+        console.log("Asked for echarts library");
+
+        // loadJS("https://cdn.jsdelivr.net/npm/echarts@4.6.0/dist/echarts.min.js",
+            loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
+        function(){
+
+            //Hold the Library state
+            libraryType = dataJSONobj.library;
+            console.log("dataJSONobj: ", dataJSONobj);
+            console.log("LibraryType: ", libraryType);
+
+            var RequestInfoObj = new Object();
+            //Pass the Chart library to ChartDataFormatter
+            RequestInfoObj.library = dataJSONobj.library;
+            //Pass the Chart type to ChartDataFormatter
+            var defaultType = dataJSONobj.chartDescription.chart.type;
+            //Create ChartInfo Object Array
+            RequestInfoObj.chartsInfo = [];
+
+            //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
+            //along with the requested Chart type
+            dataJSONobj.chartDescription.queries.
+            forEach(element => {
+                var ChartInfoObj = new Object();
+
+                if(element.type === undefined)
+                    ChartInfoObj.type = defaultType;
+                else
+                    ChartInfoObj.type = element.type;
+
+                if(element.name === undefined)
+                    ChartInfoObj.name = null;
+                else
+                    ChartInfoObj.name = element.name;
+
+                ChartInfoObj.query = element.query;
+                RequestInfoObj.chartsInfo.push(ChartInfoObj);
+            });
+
+            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                        domainLink+"/chart");
+
         });
         break;
     }
@@ -166,8 +213,7 @@ function handleAdminSideData(dataJSONobj)
 function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,ChartDataFormatterUrl)
 {
     if(DEBUGMODE) {
-        console.log("Passing to CDF:");
-        console.log(ChartDataFormatterReadyJSONobj);
+        console.log("Passing to CDF: ", ChartDataFormatterReadyJSONobj);
     }
     
     $.ajax(
@@ -177,7 +223,7 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
     contentType: 'application/json; charset=utf-8',
     data: JSON.stringify(ChartDataFormatterReadyJSONobj),
     cache: false,
-    success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj) },
+    success: function(data){ handleChartDataFormatterResponse(data,dataJSONobj,ChartDataFormatterReadyJSONobj) },
     error: function( jqXHR, textStatus, errorThrown) { 
 
         $('#loader').hide();
@@ -202,11 +248,10 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
     .always();
 }
 
-function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
+function handleChartDataFormatterResponse(responseData, originalDataJSONobj, ChartDataFormatterReadyJSONobj)
 {   
     if(DEBUGMODE) {
-        console.log("Got from CDF:");
-        console.log(responseData);
+        console.log("Got from CDF: ", responseData);
     }
     
     
@@ -225,7 +270,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             })
 
             if(DEBUGMODE) {
-                console.log(chartJson);
+                console.log("chartJson", chartJson);
                 console.log("Drawing HighCharts");
             }
 
@@ -289,6 +334,20 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj)
             }
 
             wrapper.draw();
+            break;
+        }
+        case "eCharts":
+        {
+            var chartJson = convertToValideChartsJson(responseData, originalDataJSONobj,ChartDataFormatterReadyJSONobj);
+
+            if(DEBUGMODE) {
+                console.log("chartJson", chartJson);
+                console.log("Drawing eCharts");
+            }
+
+            var myChart = echarts.init(document.getElementById('container'));
+            myChart.setOption(chartJson);
+
             break;
         }
         default:
@@ -366,6 +425,94 @@ function convertToValidHighchartJson(responseData, originJson){
     if(convertedJson.xAxis === undefined)
         convertedJson.xAxis = {};    
     convertedJson.xAxis.categories = responseData.xAxis_categories;
+
+    return convertedJson;
+}
+
+//TODO fix this method
+function convertToValideChartsJson(responseData, originJson, ChartDataFormatterReadyJSONobj) {
+
+    console.log("ChartDataFormatterReadyJSONobj", ChartDataFormatterReadyJSONobj);
+    console.log("OriginJson.chartDescription", originJson.chartDescription);
+
+    var convertedJson = originJson.chartDescription;
+    convertedJson.series = new Array( Object.keys(responseData.series).length );
+
+    for (let index = 0; index < Object.keys(responseData.series).length; index++){
+        var seriesInstance = new Object();
+        seriesInstance.data = responseData.series[index].data;
+
+        if(responseData.dataSeriesNames !== null)
+            seriesInstance.name = responseData.dataSeriesNames[index];
+
+        if(responseData.dataSeriesTypes !== null) {
+            if(responseData.dataSeriesTypes[index] === 'area') {
+                seriesInstance.type = 'line';
+                seriesInstance.areaStyle = new Object();
+            } else
+                seriesInstance.type = responseData.dataSeriesTypes[index];
+        }
+
+        if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
+            && originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
+            seriesInstance.label = new Object();
+            seriesInstance.label.show = true;
+            seriesInstance.label.position = 'right';
+            seriesInstance.label.formatter = function(a){return a.value.toLocaleString()}
+        }
+
+        if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
+            && originJson.chartDescription.plotOptions.series.stacking) {
+            seriesInstance.stack = 'stackedSeries';
+
+            //for stacked series put the data label inside by default
+            if(originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
+                seriesInstance.label.position = 'inside';
+            }
+        }
+
+        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
+            seriesInstance.color = originJson.chartDescription.queries[index].color;
+
+        convertedJson.series[index] = seriesInstance;
+    }
+
+    if(responseData.drilldown !== null){
+        convertedJson.drilldown = new Object();
+        convertedJson.drilldown.series = new Array( Object.keys(responseData.drilldown).length );
+
+        for (let index = 0; index < Object.keys(responseData.drilldown).length; index++){
+
+            convertedJson.drilldown.series[index] = new Object();
+            convertedJson.drilldown.series[index].data = responseData.drilldown[index].data;
+            convertedJson.drilldown.series[index].id = responseData.series[0].data[index].drilldown;
+            convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
+            // ! Hardcoded Selection that a drilldown is always a pie !
+            // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
+            convertedJson.drilldown.series[index].type = "pie";
+        }
+    }
+
+    // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+    if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'bar') {
+        if (convertedJson.yAxis === undefined)
+            convertedJson.yAxis = {};
+        convertedJson.yAxis.data = responseData.xAxis_categories;
+    } else if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'pie') {
+        //remove xAxis and yAxis
+        convertedJson.xAxis = null;
+        convertedJson.yAxis = null;
+    } else {
+        if(convertedJson.xAxis === undefined)
+            convertedJson.xAxis = {};
+        convertedJson.xAxis.data = responseData.xAxis_categories;
+
+        // eCharts do not have autoRotate on column chart if too many
+        // convertedJson.xAxis.axisLabel = {};
+        // convertedJson.xAxis.axisLabel.rotate = 45;
+    }
+
+    console.log("convertedJson", convertedJson);
 
     return convertedJson;
 }
