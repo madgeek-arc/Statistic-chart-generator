@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
+
 import javax.sql.DataSource;
 
 import gr.uoa.di.madgik.statstool.domain.Result;
@@ -25,8 +26,10 @@ public class StatsRepository {
 
     public Result executeQuery(String query, List<Object> parameters) {
         Result result = new Result();
+
+	Connection connection = null;
         try {
-            Connection connection = dataSource.getConnection();
+            connection = dataSource.getConnection();
 
             PreparedStatement st = connection.prepareStatement(query);
             int count = 1;
@@ -52,28 +55,23 @@ public class StatsRepository {
         } catch (Exception e) {
             log.error("Error executing query", e);
             return null;
-        }
+        } finally {
+		try {
+			if (connection != null)
+				connection.close();
+		} catch (Exception e) {
+		}
+	}
     }
 
     public String getFullQuery(String query, List<Object> parameters) {
-        try {
-            Connection connection = dataSource.getConnection();
-            PreparedStatement st = connection.prepareStatement(query);
-            int count = 1;
-            for(Object param : parameters) {
-                log.info("setting param " + count + " to " + param);
-                st.setObject(count, param);
-                count++;
-            }
-            String fullQuery = st.toString();
-            fullQuery = fullQuery.substring(fullQuery.indexOf("SELECT"));
-            st.close();
-            connection.close();
-            return fullQuery;
-        } catch (Exception e) {
-            log.error("Error getting full query", e);
-            return "";
-        }
+	    StringBuilder sb = new StringBuilder();
+
+        sb.append(query);
+        for (Object o : parameters)
+            sb.append(';').append(o);
+
+        return sb.toString();
     }
 
 }

@@ -47,6 +47,7 @@ public class StatsServiceImpl implements StatsService{
 
             if (queryName == null) {
                 String querySql = mapper.map(query, parameters);
+		log.info("query sql: " + querySql);
                 String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
 
                 log.info("SQL: " + fullSqlQuery);
