@@ -47,10 +47,7 @@ public class StatsServiceImpl implements StatsService{
 
             if (queryName == null) {
                 String querySql = mapper.map(query, parameters);
-		log.info("query sql: " + querySql);
                 String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
-
-                log.info("SQL: " + fullSqlQuery);
 
                 result = statsRedisRepository.get(fullSqlQuery);
 
@@ -61,13 +58,20 @@ public class StatsServiceImpl implements StatsService{
             } else {
                 String querySql = getNamedQuery(queryName);
 
-                if (query.getParameters() != null) {
-                    for (int i = 0; i < query.getParameters().size(); i++)
-                        querySql = querySql.replaceAll("\\$"+i, "'" + query.getParameters().get(i) + "'");
+                log.debug("Query name: " + queryName);
+                log.debug("Query: " + querySql);
+
+                if (querySql == null) {
+                    log.error("query " + queryName + " not found!");
+                    continue;
                 }
 
-                log.info("Query: " + queryName);
-                log.info("Query: " + querySql);
+                if (query.getParameters() != null) {
+                    for (int i = 1; i <= query.getParameters().size(); i++)
+                        querySql = querySql.replaceAll("\\$"+i, "'" + query.getParameters().get(i-1) + "'");
+                }
+
+                log.debug("Query after replace:" + querySql);
 
                 result = statsRedisRepository.get(querySql);
 
