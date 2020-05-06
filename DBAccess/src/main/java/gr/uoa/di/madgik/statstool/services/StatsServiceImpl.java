@@ -60,6 +60,11 @@ public class StatsServiceImpl implements StatsService{
             } else {
                 String querySql = getNamedQuery(queryName);
 
+                if (query.getParameters() != null) {
+                    for (int i = 0; i < query.getParameters().size(); i++)
+                        querySql = querySql.replaceAll("\\$"+i, "'" + query.getParameters().get(i) + "'");
+                }
+
                 log.info("Query: " + queryName);
                 log.info("Query: " + querySql);
 
