@@ -80,6 +80,7 @@ public class SupportedDiagramsService {
         List<SupportedLibraries> chartLibs = new ArrayList<>();
         chartLibs.add(HighCharts);
         chartLibs.add(GoogleCharts);
+        chartLibs.add(eCharts);
         this.supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
 
     }
