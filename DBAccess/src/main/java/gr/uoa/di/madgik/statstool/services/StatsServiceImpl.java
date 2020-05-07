@@ -67,8 +67,10 @@ public class StatsServiceImpl implements StatsService{
                 }
 
                 if (query.getParameters() != null) {
-                    for (int i = 1; i <= query.getParameters().size(); i++)
-                        querySql = querySql.replaceAll("\\$"+i, "'" + query.getParameters().get(i-1) + "'");
+			for (String param:query.getParameters())
+				querySql = querySql.replaceFirst("\\?", "'" + param + "'");
+                    //for (int i = 1; i <= query.getParameters().size(); i++)
+                    //    querySql = querySql.replaceAll("\\$"+i, "'" + query.getParameters().get(i-1) + "'");
                 }
 
                 log.debug("Query after replace:" + querySql);
