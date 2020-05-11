@@ -75,8 +75,11 @@ public class StatsRepository {
             Statement st = connection.createStatement();
             ResultSet rs = st.executeQuery(query);
 
-            if (rs.next())
-                result = rs.getObject(1).toString();
+            if (rs.next()){
+                Object o = rs.getObject(1);
+
+                result = o!=null?o.toString():null;
+            }
 
             rs.close();
             st.close();
