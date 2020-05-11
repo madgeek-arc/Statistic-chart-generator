@@ -62,15 +62,15 @@ public class StatsServiceImpl implements StatsService {
 
                     log.debug("Query name: " + queryName);
                     log.debug("Query: " + querySql);
-
+                    
                     if (querySql == null) {
                         log.error("query " + queryName + " not found!");
                         continue;
                     }
 
                     if (query.getParameters() != null) {
-                        for (int i = 1; i <= query.getParameters().size(); i++)
-                            querySql = querySql.replaceAll("\\$" + i, "'" + query.getParameters().get(i - 1) + "'");
+                        for (String param:query.getParameters())
+                            querySql = querySql.replaceFirst("\\?", "'" + param + "'");
                     }
 
                     log.debug("Query after replace:" + querySql);
