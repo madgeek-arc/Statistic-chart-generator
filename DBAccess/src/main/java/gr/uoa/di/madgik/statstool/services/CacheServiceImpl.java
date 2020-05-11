@@ -72,7 +72,8 @@ public class CacheServiceImpl implements CacheService {
             try {
                 String result = statsRepository.executeNumberQuery(query);
 
-                jedis.put(SHADOW_STATS_NUMBERS, queryName, result);
+                if (result != null)
+                    jedis.put(SHADOW_STATS_NUMBERS, queryName, result);
 
                 log.info("updating cache number:" + queryName + ": " + result);
             } catch (Exception e){
