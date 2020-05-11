@@ -27,6 +27,8 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private StatsRepository statsRepository;
 
+    private RedisTemplate<String, String> redisTemplate;
+
     private HashOperations<String, String, String> jedis;
 
     private final Logger log = Logger.getLogger(this.getClass());
@@ -34,6 +36,7 @@ public class CacheServiceImpl implements CacheService {
     private ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
+        this.redisTemplate = redisTemplate;
         this.jedis = redisTemplate.opsForHash();
     }
 
@@ -54,7 +57,7 @@ public class CacheServiceImpl implements CacheService {
 
     @Override
     public void promoteNumbers() {
-
+        redisTemplate.rename(SHADOW_STATS_NUMBERS, STATS_NUMBERS);
     }
 
     class Updater implements Runnable {
