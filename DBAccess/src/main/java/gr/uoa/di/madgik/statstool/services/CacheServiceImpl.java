@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.print.attribute.standard.PrinterMessageFromOperator;
@@ -24,10 +25,13 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private StatsRepository statsRepository;
 
-    @Autowired
     private HashOperations<String, String, String> jedis;
 
     private final Logger log = Logger.getLogger(this.getClass());
+
+    public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
+        this.jedis = redisTemplate.opsForHash();
+    }
 
     @Override
     public void calculateNumbers() throws StatsServiceException {
