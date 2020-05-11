@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,12 +57,42 @@ public class StatsRepository {
             log.error("Error executing query", e);
             return null;
         } finally {
-		try {
-			if (connection != null)
-				connection.close();
-		} catch (Exception e) {
-		}
-	}
+            try {
+                if (connection != null)
+                    connection.close();
+            } catch (Exception e) {
+            }
+        }
+    }
+
+    public String executeNumberQuery(String query) {
+        String result = null;
+        Connection connection = null;
+
+        try {
+            connection = dataSource.getConnection();
+
+            Statement st = connection.createStatement();
+            ResultSet rs = st.executeQuery(query);
+
+            if (rs.next())
+                result = (String) rs.getObject(1);
+
+            rs.close();
+            st.close();
+            connection.close();
+        } catch (Exception e) {
+            log.error("Error executing query", e);
+            return null;
+        } finally {
+            try {
+                if (connection != null)
+                    connection.close();
+            } catch (Exception e) {
+            }
+        }
+
+        return result;
     }
 
     public String getFullQuery(String query, List<Object> parameters) {

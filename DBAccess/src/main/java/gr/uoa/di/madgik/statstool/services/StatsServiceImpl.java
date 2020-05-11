@@ -62,7 +62,7 @@ public class StatsServiceImpl implements StatsService {
 
                     log.debug("Query name: " + queryName);
                     log.debug("Query: " + querySql);
-                    
+
                     if (querySql == null) {
                         log.error("query " + queryName + " not found!");
                         continue;
