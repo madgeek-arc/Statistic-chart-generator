@@ -61,7 +61,7 @@ public class SchemaServiceImpl implements SchemaService{
     }
 
     @Override
-    public FieldValues getFieldValues(String profile, String field, String like) {
+    public FieldValues getFieldValues(String profile, String field, String like) throws StatsServiceException {
         List<String> fld = new ArrayList<>(Arrays.asList(field.split("\\.")));
         String lastFld = fld.get(fld.size()-2) + "." + fld.get(fld.size()-1);
 

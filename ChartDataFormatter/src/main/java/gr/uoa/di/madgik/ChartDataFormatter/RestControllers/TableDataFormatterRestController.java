@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
+import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
@@ -49,7 +50,7 @@ public class TableDataFormatterRestController {
 
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
-        } catch (RequestBodyHandler.RequestBodyException e) {
+        } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
         }

@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
@@ -35,7 +36,7 @@ public class RequestBodyHandlerTest {
     }
 
     @Test
-    public void handleHighChartsRequestTest() throws IOException, RequestBodyHandler.RequestBodyException {
+    public void handleHighChartsRequestTest() throws IOException, RequestBodyException {
 
         ObjectMapper mapper = new ObjectMapper();
         RequestInfo requestInfo = mapper.readValue(new File("src/test/resources/highcharts/testFiles/multiTypeRequestInfo.json"), RequestInfo.class);
@@ -51,7 +52,7 @@ public class RequestBodyHandlerTest {
     }
 
     @Test
-    public void handleGoogleChartsRequestTest() throws IOException, RequestBodyHandler.RequestBodyException {
+    public void handleGoogleChartsRequestTest() throws IOException, RequestBodyException {
 
         ObjectMapper mapper = new ObjectMapper();
         RequestInfo requestInfo = mapper.readValue(new File("src/test/resources/highcharts/testFiles/multiTypeRequestInfo.json"), RequestInfo.class);

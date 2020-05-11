@@ -10,6 +10,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonR
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
+import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,12 +38,10 @@ public class RequestBodyHandler {
      */
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException {
 
-        List<Result> statsServiceResults = this.statsService.query(requestJson.getChartQueries());
-
-        if (statsServiceResults == null)
-            throw new RequestBodyException("Stats Service Error", HttpStatus.INTERNAL_SERVER_ERROR);
+        List<Result> statsServiceResults;
 
         try {
+            statsServiceResults = this.statsService.query(requestJson.getChartQueries());
 
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
@@ -110,7 +109,9 @@ public class RequestBodyHandler {
                 default:
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
-        } catch (RuntimeException e){
+        } catch (RequestBodyException e) {
+            throw e;
+        } catch (Exception e) {
             throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
@@ -126,24 +127,5 @@ public class RequestBodyHandler {
             }
         }
     }
-
-    /**
-     * An exception holding a HttpStatus code along with the error message.
-     */
-    public class RequestBodyException extends Exception{
-
-        private final HttpStatus httpStatus;
-
-        public HttpStatus getHttpStatus() { return httpStatus; }
-
-        public RequestBodyException(HttpStatus httpStatus)
-        { super(); this.httpStatus = httpStatus;}
-        public RequestBodyException(String s, HttpStatus httpStatus)
-        { super(s); this.httpStatus = httpStatus;}
-        public RequestBodyException(String s, Throwable throwable, HttpStatus httpStatus)
-        { super(s, throwable); this.httpStatus = httpStatus;}
-        public RequestBodyException(Throwable throwable, HttpStatus httpStatus)
-        { super(throwable); this.httpStatus = httpStatus;}
-
-    }
 }
+

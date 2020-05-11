@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.statstool.controllers;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -38,7 +39,7 @@ public class QueryController {
 
             return statsService.query(queryList);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error(e);
             return null;
         }
     }
@@ -54,13 +55,19 @@ public class QueryController {
 
             return statsService.query(queryList);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error(e);
             return null;
         }
     }
 
     @RequestMapping(value = "/query", method = RequestMethod.POST)
     public List<Result> query(@RequestBody List<Query> queryList) {
-        return statsService.query(queryList);
+        try {
+            return statsService.query(queryList);
+        } catch (StatsServiceException e) {
+            log.error(e);
+
+            return null;
+        }
     }
 }

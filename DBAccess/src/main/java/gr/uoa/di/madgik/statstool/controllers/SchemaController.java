@@ -7,6 +7,8 @@ import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 import gr.uoa.di.madgik.statstool.services.SchemaService;
 
+import gr.uoa.di.madgik.statstool.services.StatsServiceException;
+import org.apache.log4j.Logger;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +21,7 @@ import java.util.List;
 @RequestMapping(value = "schema/")
 @CrossOrigin(methods = RequestMethod.GET, origins = "*")
 public class SchemaController {
+    private final Logger log = Logger.getLogger(this.getClass());
 
     private SchemaService schemaService;
 
@@ -43,12 +46,24 @@ public class SchemaController {
 
     @RequestMapping(value = "{profile}/fields/{field}")
     public FieldValues getMappingField(@PathVariable(value = "profile") String profile, @PathVariable(value = "field") String field) {
-        return schemaService.getFieldValues(profile, field, "");
+        try {
+            return schemaService.getFieldValues(profile, field, "");
+        } catch (StatsServiceException e) {
+            log.error(e);
+
+            return null;
+        }
     }
 
     @RequestMapping(value = "{profile}/fields/{field}/{like}")
     public FieldValues getMappingFieldLike(@PathVariable(value = "profile") String profile, @PathVariable(value = "field") String field, @PathVariable(value = "like") String like) {
-        return schemaService.getFieldValues(profile, field, like);
+        try {
+            return schemaService.getFieldValues(profile, field, like);
+        } catch (StatsServiceException e) {
+            log.error(e);
+
+            return null;
+        }
     }
 
     @RequestMapping(value = "entities")
@@ -63,11 +78,23 @@ public class SchemaController {
 
     @RequestMapping(value = "fields/{field}")
     public FieldValues getField(@PathVariable(value = "field") String field) {
-        return schemaService.getFieldValues(null, field, "");
+        try {
+            return schemaService.getFieldValues(null, field, "");
+        } catch (StatsServiceException e) {
+            log.error(e);
+
+            return null;
+        }
     }
 
     @RequestMapping(value = "fields/{field}/{like}")
     public FieldValues getFieldLike(@PathVariable(value = "field") String field, @PathVariable(value = "like") String like) {
-        return schemaService.getFieldValues(null, field, like);
+        try {
+            return schemaService.getFieldValues(null, field, like);
+        } catch (StatsServiceException e) {
+            log.error(e);
+
+            return null;
+        }
     }
 }

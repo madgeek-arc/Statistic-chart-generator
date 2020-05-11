@@ -7,5 +7,5 @@ import gr.uoa.di.madgik.statstool.domain.Result;
 
 public interface StatsService {
 
-    List<Result> query(List<Query> queryList);
+    List<Result> query(List<Query> queryList) throws StatsServiceException;
 }

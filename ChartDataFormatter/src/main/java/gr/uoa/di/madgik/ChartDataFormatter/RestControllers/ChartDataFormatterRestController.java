@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagramsService;
+import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ShortenUrlInfo;
@@ -63,7 +64,7 @@ public class ChartDataFormatterRestController {
 
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
-        } catch (RequestBodyHandler.RequestBodyException e) {
+        } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
         }
