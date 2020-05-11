@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import javax.print.attribute.standard.PrinterMessageFromOperator;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class CacheServiceImpl implements CacheService {
@@ -29,6 +31,8 @@ public class CacheServiceImpl implements CacheService {
 
     private final Logger log = Logger.getLogger(this.getClass());
 
+    private ExecutorService executorService = Executors.newFixedThreadPool(3);
+
     public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
         this.jedis = redisTemplate.opsForHash();
     }
@@ -41,15 +45,7 @@ public class CacheServiceImpl implements CacheService {
             for (Object queryName:queries.keySet()) {
                 String query = queries.getProperty((String) queryName);
 
-                try {
-                    String result = statsRepository.executeNumberQuery(query);
-
-                    jedis.put(SHADOW_STATS_NUMBERS, (String) queryName, result);
-
-                    log.info("updating cache number:" + queryName + ": " + result);
-                } catch (Exception e){
-                    log.error("Error updating number:" + queryName, e);
-                }
+                executorService.submit(new Updater(query, (String) queryName));
             }
         } catch (Exception e) {
             throw new StatsServiceException(e);
@@ -59,5 +55,29 @@ public class CacheServiceImpl implements CacheService {
     @Override
     public void promoteNumbers() {
 
+    }
+
+    class Updater implements Runnable {
+
+        private String query;
+        private String queryName;
+
+        public Updater(String query, String queryName) {
+            this.query = query;
+            this.queryName = queryName;
+        }
+
+        @Override
+        public void run() {
+            try {
+                String result = statsRepository.executeNumberQuery(query);
+
+                jedis.put(SHADOW_STATS_NUMBERS, queryName, result);
+
+                log.info("updating cache number:" + queryName + ": " + result);
+            } catch (Exception e){
+                log.error("Error updating number:" + queryName, e);
+            }
+        }
     }
 }
