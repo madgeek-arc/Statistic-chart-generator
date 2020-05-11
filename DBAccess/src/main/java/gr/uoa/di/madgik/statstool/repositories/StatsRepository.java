@@ -76,7 +76,7 @@ public class StatsRepository {
             ResultSet rs = st.executeQuery(query);
 
             if (rs.next())
-                result = (String) rs.getObject(1);
+                result = rs.getObject(1).toString();
 
             rs.close();
             st.close();
