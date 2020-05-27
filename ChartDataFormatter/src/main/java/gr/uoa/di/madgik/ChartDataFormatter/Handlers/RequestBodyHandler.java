@@ -1,9 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.DataFormatter;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.GoogleChartsDataFormatter;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.HighChartsDataFormatter;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
@@ -82,6 +80,27 @@ public class RequestBodyHandler {
                     googleChartsJsonResponse.logJsonResponse();
 
                     return googleChartsJsonResponse;
+
+                case eCharts:
+
+                    log.info("handling eCharts request");
+                    this.logChartInfo(requestJson, statsServiceResults);
+
+                    EChartsJsonResponse eChartsJsonResponse;
+                    try {
+                        eChartsJsonResponse = new EChartsDataFormatter().toJsonResponse(statsServiceResults,
+                                requestJson.getChartTypes(), requestJson.getChartNames());
+
+                    }catch (DataFormatter.DataFormationException e){
+                        throw new RequestBodyException(e.getMessage(),e,HttpStatus.UNPROCESSABLE_ENTITY);
+                    }
+                    if(eChartsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+
+                    eChartsJsonResponse.logJsonResponse();
+
+                    return eChartsJsonResponse;
+
                 case HighMaps:
 
                     this.logChartInfo(requestJson, statsServiceResults);

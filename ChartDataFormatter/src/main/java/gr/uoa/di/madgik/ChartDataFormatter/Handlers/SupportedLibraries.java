@@ -5,5 +5,5 @@ package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
  * This enumeration should be expanded with each new Chart Library.
  */
 public enum SupportedLibraries{
-    HighCharts,HighMaps,GoogleCharts
+    HighCharts,HighMaps,GoogleCharts,eCharts
 }

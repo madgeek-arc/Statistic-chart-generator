@@ -39,8 +39,8 @@ public class DbAccessResultsTest {
         assert !response.getxAxis_categories().isEmpty();
         if (response.getDataSeries().get(0) instanceof ArrayOfValues)
             assert ((ArrayOfValues)response.getDataSeries().get(0)).getData().size() == response.getxAxis_categories().size();
-        else if (response.getDataSeries().get(0) instanceof ArrayOfObjects)
-            assert ((ArrayOfObjects)response.getDataSeries().get(0)).getData().size() == response.getxAxis_categories().size();
+        else if (response.getDataSeries().get(0) instanceof ArrayOfDataObjects)
+            assert ((ArrayOfDataObjects)response.getDataSeries().get(0)).getData().size() == response.getxAxis_categories().size();
         else
             assert false;
 

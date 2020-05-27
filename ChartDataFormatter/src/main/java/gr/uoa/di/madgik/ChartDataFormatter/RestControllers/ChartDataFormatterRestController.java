@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagramsService;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -61,6 +63,8 @@ public class ChartDataFormatterRestController {
     postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
 
         JsonResponse responseData;
+
+        log.info("requestJson: " + requestJson.toString());
 
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
@@ -133,6 +137,30 @@ public class ChartDataFormatterRestController {
 
         response.put("shortUrl", shortenedUrl);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping( path = "/json",
+            produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name="json") String json){
+
+        JsonResponse responseData;
+        ObjectMapper mapper = new ObjectMapper();
+
+
+
+        try {
+            RequestInfo requestJson = mapper.readValue(json, RequestInfo.class);
+
+            responseData = requestBodyHandler.handleRequest(requestJson);
+        } catch (RequestBodyHandler.RequestBodyException e) {
+            log.error(e.getMessage(), e);
+            return new ResponseEntity<>(e.getHttpStatus());
+        } catch (IOException e) {
+            log.error(e);
+            return new ResponseEntity<JsonResponse>(HttpStatus.BAD_REQUEST);
+        }
+
+        return new ResponseEntity<>(responseData, HttpStatus.OK);
     }
 
 }

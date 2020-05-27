@@ -6,14 +6,14 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
 @JsonDeserialize(using= JsonDeserializer.None.class)
-public class ArrayOfObjects extends AbsData {
+public class ArrayOfDataObjects extends AbsData {
 
     @JsonProperty
     private ArrayList<DataObject> data;
 
-    public ArrayOfObjects() {}
+    public ArrayOfDataObjects() {}
 
-    public ArrayOfObjects(ArrayList<DataObject> data) {
+    public ArrayOfDataObjects(ArrayList<DataObject> data) {
         this.data = data;
     }
 
