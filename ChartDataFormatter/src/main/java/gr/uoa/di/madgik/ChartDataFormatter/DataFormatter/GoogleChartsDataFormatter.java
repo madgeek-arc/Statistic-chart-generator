@@ -64,7 +64,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 namesToTypes.put(chartName, chartTypes.get(i));
             }
 
-            for (ArrayList<String> row : result.getRows()) {
+            for (List<String> row : result.getRows()) {
 
                 if(row.size() == 3){
                     // The value of the 2nd Group BY
@@ -169,7 +169,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         headerValuesArray.add(null);
         headerValuesArray.add(chartName);
 
-        for (ArrayList<String> row : result.getRows()) {
+        for (List<String> row : result.getRows()) {
             ArrayList<Object> valuesArray = new ArrayList<>();
 
             String yValue = row.get(0);
@@ -193,7 +193,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
 
-        for (ArrayList<String> row : result.getRows()) {
+        for (List<String> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
             String groupByValue = row.get(2);

@@ -70,7 +70,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 namesToTypes.put(chartName, chartsType.get(i));
             }
 
-            for (ArrayList<String> row : result.getRows()) {
+            for (List<String> row : result.getRows()) {
 
                 if (row.size() == 3) {
                     // The value of the 2nd Group BY
@@ -192,7 +192,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             case column:
             case line:
                 ArrayList<Number> yValuesArray = new ArrayList<>();
-                for (ArrayList<String> row : result.getRows()) {
+                for (List<String> row : result.getRows()) {
 
                     String xValue = row.get(1);
 
@@ -213,7 +213,7 @@ public class HighChartsDataFormatter extends DataFormatter{
 
             case pie:
                 ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
-                for (ArrayList<String> row : result.getRows()) {
+                for (List<String> row : result.getRows()) {
 
                     String xValue = row.get(1);
 
@@ -251,7 +251,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
-        for (ArrayList<String> row : result.getRows()) {
+        for (List<String> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
             String groupByValue = row.get(2);

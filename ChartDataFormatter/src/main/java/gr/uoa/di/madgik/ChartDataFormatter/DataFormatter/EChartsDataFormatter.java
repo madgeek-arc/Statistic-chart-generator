@@ -72,7 +72,7 @@ public class EChartsDataFormatter extends DataFormatter{
                 namesToTypes.put(chartName, chartsType.get(i));
             }
 
-            for (ArrayList<String> row : result.getRows()) {
+            for (List<String> row : result.getRows()) {
 
                 if (row.size() == 3) {
                     // The value of the 2nd Group BY
@@ -201,7 +201,7 @@ public class EChartsDataFormatter extends DataFormatter{
             case column:
             case line:
                 ArrayList<Number> yValuesArray = new ArrayList<>();
-                for (ArrayList<String> row : result.getRows()) {
+                for (List<String> row : result.getRows()) {
 
                     String xValue = row.get(1);
 
@@ -222,7 +222,7 @@ public class EChartsDataFormatter extends DataFormatter{
 
             case pie:
                 ArrayList<EChartsDataObject> yObjectValuesArray = new ArrayList<>();
-                for (ArrayList<String> row : result.getRows()) {
+                for (List<String> row : result.getRows()) {
 
                     String xValue = row.get(1);
 
@@ -264,7 +264,7 @@ public class EChartsDataFormatter extends DataFormatter{
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
-        for (ArrayList<String> row : result.getRows()) {
+        for (List<String> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
             String groupByValue = row.get(2);

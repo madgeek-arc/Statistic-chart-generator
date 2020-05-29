@@ -1,14 +1,12 @@
 package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.*;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataRequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
+import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
-import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -135,10 +133,71 @@ public class RequestBodyHandler {
         }
     }
 
+    public JsonResponse handleRawDataRequest(RawDataRequestInfo requestInfo) throws RequestBodyException {
+
+        List<Result> statsServiceResults;
+
+        for (Query q:requestInfo.getQueries())
+            log.info("Query:" + q.getName() );
+
+        try {
+            statsServiceResults = this.statsService.query(requestInfo.getQueries());
+
+            this.logChartInfo(requestInfo, statsServiceResults);
+
+            if (!requestInfo.isVerbose()) {
+                RawDataJsonResponse response = new RawDataJsonResponse();
+                response.setData(new ArrayList<>());
+
+                for (Result r : statsServiceResults)
+                    response.getData().add(r.getRows());
+
+                return response;
+            } else {
+
+                VerboseRawDataResponse response = new VerboseRawDataResponse();
+                response.setSeries(new ArrayList<>());
+
+                //for (Result r:statsServiceResults) {
+                for (int i = 0; i < statsServiceResults.size(); i++) {
+                    Result result = statsServiceResults.get(i);
+                    VerboseRawDataSeries series = new VerboseRawDataSeries();
+                    VerboseRawDataSerie serie = new VerboseRawDataSerie();
+
+                    serie.setQuery(requestInfo.getQueries().get(i));
+                    serie.setRows(new ArrayList<>());
+
+                    for (List<String> row:result.getRows()) {
+                        serie.getRows().add(new VerboseRawDataRow(row));
+                    }
+
+                    series.setSeries(serie);
+
+                    response.getSeries().add(series);
+                }
+
+                return response;
+            }
+
+        } catch (Exception e) {
+              throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
+          }
+    }
+
     private void logChartInfo(RequestInfo requestJson, List<Result> statsServiceResults) {
         if(log.isInfoEnabled()) {
             log.info("Chart Types: " + requestJson.getChartTypes());
             log.info("Chart Names: " + requestJson.getChartNames());
+
+            for (int i = 0; i < statsServiceResults.size(); i++) {
+                Result res = statsServiceResults.get(i);
+                log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
+            }
+        }
+    }
+
+    private void logChartInfo(RawDataRequestInfo requestJson, List<Result> statsServiceResults) {
+        if(log.isInfoEnabled()) {
 
             for (int i = 0; i < statsServiceResults.size(); i++) {
                 Result res = statsServiceResults.get(i);

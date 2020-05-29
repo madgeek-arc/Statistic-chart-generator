@@ -28,7 +28,7 @@ public abstract class JsonResponse {
  */
 class JsonResponseDeserializer extends JsonDeserializer<JsonResponse>{
     @Override
-    public JsonResponse deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+    public JsonResponse deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
 
         ObjectMapper mapper = (ObjectMapper) p.getCodec();
         ObjectNode root = mapper.readTree(p);
@@ -42,6 +42,12 @@ class JsonResponseDeserializer extends JsonDeserializer<JsonResponse>{
             return mapper.treeToValue(root, GoogleChartsJsonResponse.class);
         }
 
+//        dataNode = root.get("data");
+//        if(dataNode != null && !(dataNode instanceof NullNode)) {
+//            return mapper.treeToValue(root, RawDataJsonResponse.class);
+//        }
+
+        //TODO check for echarts and raw data
         return null;
     }
 }

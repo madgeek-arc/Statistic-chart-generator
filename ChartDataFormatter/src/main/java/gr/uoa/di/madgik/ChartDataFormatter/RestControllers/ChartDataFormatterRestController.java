@@ -152,7 +152,7 @@ public class ChartDataFormatterRestController {
             RequestInfo requestJson = mapper.readValue(json, RequestInfo.class);
 
             responseData = requestBodyHandler.handleRequest(requestJson);
-        } catch (RequestBodyHandler.RequestBodyException e) {
+        } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
         } catch (IOException e) {

@@ -29,7 +29,7 @@ public abstract class DataFormatter {
             if (result.getRows().isEmpty())
                 break;
 
-            for (ArrayList<String> row : result.getRows()) {
+            for (List<String> row : result.getRows()) {
                 // Get the first groupBy of the result row
                 String xValue = row.get(1);
 

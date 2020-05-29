@@ -24,7 +24,8 @@ public class DbAccessResultsTest {
         Result queryResult = mapper.readValue(new File("src/test/resources/highcharts/testFiles/result1.json"), Result.class);
         List<Result> resultList = new ArrayList<>();
         resultList.add(queryResult);
-        for(ArrayList<String> row :queryResult.getRows())
+
+        for(List<String> row :queryResult.getRows())
             if(row.size() != 2)
                 throw new CantDealWithException("Row size different than 2");
 
