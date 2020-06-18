@@ -21,4 +21,7 @@ public class CacheController {
     public void promoteNumbers() {
         cacheService.promoteNumbers();
     }
+
+    @GetMapping("update")
+    public void updateCache() {cacheService.updateCache();}
 }

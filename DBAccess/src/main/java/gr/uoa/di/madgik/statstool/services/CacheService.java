@@ -4,5 +4,7 @@ public interface CacheService {
 
     public void calculateNumbers() throws StatsServiceException;
 
-    void promoteNumbers();
+    public void promoteNumbers();
+
+    public void updateCache();
 }
