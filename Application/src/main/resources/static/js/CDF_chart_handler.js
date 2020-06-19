@@ -54,6 +54,8 @@ function handleAdminSideData(dataJSONobj)
                 var RequestInfoObj = new Object();
                 //Pass the Chart library to ChartDataFormatter
                 RequestInfoObj.library = dataJSONobj.library;
+                RequestInfoObj.orderBy = dataJSONobj.orderBy;
+                // RequestInfoObj.ord
                 
                 //Create ChartInfo Object Array
                 RequestInfoObj.chartsInfo = [];
@@ -83,6 +85,7 @@ function handleAdminSideData(dataJSONobj)
             var RequestInfoObj = new Object();
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
+            RequestInfoObj.orderBy = dataJSONobj.orderBy;
             //Pass the Chart type to ChartDataFormatter
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array
@@ -132,7 +135,8 @@ function handleAdminSideData(dataJSONobj)
 
             var RequestInfoObj = new Object();
             //Pass the Chart library to ChartDataFormatter
-            RequestInfoObj.library = dataJSONobj.library;        
+            RequestInfoObj.library = dataJSONobj.library;
+            RequestInfoObj.orderBy = dataJSONobj.orderBy;
             //Pass the Chart type to ChartDataFormatter
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array

@@ -30,11 +30,15 @@ public class VerboseRawDataResponse extends JsonResponse {
     }
 
     @Override
-    public void logJsonResponse() {
-        if(log.isInfoEnabled()) {
-            if(this.series != null)
-                log.info("Data:" + this.series.toString());
-        }
+    public String toString() {
+        return "VerboseRawDataResponse{" +
+                "series=" + series +
+                '}';
+    }
+
+    @Override
+    public JsonResponse sort(String field) {
+        return this;
     }
 }
 

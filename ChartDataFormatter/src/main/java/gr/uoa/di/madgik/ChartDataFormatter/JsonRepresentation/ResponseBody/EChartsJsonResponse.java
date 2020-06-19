@@ -44,20 +44,14 @@ public class EChartsJsonResponse extends JsonResponse {
     }
 
     @Override
-    public void logJsonResponse() {
-        if(log.isInfoEnabled()) {
-            if(this.dataSeriesNames != null)
-                log.info("DataSeries Names: " + this.dataSeriesNames.toString());
-            if(this.dataSeriesTypes != null)
-                log.info("DataSeries Types: " + this.dataSeriesTypes.toString());
-            if(this.xAxis_categories != null)
-                log.info("DataSeries XAxis_Categories: " + this.xAxis_categories.toString());
-            if(this.dataSeries != null) {
-                log.info("DataSeries: " + this.dataSeries.toString());
-                if(this.getDataSeries().size() > 0 )
-                    log.info("DataSeries row size: " + ((ArrayList<Number>) this.dataSeries.get(0).getData()).size());
-            }
-        }
+    public String toString() {
+        return "EChartsJsonResponse{" +
+                "dataSeries=" + dataSeries +
+                ", xAxis_categories=" + xAxis_categories +
+                ", dataSeriesNames=" + dataSeriesNames +
+                ", dataSeriesTypes=" + dataSeriesTypes +
+                ", drilldown=" + drilldown +
+                '}';
     }
 
     public List<AbsData> getDataSeries() {
@@ -87,4 +81,9 @@ public class EChartsJsonResponse extends JsonResponse {
     public List<AbsData> getDrilldown() { return drilldown; }
 
     public void setDrilldown(List<AbsData> drilldown) { this.drilldown = drilldown; }
+
+    @Override
+    public JsonResponse sort(String field) {
+        return this;
+    }
 }

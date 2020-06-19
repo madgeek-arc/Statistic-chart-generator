@@ -38,6 +38,7 @@ public class RequestBodyHandler {
 
         try {
             statsServiceResults = this.statsService.query(requestJson.getChartQueries());
+            JsonResponse jsonResponse = null;
 
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
 
@@ -56,10 +57,8 @@ public class RequestBodyHandler {
                     if(highChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    highChartsJsonResponse.logJsonResponse();
-
-                    return highChartsJsonResponse;
-
+                    jsonResponse = highChartsJsonResponse;
+                    break;
                 case GoogleCharts:
 
                     this.logChartInfo(requestJson, statsServiceResults);
@@ -75,10 +74,8 @@ public class RequestBodyHandler {
                     if(googleChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    googleChartsJsonResponse.logJsonResponse();
-
-                    return googleChartsJsonResponse;
-
+                    jsonResponse = googleChartsJsonResponse;
+                    break;
                 case eCharts:
 
                     log.info("handling eCharts request");
@@ -95,10 +92,8 @@ public class RequestBodyHandler {
                     if(eChartsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    eChartsJsonResponse.logJsonResponse();
-
-                    return eChartsJsonResponse;
-
+                    jsonResponse = eChartsJsonResponse;
+                    break;
                 case HighMaps:
 
                     this.logChartInfo(requestJson, statsServiceResults);
@@ -118,14 +113,18 @@ public class RequestBodyHandler {
                     if(tempHighMapsJsonResponse == null)
                         throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
 
-                    tempHighMapsJsonResponse.logJsonResponse();
-
-                    return tempHighMapsJsonResponse;
-
-
+                    jsonResponse = tempHighMapsJsonResponse;
+                    break;
                 default:
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
+
+            log.info("response: " + jsonResponse);
+
+            if (requestJson.getOrderBy() != null && !requestJson.getOrderBy().trim().equals(""))
+                jsonResponse = jsonResponse.sort(requestJson.getOrderBy());
+
+            return jsonResponse;
         } catch (RequestBodyException e) {
             throw e;
         } catch (Exception e) {

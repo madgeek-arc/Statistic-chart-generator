@@ -22,15 +22,12 @@ public class GoogleChartsJsonResponse extends JsonResponse{
     }
 
     @Override
-    public void logJsonResponse() {
-        if(log.isInfoEnabled()) {
-            if(this.columnsType != null)
-                log.info("ColumnsType: " + this.columnsType.toString());
-            if(this.columns != null)
-                log.info("Columns: " + this.columns.toString());
-            if(this.dataTable != null)
-                log.info("DataTable :" + this.dataTable.toString());
-        }
+    public String toString() {
+        return "GoogleChartsJsonResponse{" +
+                "dataTable=" + dataTable +
+                ", columns=" + columns +
+                ", columnsType=" + columnsType +
+                '}';
     }
 
     public List<List<Object>> getDataTable() { return dataTable; }
@@ -44,4 +41,9 @@ public class GoogleChartsJsonResponse extends JsonResponse{
     public List<String> getColumnsType() { return columnsType; }
 
     public void setColumnsType(List<String> columnsType) { this.columnsType = columnsType; }
+
+    @Override
+    public JsonResponse sort(String field) {
+        return this;
+    }
 }

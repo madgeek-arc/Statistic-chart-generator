@@ -21,11 +21,10 @@ public class RawDataJsonResponse extends JsonResponse {
     }
 
     @Override
-    public void logJsonResponse() {
-        if(log.isInfoEnabled()) {
-            if(this.data != null)
-                log.info("Data:" + this.data.toString());
-        }
+    public String toString() {
+        return "RawDataJsonResponse{" +
+                "data=" + data +
+                '}';
     }
 
     public List<List<List<String>>> getData() {
@@ -34,5 +33,10 @@ public class RawDataJsonResponse extends JsonResponse {
 
     public void setData(List<List<List<String>>> data) {
         this.data = data;
+    }
+
+    @Override
+    public JsonResponse sort(String field) {
+        return this;
     }
 }

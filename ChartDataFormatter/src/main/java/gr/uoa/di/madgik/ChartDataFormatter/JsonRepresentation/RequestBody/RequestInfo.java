@@ -17,12 +17,15 @@ public class RequestInfo {
     private String library;
     @JsonProperty
     private List<ChartInfo> chartsInfo;
+    @JsonProperty
+    private String orderBy;
 
     public RequestInfo() {}
 
-    public RequestInfo(String library, List<ChartInfo> chartsInfo) {
+    public RequestInfo(String library, List<ChartInfo> chartsInfo, String orderBy) {
         this.library = library;
         this.chartsInfo = chartsInfo;
+        this.orderBy = orderBy;
     }
 
     public String getLibrary() {
@@ -36,6 +39,14 @@ public class RequestInfo {
     public List<ChartInfo> getChartsInfo() { return chartsInfo; }
 
     public void setChartsInfo(List<ChartInfo> chartsInfo) { this.chartsInfo = chartsInfo; }
+
+    public String getOrderBy() {
+        return orderBy;
+    }
+
+    public void setOrderBy(String orderBy) {
+        this.orderBy = orderBy;
+    }
 
     public List<SupportedChartTypes> getChartTypes(){
 

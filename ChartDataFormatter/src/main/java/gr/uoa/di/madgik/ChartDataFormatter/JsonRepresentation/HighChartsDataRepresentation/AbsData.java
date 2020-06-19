@@ -13,9 +13,6 @@ import java.io.IOException;
 
 @JsonDeserialize(using=AbsDataDeserializer.class)
 public abstract class AbsData {
-
-    private Object data;
-
     public abstract Object getData();
 }
 
