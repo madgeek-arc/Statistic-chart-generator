@@ -81,9 +81,4 @@ public class EChartsJsonResponse extends JsonResponse {
     public List<AbsData> getDrilldown() { return drilldown; }
 
     public void setDrilldown(List<AbsData> drilldown) { this.drilldown = drilldown; }
-
-    @Override
-    public JsonResponse sort(String field) {
-        return this;
-    }
 }

@@ -34,9 +34,4 @@ public class RawDataJsonResponse extends JsonResponse {
     public void setData(List<List<List<String>>> data) {
         this.data = data;
     }
-
-    @Override
-    public JsonResponse sort(String field) {
-        return this;
-    }
 }

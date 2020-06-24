@@ -12,8 +12,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 
 @JsonDeserialize(using=AbsDataDeserializer.class)
-public abstract class AbsData {
-    public abstract Object getData();
+public interface AbsData {
+    public Object getData();
 }
 
 class AbsDataDeserializer extends JsonDeserializer<AbsData>{

@@ -133,7 +133,7 @@ public class SqlQueryTree {
         parent.selects.add(new Select(parent.alias + "." + field, select.getAggregate(), select.getOrder()));
     }
 
-    public String makeQuery(List<Object> parameters) {
+    public String makeQuery(List<Object> parameters, String orderBy) {
         Stack<Node> stack = new Stack<>();
         List<String> tables = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
@@ -222,17 +222,24 @@ public class SqlQueryTree {
                     query += ", " + gp;
                 }
             }
+
             query += " ORDER BY ";
-            first = true;
-            for (String gp : group) {
-                if (first) {
-                    query += gp;
-                    first = false;
-                } else {
-                    query += ", " + gp;
+
+            if (orderBy == null || orderBy.equals("xaxis")) {
+                first = true;
+                for (String gp : group) {
+                    if (first) {
+                        query += gp;
+                        first = false;
+                    } else {
+                        query += ", " + gp;
+                    }
                 }
+            } else {
+                query += " 1 DESC ";
             }
         }
+
         if(limit != 0) {
             query += " LIMIT " + limit;
         }

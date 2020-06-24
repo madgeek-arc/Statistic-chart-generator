@@ -184,12 +184,12 @@ public class Mapper {
         }
     }
 
-    public String map(Query query, List<Object> parameters) {
+    public String map(Query query, List<Object> parameters, String orderBy) {
         String profile = query.getProfile();
-        if(profile == null) {
+        if (profile == null) {
             profile = primaryProfile;
         }
-        return new SqlQueryBuilder(query, profileConfigurations.get(profile)).getSqlQuery(parameters);
+        return new SqlQueryBuilder(query, profileConfigurations.get(profile)).getSqlQuery(parameters, orderBy);
     }
 
     public HashMap<String, Field> getFields(String profile) {

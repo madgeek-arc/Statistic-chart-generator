@@ -41,9 +41,4 @@ public class GoogleChartsJsonResponse extends JsonResponse{
     public List<String> getColumnsType() { return columnsType; }
 
     public void setColumnsType(List<String> columnsType) { this.columnsType = columnsType; }
-
-    @Override
-    public JsonResponse sort(String field) {
-        return this;
-    }
 }

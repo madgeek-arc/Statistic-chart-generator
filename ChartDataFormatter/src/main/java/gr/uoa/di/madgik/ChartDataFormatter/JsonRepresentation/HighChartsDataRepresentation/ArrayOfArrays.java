@@ -7,7 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.ArrayList;
 
 @JsonDeserialize(using=JsonDeserializer.None.class)
-public class ArrayOfArrays extends AbsData {
+public class ArrayOfArrays implements AbsData {
 
     @JsonProperty
     private ArrayList<Number[]> data;

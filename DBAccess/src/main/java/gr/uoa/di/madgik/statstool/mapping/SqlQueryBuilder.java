@@ -28,8 +28,8 @@ public class SqlQueryBuilder {
         this.profileConfiguration = profileConfiguration;
     }
 
-    String getSqlQuery(List<Object> parameters) {
-        return new SqlQueryTree(mapIntermediate()).makeQuery(parameters);
+    String getSqlQuery(List<Object> parameters, String orderBy) {
+        return new SqlQueryTree(mapIntermediate()).makeQuery(parameters, orderBy);
     }
 
     private Query mapIntermediate() {

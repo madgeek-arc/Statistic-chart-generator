@@ -7,7 +7,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepr
 
 import java.util.ArrayList;
 @JsonDeserialize(using= JsonDeserializer.None.class)
-public class ArrayOfEChartDataObjects extends AbsData {
+public class ArrayOfEChartDataObjects implements AbsData {
 
     @JsonProperty
     private ArrayList<EChartsDataObject> data;

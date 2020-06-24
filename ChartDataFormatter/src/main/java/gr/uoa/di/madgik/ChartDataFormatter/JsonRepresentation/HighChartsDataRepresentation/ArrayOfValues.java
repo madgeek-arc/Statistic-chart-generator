@@ -5,25 +5,26 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @JsonDeserialize(using= JsonDeserializer.None.class)
-public class ArrayOfValues extends AbsData {
+public class ArrayOfValues implements AbsData {
 
     @JsonProperty
-    private ArrayList<Number> data;
+    private List<Number> data;
 
     public ArrayOfValues() {}
 
-    public ArrayOfValues(ArrayList<Number> data) {
+    public ArrayOfValues(List<Number> data) {
         this.data = data;
     }
 
     @Override
-    public ArrayList<Number> getData() {
+    public List<Number> getData() {
         return data;
     }
 
-    public void setData(ArrayList<Number> data) {
+    public void setData(List<Number> data) {
         this.data = data;
     }
 

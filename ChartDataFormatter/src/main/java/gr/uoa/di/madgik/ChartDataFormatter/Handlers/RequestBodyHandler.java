@@ -37,7 +37,7 @@ public class RequestBodyHandler {
         List<Result> statsServiceResults;
 
         try {
-            statsServiceResults = this.statsService.query(requestJson.getChartQueries());
+            statsServiceResults = this.statsService.query(requestJson.getChartQueries(), requestJson.getOrderBy());
             JsonResponse jsonResponse = null;
 
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {
@@ -120,9 +120,6 @@ public class RequestBodyHandler {
             }
 
             log.info("response: " + jsonResponse);
-
-            if (requestJson.getOrderBy() != null && !requestJson.getOrderBy().trim().equals(""))
-                jsonResponse = jsonResponse.sort(requestJson.getOrderBy());
 
             return jsonResponse;
         } catch (RequestBodyException e) {

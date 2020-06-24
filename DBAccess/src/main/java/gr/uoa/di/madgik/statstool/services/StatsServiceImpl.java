@@ -35,6 +35,11 @@ public class StatsServiceImpl implements StatsService {
 
     @Override
     public List<Result> query(List<Query> queryList) throws StatsServiceException {
+        return this.query(queryList, null);
+    }
+
+    @Override
+    public List<Result> query(List<Query> queryList, String orderBy) throws StatsServiceException {
         List<Result> results = new ArrayList<>();
 
         try {
@@ -48,7 +53,7 @@ public class StatsServiceImpl implements StatsService {
                 Result result;
 
                 if (queryName == null) {
-                    String querySql = mapper.map(query, parameters);
+                    String querySql = mapper.map(query, parameters, orderBy);
                     String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
 
                     result = statsRedisRepository.get(fullSqlQuery);

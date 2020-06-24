@@ -35,11 +35,6 @@ public class VerboseRawDataResponse extends JsonResponse {
                 "series=" + series +
                 '}';
     }
-
-    @Override
-    public JsonResponse sort(String field) {
-        return this;
-    }
 }
 
 
