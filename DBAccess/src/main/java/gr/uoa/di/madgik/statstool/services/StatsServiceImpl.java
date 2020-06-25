@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +45,6 @@ public class StatsServiceImpl implements StatsService {
         List<Result> results = new ArrayList<>();
 
         try {
-
             for (Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
 
@@ -56,9 +57,11 @@ public class StatsServiceImpl implements StatsService {
                     String querySql = mapper.map(query, parameters, orderBy);
                     String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
 
-                    result = statsRedisRepository.get(fullSqlQuery);
+                    String cacheKey = StatsRedisRepository.getCacheKey(fullSqlQuery);
 
-                    if (result == null) {
+                    if (statsRedisRepository.exists(cacheKey)) {
+                        result = statsRedisRepository.get(cacheKey);
+                    } else {
                         result = statsRepository.executeQuery(querySql, parameters);
                         statsRedisRepository.save(fullSqlQuery, result);
                     }
@@ -73,6 +76,8 @@ public class StatsServiceImpl implements StatsService {
                         continue;
                     }
 
+                    String cacheKey = StatsRedisRepository.getCacheKey(querySql);
+
                     if (query.getParameters() != null) {
                         for (String param:query.getParameters())
                             querySql = querySql.replaceFirst("\\?", "'" + param + "'");
@@ -80,9 +85,9 @@ public class StatsServiceImpl implements StatsService {
 
                     log.debug("Query after replace:" + querySql);
 
-                    result = statsRedisRepository.get(querySql);
-
-                    if (result == null) {
+                    if (statsRedisRepository.exists(cacheKey)) {
+                        result = statsRedisRepository.get(cacheKey);
+                    } else {
                         result = statsRepository.executeQuery(querySql, new ArrayList<>());
                         statsRedisRepository.save(querySql, result);
                     }
