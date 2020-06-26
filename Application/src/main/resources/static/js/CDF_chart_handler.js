@@ -73,7 +73,6 @@ function handleAdminSideData(dataJSONobj)
     {
         console.log("Asked for echarts library");
 
-        // loadJS("https://cdn.jsdelivr.net/npm/echarts@4.6.0/dist/echarts.min.js",
             loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
         function(){
 
@@ -121,7 +120,7 @@ function handleAdminSideData(dataJSONobj)
     {
                 
         //Dynamically add JS library
-        loadJS("https://code.highcharts.com/highcharts.js",        
+        loadJS("//code.highcharts.com/highcharts.js",        
         () => loadJS("//code.highcharts.com/modules/drilldown.js",
         () => loadJS("//code.highcharts.com/modules/no-data-to-display.js",
         () => loadJS("//code.highcharts.com/highcharts-3d.js",
@@ -172,7 +171,7 @@ function handleAdminSideData(dataJSONobj)
     }
     case "HighMaps":
     {
-        loadJS("http://code.highcharts.com/maps/highmaps.js",
+        loadJS("//code.highcharts.com/maps/highmaps.js",
         () => loadJS("//code.highcharts.com/modules/exporting.js",
         () => loadJS("//code.highcharts.com/modules/offline-exporting.js",
         () => loadJS("//code.highcharts.com/modules/export-data.js",
