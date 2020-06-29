@@ -13,6 +13,15 @@ public class Select {
         this.order = order;
     }
 
+    @Override
+    public String toString() {
+        return "Select{" +
+                "field='" + field + '\'' +
+                ", aggregate='" + aggregate + '\'' +
+                ", order=" + order +
+                '}';
+    }
+
     public String getField() {
         return field;
     }

@@ -10,7 +10,7 @@ public class QueryWithParameters {
     }
 
     public QueryWithParameters(String query, List<Object> parameters) {
-        this.query = query;
+        this.query = query.endsWith(";")?query.substring(0, query.length() - 1):query;
         this.parameters = parameters;
     }
 
@@ -18,16 +18,8 @@ public class QueryWithParameters {
         return query;
     }
 
-    public void setQuery(String query) {
-        this.query = query;
-    }
-
     public List<Object> getParameters() {
         return parameters;
-    }
-
-    public void setParameters(List<Object> parameters) {
-        this.parameters = parameters;
     }
 
     @Override

@@ -17,6 +17,16 @@ public class Filter {
         this.datatype = datatype;
     }
 
+    @Override
+    public String toString() {
+        return "Filter{" +
+                "field='" + field + '\'' +
+                ", type='" + type + '\'' +
+                ", values=" + values +
+                ", datatype='" + datatype + '\'' +
+                '}';
+    }
+
     public String getField() {
         return field;
     }

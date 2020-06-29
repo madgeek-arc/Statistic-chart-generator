@@ -12,6 +12,14 @@ public class FieldValues {
         this.values = values;
     }
 
+    @Override
+    public String toString() {
+        return "FieldValues{" +
+                "count=" + count +
+                ", values=" + values +
+                '}';
+    }
+
     public int getCount() {
         return count;
     }

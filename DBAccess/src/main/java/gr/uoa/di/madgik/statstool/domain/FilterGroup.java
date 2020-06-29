@@ -13,6 +13,14 @@ public class FilterGroup {
         this.op = op;
     }
 
+    @Override
+    public String toString() {
+        return "FilterGroup{" +
+                "groupFilters=" + groupFilters +
+                ", op='" + op + '\'' +
+                '}';
+    }
+
     public List<Filter> getGroupFilters() {
         return groupFilters;
     }

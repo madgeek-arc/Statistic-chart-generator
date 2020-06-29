@@ -25,6 +25,20 @@ public class Query {
         this.orderBy = orderBy;
     }
 
+    @Override
+    public String toString() {
+        return "Query{" +
+                "name='" + name + '\'' +
+                ", parameters=" + parameters +
+                ", filters=" + filters +
+                ", select=" + select +
+                ", entity='" + entity + '\'' +
+                ", profile='" + profile + '\'' +
+                ", limit=" + limit +
+                ", orderBy='" + orderBy + '\'' +
+                '}';
+    }
+
     public List<FilterGroup> getFilters() {
         return filters;
     }

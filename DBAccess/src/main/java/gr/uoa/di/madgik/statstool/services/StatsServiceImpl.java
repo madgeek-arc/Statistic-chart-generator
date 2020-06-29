@@ -80,19 +80,23 @@ public class StatsServiceImpl implements StatsService {
                         continue;
                     }
 
-                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
-
                     if (query.getParameters() != null) {
                         for (String param:query.getParameters())
                             querySql = querySql.replaceFirst("\\?", "'" + param + "'");
                     }
 
+                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
+
                     log.debug("Query after replace:" + querySql);
 
                     if (statsRedisRepository.exists(cacheKey)) {
                         result = statsRedisRepository.get(cacheKey);
+
+                        log.info("Key " + cacheKey + " in cache! Returning: " + result);
                     } else {
                         result = statsRepository.executeQuery(querySql, Collections.emptyList());
+
+                        log.info("result for key " + cacheKey + " not in cache. Querying db!");
                         statsRedisRepository.save(new QueryWithParameters(querySql, Collections.emptyList()), result);
                     }
                 }
