@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.statstool.domain.cache;
 
+import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 
 import java.util.Date;
@@ -7,7 +8,7 @@ import java.util.List;
 
 public class CacheEntry {
     private String key;
-    private String query;
+    private QueryWithParameters query;
     private Result result;
     private Result shadowResult;
     private Date created = new Date();
@@ -16,7 +17,7 @@ public class CacheEntry {
     private int sessionHits = 0;
     private boolean pinned = false;
 
-    public CacheEntry(String key, String query, Result result) {
+    public CacheEntry(String key, QueryWithParameters query, Result result) {
         this.key = key;
         this.query = query;
         this.result = result;
@@ -30,11 +31,11 @@ public class CacheEntry {
         this.key = key;
     }
 
-    public String getQuery() {
+    public QueryWithParameters getQuery() {
         return query;
     }
 
-    public void setQuery(String query) {
+    public void setQuery(QueryWithParameters query) {
         this.query = query;
     }
 
@@ -92,5 +93,20 @@ public class CacheEntry {
 
     public void setPinned(boolean pinned) {
         this.pinned = pinned;
+    }
+
+    @Override
+    public String toString() {
+        return "CacheEntry{" +
+                "key='" + key + '\'' +
+                ", query=" + query +
+                ", result=" + result +
+                ", shadowResult=" + shadowResult +
+                ", created=" + created +
+                ", updated=" + updated +
+                ", totalHits=" + totalHits +
+                ", sessionHits=" + sessionHits +
+                ", pinned=" + pinned +
+                '}';
     }
 }

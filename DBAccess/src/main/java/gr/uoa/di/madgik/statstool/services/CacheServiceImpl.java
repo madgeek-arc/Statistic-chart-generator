@@ -1,27 +1,20 @@
 package gr.uoa.di.madgik.statstool.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsRedisRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import javax.print.attribute.standard.PrinterMessageFromOperator;
-import java.io.IOException;
+import java.sql.SQLException;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class CacheServiceImpl implements CacheService {
@@ -41,8 +34,8 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private ExecutorService executorService;
 
-    private int numberLimit = 1000;
-    private int timeLimit = 3600;
+    private final int numberLimit = 1000;
+    private final int timeLimit = 3600;
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -64,24 +57,37 @@ public class CacheServiceImpl implements CacheService {
 
         entries.sort(new EntriesComparator());
 
-        int i = 0;
+        AtomicInteger i = new AtomicInteger();
         long startTime = new Date().getTime();
 
         entries.forEach(entry -> {
-            if (i < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
-                log.info("Updating entry " + entry.getKey() + " with query " + entry.getQuery());
-                try {
-                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery(), Collections.emptyList()));
-                } catch (Exception e) {
-                    log.error("Error updating cache entry", e);
+            try {
+
+                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
+                    log.info(i.getAndIncrement() + ". Updating entry " + entry.getKey() + " with query " + entry.getQuery());
+
+                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters()));
+                } else {
+                    log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
+
+                    entry.setShadowResult(null);
                 }
-            } else {
-                log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
-                entry.setShadowResult(null);
+
+                redisRepository.storeEntry(entry);
+            } catch (JsonProcessingException e) {
+                log.error("Error storing cache entry" ,e);
+            } catch (Exception e) {
+                log.error("Error updating entry " + entry, e);
+                redisRepository.deleteEntry(entry.getKey());
             }
         });
 
         log.info("Finished cache update!");
+    }
+
+    @Override
+    public void fixEntries() {
+        redisRepository.fixEntries();
     }
 
     @Override

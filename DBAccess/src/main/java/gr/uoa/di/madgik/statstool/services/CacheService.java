@@ -9,4 +9,6 @@ public interface CacheService {
     public void promoteNumbers();
 
     public void updateCache();
+
+    void fixEntries();
 }
