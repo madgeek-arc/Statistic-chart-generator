@@ -50,6 +50,16 @@ public class Filter {
     }
 
     @Override
+    public String toString() {
+        return "Filter{" +
+                "field='" + field + '\'' +
+                ", type='" + type + '\'' +
+                ", values=" + values +
+                ", datatype='" + datatype + '\'' +
+                '}';
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj == null) {
             return false;

@@ -36,4 +36,13 @@ public class Select {
     public void setOrder(int order) {
         this.order = order;
     }
+
+    @Override
+    public String toString() {
+        return "Select{" +
+                "field='" + field + '\'' +
+                ", aggregate='" + aggregate + '\'' +
+                ", order=" + order +
+                '}';
+    }
 }

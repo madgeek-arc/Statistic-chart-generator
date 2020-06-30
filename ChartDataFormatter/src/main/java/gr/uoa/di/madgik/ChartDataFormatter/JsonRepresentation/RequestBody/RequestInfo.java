@@ -83,4 +83,13 @@ public class RequestInfo {
 
         return retList;
     }
+
+    @Override
+    public String toString() {
+        return "RequestInfo{" +
+                "library='" + library + '\'' +
+                ", chartsInfo=" + chartsInfo +
+                ", orderBy='" + orderBy + '\'' +
+                '}';
+    }
 }

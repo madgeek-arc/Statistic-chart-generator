@@ -88,4 +88,18 @@ public class Query {
     public void setParameters(List<String> parameters) {
         this.parameters = parameters;
     }
+
+    @Override
+    public String toString() {
+        return "Query{" +
+                "name='" + name + '\'' +
+                ", parameters=" + parameters +
+                ", filters=" + filters +
+                ", select=" + select +
+                ", entity='" + entity + '\'' +
+                ", profile='" + profile + '\'' +
+                ", limit=" + limit +
+                ", orderBy='" + orderBy + '\'' +
+                '}';
+    }
 }

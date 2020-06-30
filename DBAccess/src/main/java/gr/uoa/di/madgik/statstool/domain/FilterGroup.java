@@ -28,4 +28,12 @@ public class FilterGroup {
     public void setOp(String op) {
         this.op = op;
     }
+
+    @Override
+    public String toString() {
+        return "FilterGroup{" +
+                "groupFilters=" + groupFilters +
+                ", op='" + op + '\'' +
+                '}';
+    }
 }
