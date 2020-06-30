@@ -1,7 +1,5 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import org.apache.log4j.Logger;
@@ -11,6 +9,9 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import javax.sql.DataSource;
 
@@ -21,48 +22,37 @@ public class StatsRepository {
 
     private final DataSource dataSource;
 
+    private final ExecutorService executorService;
+
     private final Logger log = Logger.getLogger(this.getClass());
 
-    public StatsRepository(DataSource dataSource) {
+    private final Map<QueryWithParameters, Future<Result>> tasks = new HashMap<>();
+
+    public StatsRepository(DataSource dataSource, ExecutorService executorService) {
         this.dataSource = dataSource;
+        this.executorService = executorService;
     }
 
-    public Result executeQuery(String query, List<Object> parameters) throws SQLException {
-        Result result = new Result();
+    public Result executeQuery(String query, List<Object> parameters) throws Exception {
+        QueryWithParameters q = new QueryWithParameters(query, parameters);
+        Future<Result> future = null;
 
-	    Connection connection = null;
-        try {
-            connection = dataSource.getConnection();
+        synchronized (tasks) {
+            future = tasks.get(q);
 
-            PreparedStatement st = connection.prepareStatement(query);
-            int count = 1;
-            if (parameters != null)
-                for (Object param : parameters)
-                    st.setObject(count++, param);
-
-            ResultSet rs = st.executeQuery();
-            int columnCount = rs.getMetaData().getColumnCount();
-            while(rs.next()) {
-                ArrayList<String> row = new ArrayList<>();
-                for(int i = 1; i <= columnCount; i++) {
-                    row.add(rs.getString(i));
-                }
-                result.addRow(row);
-            }
-
-            rs.close();
-            st.close();
-            connection.close();
-            return result;
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            try {
-                if (connection != null)
-                    connection.close();
-            } catch (Exception e) {
+            if (future == null) {
+                future = executorService.submit(new ResultCallable(q));
+                tasks.put(q, future);
             }
         }
+
+        Result result = future.get();
+
+        synchronized (tasks) {
+            tasks.remove(q);
+        }
+
+        return result;
     }
 
     public String executeNumberQuery(String query) {
@@ -98,80 +88,49 @@ public class StatsRepository {
         return result;
     }
 
-    public static String getFullQuery(String query, List<Object> parameters) {
-	    StringBuilder sb = new StringBuilder();
+    public class ResultCallable implements Callable<Result> {
+        private final QueryWithParameters query;
 
-        sb.append(query);
-        for (Object o : parameters)
-            sb.append(';').append(o);
+        public ResultCallable(QueryWithParameters q) {
+            this.query = q;
+        }
 
-        return sb.toString();
-    }
+        @Override
+        public Result call() throws Exception {
+            Result result = new Result();
 
-    public static void main(String[] args) throws IOException {
-//        List<Object> l = new ArrayList<>( );
-//
-//        l.add("sdsd");
-//        l.add(23);
-//        l.add(new java.util.Date());
-//        l.add(false);
-//
-//
-//
-//
-//        QueryWithParameters q = new QueryWithParameters("select foof offfo fffofofofo fofof", l);
-//        System.out.println(new ObjectMapper().writeValueAsString(q));
-//
-//        q = new ObjectMapper().readValue(new ObjectMapper().writeValueAsString(q), QueryWithParameters.class);
-//
-//        System.out.println(q);
-//        System.out.println(q.getQuery());
-//        q.getParameters().forEach(o->{
-//            System.out.println(o + " " + o.getClass());
-//        });
-
-//        String qq = "SDfsd fdfg sdfgh dfs g;;sdfsdf;3425;true;" + new Date().getTime() + ";erg";
-
-        Arrays.asList("sdflksjdflskdjf;", "sdfsdfgdslfkgjsdl;;", "sdlkfjsldkfgjsldkfgj", "sdfl;kjsdlfkj;234234;true;blah").forEach(qq -> {
-            System.out.println(qq);
+            Connection connection = null;
             try {
-                new ObjectMapper().readValue(qq, QueryWithParameters.class);
-            } catch (IOException e) {
-                String[] parts = qq.replaceAll(";;", ";").split(";");
+                connection = dataSource.getConnection();
 
-                qq = parts[0];
-                List<Object> params = new ArrayList<>();
+                PreparedStatement st = connection.prepareStatement(query.getQuery());
+                int count = 1;
+                if (query.getParameters() != null)
+                    for (Object param : query.getParameters())
+                        st.setObject(count++, param);
 
-                for (int i = 1; i < parts.length; i++) {
-                    String v = parts[i];
-
-                    try {
-                        params.add(Integer.parseInt(v));
-
-                        System.out.println(new Date(Integer.parseInt(v)));
-                        System.out.println(new Date(Integer.parseInt(v)).getTime());
-                        continue;
-                    } catch (NumberFormatException e1) {}
-                    try {
-                        params.add(new Date(Long.parseLong(v)));
-                        continue;
-                    } catch (NumberFormatException e1) {}
-                    try {
-                        params.add(Float.parseFloat(v));
-                        continue;
-                    } catch (NumberFormatException e1) {}
-
-                    if (v.trim().toLowerCase().equals("true") || v.trim().toLowerCase().equals("false")) {
-                        params.add(Boolean.parseBoolean(v));
-                        continue;
+                ResultSet rs = st.executeQuery();
+                int columnCount = rs.getMetaData().getColumnCount();
+                while(rs.next()) {
+                    ArrayList<String> row = new ArrayList<>();
+                    for(int i = 1; i <= columnCount; i++) {
+                        row.add(rs.getString(i));
                     }
-
-                    params.add(v);
+                    result.addRow(row);
                 }
 
-                System.out.println(new QueryWithParameters(qq, params));
-
+                rs.close();
+                st.close();
+                connection.close();
+                return result;
+            } catch (Exception e) {
+                throw e;
+            } finally {
+                try {
+                    if (connection != null)
+                        connection.close();
+                } catch (Exception e) {}
             }
-        });
+        }
     }
 }

@@ -12,6 +12,6 @@ public class AsyncConfiguration {
 
     @Bean
     public ExecutorService taskExecutor() {
-        return Executors.newFixedThreadPool(5);
+        return Executors.newFixedThreadPool(4);
     }
 }
