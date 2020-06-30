@@ -49,51 +49,36 @@ public class StatsServiceImpl implements StatsService {
         try {
             for (Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
+                String queryName = query.getName();
+                Result result;
+                String querySql;
+                String cacheKey;
 
                 log.info("query: " + query);
 
-                String queryName = query.getName();
-                Result result;
-
                 if (queryName == null) {
-                    String querySql = mapper.map(query, parameters, orderBy);
-                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters);
-
-                    if (statsRedisRepository.exists(cacheKey)) {
-                        result = statsRedisRepository.get(cacheKey);
-
-                        log.info("Key " + cacheKey + " in cache! Returning: " + result);
-                    } else {
-                        log.info("result for key " + cacheKey + " not in cache. Querying db!");
-                        result = statsRepository.executeQuery(querySql, parameters);
-                        log.info("result: " + result);
-                        statsRedisRepository.save(new QueryWithParameters(querySql, parameters), result);
-                    }
+                    log.info("Building query from description");
+                    querySql = mapper.map(query, parameters, orderBy);
                 } else {
-                    String querySql = getNamedQuery(queryName);
+                    log.info("Retrieving named sql query from repository");
+                    querySql = getNamedQuery(queryName);
+                    parameters = query.getParameters();
 
-                    log.debug("Query name: " + queryName);
-                    log.debug("Query: " + querySql);
+                    if (querySql == null)
+                        throw new StatsServiceException("query " + queryName + " not found!");
+                }
 
-                    if (querySql == null) {
-                        log.error("query " + queryName + " not found!");
-                        continue;
-                    }
+                cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters);
 
-                    if (query.getParameters() != null) {
-                        for (String param:query.getParameters())
-                            querySql = querySql.replaceFirst("\\?", "'" + param + "'");
-                    }
+                if (statsRedisRepository.exists(cacheKey)) {
+                    result = statsRedisRepository.get(cacheKey);
 
-                    log.debug("Query after replace:" + querySql);
-                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
-
-                    if (statsRedisRepository.exists(cacheKey)) {
-                        result = statsRedisRepository.get(cacheKey);
-                    } else {
-                        result = statsRepository.executeQuery(querySql, Collections.emptyList());
-                        statsRedisRepository.save(new QueryWithParameters(querySql, Collections.emptyList()), result);
-                    }
+                    log.info("Key " + cacheKey + " in cache! Returning: " + result);
+                } else {
+                    log.info("result for key " + cacheKey + " not in cache. Querying db!");
+                    result = statsRepository.executeQuery(querySql, parameters);
+                    log.info("result: " + result);
+                    statsRedisRepository.save(new QueryWithParameters(querySql, parameters), result);
                 }
 
                 results.add(result);

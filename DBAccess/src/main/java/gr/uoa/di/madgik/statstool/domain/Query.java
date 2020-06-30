@@ -4,7 +4,7 @@ import java.util.List;
 
 public class Query {
     private String name;
-    private List<String> parameters;
+    private List<Object> parameters;
     private List<FilterGroup> filters;
     private List<Select> select;
     private String entity;
@@ -14,7 +14,7 @@ public class Query {
 
     public Query() {}
 
-    public Query(String name, List<String> parameters, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy) {
+    public Query(String name, List<Object> parameters, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy) {
         this.name = name;
         this.parameters = parameters;
         this.filters = filters;
@@ -81,11 +81,11 @@ public class Query {
         this.orderBy = orderBy;
     }
 
-    public List<String> getParameters() {
+    public List<Object> getParameters() {
         return parameters;
     }
 
-    public void setParameters(List<String> parameters) {
+    public void setParameters(List<Object> parameters) {
         this.parameters = parameters;
     }
 
