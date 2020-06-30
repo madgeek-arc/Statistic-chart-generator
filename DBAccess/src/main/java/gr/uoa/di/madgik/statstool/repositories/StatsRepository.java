@@ -41,9 +41,14 @@ public class StatsRepository {
             future = tasks.get(q);
 
             if (future == null) {
+                log.info("Query " + q + " was not in queue. Submitting");
                 future = executorService.submit(new ResultCallable(q));
                 tasks.put(q, future);
+            } else {
+                log.info("query " + q + " was already submitted. Waiting for completion");
             }
+
+            log.info("size of queue: " + tasks.size());
         }
 
         Result result = future.get();
