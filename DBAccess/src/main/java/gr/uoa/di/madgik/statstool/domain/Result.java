@@ -20,4 +20,11 @@ public class Result {
     public void addRow(List<String> row) {
         rows.add(row);
     }
+
+    @Override
+    public String toString() {
+        return "Result{" +
+                "rows=" + rows +
+                '}';
+    }
 }

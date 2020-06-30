@@ -1,12 +1,16 @@
 package gr.uoa.di.madgik.statstool.services;
 
+import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.log4j.Logger;
@@ -43,7 +47,6 @@ public class StatsServiceImpl implements StatsService {
         List<Result> results = new ArrayList<>();
 
         try {
-
             for (Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
 
@@ -54,13 +57,17 @@ public class StatsServiceImpl implements StatsService {
 
                 if (queryName == null) {
                     String querySql = mapper.map(query, parameters, orderBy);
-                    String fullSqlQuery = statsRepository.getFullQuery(querySql, parameters);
+                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters);
 
-                    result = statsRedisRepository.get(fullSqlQuery);
+                    if (statsRedisRepository.exists(cacheKey)) {
+                        result = statsRedisRepository.get(cacheKey);
 
-                    if (result == null) {
+                        log.info("Key " + cacheKey + " in cache! Returning: " + result);
+                    } else {
+                        log.info("result for key " + cacheKey + " not in cache. Querying db!");
                         result = statsRepository.executeQuery(querySql, parameters);
-                        statsRedisRepository.save(fullSqlQuery, result);
+                        log.info("result: " + result);
+                        statsRedisRepository.save(new QueryWithParameters(querySql, parameters), result);
                     }
                 } else {
                     String querySql = getNamedQuery(queryName);
@@ -73,6 +80,8 @@ public class StatsServiceImpl implements StatsService {
                         continue;
                     }
 
+                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
+
                     if (query.getParameters() != null) {
                         for (String param:query.getParameters())
                             querySql = querySql.replaceFirst("\\?", "'" + param + "'");
@@ -80,11 +89,11 @@ public class StatsServiceImpl implements StatsService {
 
                     log.debug("Query after replace:" + querySql);
 
-                    result = statsRedisRepository.get(querySql);
-
-                    if (result == null) {
-                        result = statsRepository.executeQuery(querySql, new ArrayList<>());
-                        statsRedisRepository.save(querySql, result);
+                    if (statsRedisRepository.exists(cacheKey)) {
+                        result = statsRedisRepository.get(cacheKey);
+                    } else {
+                        result = statsRepository.executeQuery(querySql, Collections.emptyList());
+                        statsRedisRepository.save(new QueryWithParameters(querySql, Collections.emptyList()), result);
                     }
                 }
 
