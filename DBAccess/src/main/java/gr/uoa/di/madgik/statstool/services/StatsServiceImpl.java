@@ -80,14 +80,13 @@ public class StatsServiceImpl implements StatsService {
                         continue;
                     }
 
-                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
-
                     if (query.getParameters() != null) {
                         for (String param:query.getParameters())
                             querySql = querySql.replaceFirst("\\?", "'" + param + "'");
                     }
 
                     log.debug("Query after replace:" + querySql);
+                    String cacheKey = StatsRedisRepository.getCacheKey(querySql, Collections.emptyList());
 
                     if (statsRedisRepository.exists(cacheKey)) {
                         result = statsRedisRepository.get(cacheKey);
