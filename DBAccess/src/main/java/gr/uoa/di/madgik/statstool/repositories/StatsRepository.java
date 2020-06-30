@@ -36,10 +36,9 @@ public class StatsRepository {
 
             PreparedStatement st = connection.prepareStatement(query);
             int count = 1;
-            for(Object param : parameters) {
-                st.setObject(count, param);
-                count++;
-            }
+            if (parameters != null)
+                for (Object param : parameters)
+                    st.setObject(count++, param);
 
             ResultSet rs = st.executeQuery();
             int columnCount = rs.getMetaData().getColumnCount();
