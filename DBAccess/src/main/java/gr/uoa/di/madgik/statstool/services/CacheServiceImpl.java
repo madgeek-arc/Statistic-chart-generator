@@ -43,8 +43,6 @@ public class CacheServiceImpl implements CacheService {
 
     private final Logger log = Logger.getLogger(this.getClass());
 
-    //private ExecutorService executorService = Executors.newFixedThreadPool(3);
-
     public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
         this.jedis = redisTemplate.opsForHash();
@@ -60,7 +58,7 @@ public class CacheServiceImpl implements CacheService {
         AtomicInteger i = new AtomicInteger();
         long startTime = new Date().getTime();
 
-        entries.forEach(entry -> {
+        entries.parallelStream().forEach(entry -> {
             try {
 
                 if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
