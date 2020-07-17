@@ -128,7 +128,7 @@ public class StatsRedisRepository {
                 log.error(e);
                 return null;
             }
-        }).collect(Collectors.toList());
+        }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     public void deleteEntry(String key) {
