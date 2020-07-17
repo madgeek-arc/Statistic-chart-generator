@@ -124,7 +124,7 @@ public class StatsRedisRepository {
         }).map(key -> {
             try {
                 return getEntry(key);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 log.error(e);
                 return null;
             }
