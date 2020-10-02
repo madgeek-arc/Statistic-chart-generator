@@ -2,7 +2,8 @@ package gr.uoa.di.madgik.statstool.repositories;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
@@ -24,7 +25,7 @@ public class StatsRepository {
 
     private final ExecutorService executorService;
 
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     private final Map<QueryWithParameters, Future<Result>> tasks = new HashMap<>();
 

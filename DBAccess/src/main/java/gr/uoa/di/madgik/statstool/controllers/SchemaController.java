@@ -8,7 +8,8 @@ import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 import gr.uoa.di.madgik.statstool.services.SchemaService;
 
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +22,7 @@ import java.util.List;
 @RequestMapping(value = "schema/")
 @CrossOrigin(methods = RequestMethod.GET, origins = "*")
 public class SchemaController {
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     private SchemaService schemaService;
 

@@ -3,7 +3,8 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
 
@@ -15,7 +16,7 @@ import java.util.*;
  */
 public class HighChartsDataFormatter extends DataFormatter{
 
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     /**
      * {@inheritDoc}

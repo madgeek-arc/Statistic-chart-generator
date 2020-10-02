@@ -3,7 +3,8 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,7 @@ public class EChartsJsonResponse extends JsonResponse {
 
     private List<AbsData> drilldown;
 
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     public EChartsJsonResponse() {}
 

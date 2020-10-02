@@ -4,7 +4,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
@@ -22,7 +23,7 @@ import org.springframework.web.servlet.ModelAndView;
 public class TableDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     public TableDataFormatterRestController(RequestBodyHandler requestBodyHandler) {
         this.requestBodyHandler = requestBodyHandler;

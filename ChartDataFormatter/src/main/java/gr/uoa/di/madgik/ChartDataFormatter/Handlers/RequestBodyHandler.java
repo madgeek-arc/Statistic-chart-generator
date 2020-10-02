@@ -7,7 +7,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.Reques
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,7 @@ import java.util.List;
 public class RequestBodyHandler {
 
     private StatsService statsService;
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     public RequestBodyHandler(StatsService statsService) {
         this.statsService = statsService;

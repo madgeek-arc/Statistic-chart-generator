@@ -2,7 +2,8 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
 
@@ -15,7 +16,7 @@ import static gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTy
  */
 public class GoogleChartsDataFormatter extends DataFormatter {
 
-    private final Logger log = Logger.getLogger(this.getClass());
+    private final Logger log = LogManager.getLogger(this.getClass());
 
     /**
      * {@inheritDoc}
