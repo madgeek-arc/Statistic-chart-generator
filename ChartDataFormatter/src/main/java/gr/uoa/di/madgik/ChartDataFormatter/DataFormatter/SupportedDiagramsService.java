@@ -4,6 +4,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -62,7 +63,7 @@ public class SupportedDiagramsService {
 
     private void initSupportedMisc() {
         this.supportedMiscs = new ArrayList<>();
-        this.supportedMiscs.add(new SupportedMisc("numbers", Collections.emptyList()));
+        this.supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
     }
 
     public class SupportedChart {
