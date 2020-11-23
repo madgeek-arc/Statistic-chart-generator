@@ -8,6 +8,7 @@ import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -34,8 +35,10 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private ExecutorService executorService;
 
-    private final int numberLimit = 1000;
-    private final int timeLimit = 3600;
+    @Value("${statstool.cache.update.entries:5000}")
+    private int numberLimit;
+    @Value("${statstool.cache.update.seconds:10800}")
+    private int timeLimit;
 
     private final RedisTemplate<String, String> redisTemplate;
 
