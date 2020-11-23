@@ -1,7 +1,6 @@
 package gr.uoa.di.madgik.statstool.services;
 
 import gr.uoa.di.madgik.statstool.domain.FieldValues;
-import gr.uoa.di.madgik.statstool.mapping.domain.MappingProfile;
 import gr.uoa.di.madgik.statstool.mapping.domain.Profile;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 

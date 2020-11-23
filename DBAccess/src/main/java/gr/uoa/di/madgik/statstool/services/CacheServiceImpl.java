@@ -12,7 +12,6 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,11 +81,6 @@ public class CacheServiceImpl implements CacheService {
         });
 
         log.info("Finished cache update!");
-    }
-
-    @Override
-    public void fixEntries() {
-        redisRepository.fixEntries();
     }
 
     @Override
