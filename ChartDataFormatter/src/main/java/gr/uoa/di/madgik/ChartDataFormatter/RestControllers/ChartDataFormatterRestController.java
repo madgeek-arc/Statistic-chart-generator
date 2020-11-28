@@ -113,6 +113,14 @@ public class ChartDataFormatterRestController {
         return new ResponseEntity<>(supportedSpecialCharts, HttpStatus.OK);
     }
 
+    @GetMapping( path = "/misc",
+            produces = "application/json; charset=UTF-8")
+    public ResponseEntity getSupportedMiscTypes() {
+        List<SupportedDiagramsService.SupportedMisc> supportedMiscs = this.supportedDiagramsService.getSupportedMiscs();
+
+        return new ResponseEntity<>(supportedMiscs, HttpStatus.OK);
+    }
+
     @PostMapping( path = "/shorten",
                 consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")

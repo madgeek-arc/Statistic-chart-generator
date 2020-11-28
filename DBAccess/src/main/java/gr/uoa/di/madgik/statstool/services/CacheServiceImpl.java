@@ -8,11 +8,11 @@ import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -35,8 +35,10 @@ public class CacheServiceImpl implements CacheService {
     @Autowired
     private ExecutorService executorService;
 
-    private final int numberLimit = 1000;
-    private final int timeLimit = 3600;
+    @Value("${statstool.cache.update.entries:5000}")
+    private int numberLimit;
+    @Value("${statstool.cache.update.seconds:10800}")
+    private int timeLimit;
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -51,67 +53,9 @@ public class CacheServiceImpl implements CacheService {
 
     @Override
     public void updateCache() {
-        log.info("Starting cache update");
-        List<CacheEntry> entries = redisRepository.getEntries();
-
-        entries.sort(new EntriesComparator());
-
-        AtomicInteger i = new AtomicInteger();
-        long startTime = new Date().getTime();
-
-        entries.parallelStream().forEach(entry -> {
-            try {
-
-                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
-                    log.info(i.getAndIncrement() + ". Updating entry " + entry.getKey() + " with query " + entry.getQuery());
-
-                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters()));
-                } else {
-                    log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
-
-                    entry.setShadowResult(null);
-                }
-
-                redisRepository.storeEntry(entry);
-            } catch (JsonProcessingException e) {
-                log.error("Error storing cache entry" ,e);
-            } catch (Exception e) {
-                log.error("Error updating entry " + entry, e);
-                redisRepository.deleteEntry(entry.getKey());
-            }
-        });
-
-        log.info("Finished cache update!");
+        this.doUpdateCache();
+        this.doPromoteCache();
     }
-
-    @Override
-    public void fixEntries() {
-        redisRepository.fixEntries();
-    }
-
-    @Override
-    public void promoteCache() {
-        List<CacheEntry> entries = redisRepository.getEntries();
-
-        entries.forEach(entry -> {
-            if (entry.getShadowResult() != null) {
-                entry.setResult(entry.getShadowResult());
-            } else {
-                entry.setResult(null);
-            }
-
-            entry.setSessionHits(0);
-            entry.setShadowResult(null);
-            entry.setUpdated(new Date());
-
-            try {
-                redisRepository.storeEntry(entry);
-            } catch (JsonProcessingException e) {
-                log.error("Error updating cache entry", e);
-            }
-        });
-    }
-
 
     @Override
     public void calculateNumbers() throws StatsServiceException {
@@ -156,6 +100,65 @@ public class CacheServiceImpl implements CacheService {
                 log.error("Error updating number:" + queryName, e);
             }
         }
+    }
+
+    private void doUpdateCache() {
+        log.info("Starting cache update");
+        List<CacheEntry> entries = redisRepository.getEntries();
+
+        entries.sort(new EntriesComparator());
+
+        AtomicInteger i = new AtomicInteger();
+        long startTime = new Date().getTime();
+
+        entries.parallelStream().forEach(entry -> {
+            try {
+
+                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
+                    i.getAndIncrement();
+                    log.debug(i.get() + ". Updating entry " + entry.getKey() + " with query " + entry.getQuery());
+
+                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters()));
+                } else {
+                    log.debug("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
+
+                    entry.setShadowResult(null);
+                }
+
+                redisRepository.storeEntry(entry);
+            } catch (JsonProcessingException e) {
+                log.error("Error storing cache entry" ,e);
+            } catch (Exception e) {
+                log.error("Error updating entry " + entry, e);
+                redisRepository.deleteEntry(entry.getKey());
+            }
+        });
+
+        log.info("Finished cache update!");
+    }
+
+    private void doPromoteCache() {
+        log.info("Promoting shadow cache values to public");
+
+        List<CacheEntry> entries = redisRepository.getEntries();
+
+        entries.forEach(entry -> {
+            if (entry.getShadowResult() != null) {
+                entry.setResult(entry.getShadowResult());
+            } else {
+                entry.setResult(null);
+            }
+
+            entry.setSessionHits(0);
+            entry.setShadowResult(null);
+            entry.setUpdated(new Date());
+
+            try {
+                redisRepository.storeEntry(entry);
+            } catch (JsonProcessingException e) {
+                log.error("Error updating cache entry", e);
+            }
+        });
     }
 }
 

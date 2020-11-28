@@ -24,11 +24,4 @@ public class CacheController {
 
     @GetMapping("updateCache")
     public void updateCache() {cacheService.updateCache();}
-
-    @GetMapping("promoteCache")
-    public void promoteCache() {cacheService.promoteCache();}
-
-    @GetMapping("fixEntries")
-    public void fixEntries() {cacheService.fixEntries();}
-
 }

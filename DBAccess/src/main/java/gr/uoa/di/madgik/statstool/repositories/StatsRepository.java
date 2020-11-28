@@ -1,19 +1,14 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.stereotype.Repository;
-
-import java.io.IOException;
 import java.sql.*;
 import java.util.*;
-import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-
 import javax.sql.DataSource;
 
 import gr.uoa.di.madgik.statstool.domain.Result;
@@ -36,7 +31,7 @@ public class StatsRepository {
 
     public Result executeQuery(String query, List<Object> parameters) throws Exception {
         QueryWithParameters q = new QueryWithParameters(query, parameters);
-        Future<Result> future = null;
+        Future<Result> future;
 
         synchronized (tasks) {
             future = tasks.get(q);
@@ -63,32 +58,19 @@ public class StatsRepository {
 
     public String executeNumberQuery(String query) {
         String result = null;
-        Connection connection = null;
 
-        try {
-            connection = dataSource.getConnection();
-
+        try (Connection connection = dataSource.getConnection();
             Statement st = connection.createStatement();
-            ResultSet rs = st.executeQuery(query);
+            ResultSet rs = st.executeQuery(query)) {
 
-            if (rs.next()){
+            if (rs.next()) {
                 Object o = rs.getObject(1);
 
-                result = o!=null?o.toString():null;
+                result = o != null ? o.toString() : null;
             }
-
-            rs.close();
-            st.close();
-            connection.close();
         } catch (Exception e) {
             log.error("Error executing query", e);
             return null;
-        } finally {
-            try {
-                if (connection != null)
-                    connection.close();
-            } catch (Exception e) {
-            }
         }
 
         return result;
@@ -105,10 +87,7 @@ public class StatsRepository {
         public Result call() throws Exception {
             Result result = new Result();
 
-            Connection connection = null;
-            try {
-                connection = dataSource.getConnection();
-
+            try (Connection connection = dataSource.getConnection()) {
                 PreparedStatement st = connection.prepareStatement(query.getQuery());
                 int count = 1;
                 if (query.getParameters() != null)
@@ -117,9 +96,9 @@ public class StatsRepository {
 
                 ResultSet rs = st.executeQuery();
                 int columnCount = rs.getMetaData().getColumnCount();
-                while(rs.next()) {
+                while (rs.next()) {
                     ArrayList<String> row = new ArrayList<>();
-                    for(int i = 1; i <= columnCount; i++) {
+                    for (int i = 1; i <= columnCount; i++) {
                         row.add(rs.getString(i));
                     }
                     result.addRow(row);
@@ -129,13 +108,6 @@ public class StatsRepository {
                 st.close();
                 connection.close();
                 return result;
-            } catch (Exception e) {
-                throw e;
-            } finally {
-                try {
-                    if (connection != null)
-                        connection.close();
-                } catch (Exception e) {}
             }
         }
     }

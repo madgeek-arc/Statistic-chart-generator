@@ -7,7 +7,6 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
-import java.util.Map;
 import java.util.Properties;
 
 @Repository
