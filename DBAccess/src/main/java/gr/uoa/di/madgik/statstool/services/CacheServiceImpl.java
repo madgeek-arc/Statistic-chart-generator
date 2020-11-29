@@ -48,6 +48,8 @@ public class CacheServiceImpl implements CacheService {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
+    private Boolean updating = false;
+
     public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
         this.jedis = redisTemplate.opsForHash();
@@ -55,7 +57,18 @@ public class CacheServiceImpl implements CacheService {
 
     @Override
     public void updateCache() {
-        this.doUpdateCache();
+
+        synchronized (updating) {
+            if (!updating) {
+                updating = true;
+                new Thread(() -> {
+                    doUpdateCache();
+                    this.updating=false;
+                }).start();
+            } else
+                throw new IllegalStateException("Cache is already being updated. Please, come back later");
+        }
+
     }
 
     @Override
