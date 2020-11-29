@@ -8,6 +8,7 @@ import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,6 +28,7 @@ public class CacheServiceImpl implements CacheService {
     private NamedQueryRepository namedQueryRepository;
 
     @Autowired
+    @Qualifier("shadowStatsRepository")
     private StatsRepository statsRepository;
 
     @Autowired
@@ -54,6 +56,10 @@ public class CacheServiceImpl implements CacheService {
     @Override
     public void updateCache() {
         this.doUpdateCache();
+    }
+
+    @Override
+    public void promoteCache() {
         this.doPromoteCache();
     }
 

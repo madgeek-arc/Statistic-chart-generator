@@ -7,4 +7,6 @@ public interface CacheService {
     public void promoteNumbers();
 
     public void updateCache();
+
+    public void promoteCache();
 }

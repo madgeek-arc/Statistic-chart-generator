@@ -3,7 +3,6 @@ package gr.uoa.di.madgik.statstool.repositories;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.springframework.stereotype.Repository;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -13,7 +12,6 @@ import javax.sql.DataSource;
 
 import gr.uoa.di.madgik.statstool.domain.Result;
 
-@Repository
 public class StatsRepository {
 
     private final DataSource dataSource;
