@@ -28,7 +28,6 @@ public class CacheServiceImpl implements CacheService {
     private NamedQueryRepository namedQueryRepository;
 
     @Autowired
-    @Qualifier("shadowStatsRepository")
     private StatsRepository statsRepository;
 
     @Autowired
@@ -74,51 +73,6 @@ public class CacheServiceImpl implements CacheService {
     @Override
     public void promoteCache() {
         this.doPromoteCache();
-    }
-
-    @Override
-    public void calculateNumbers() throws StatsServiceException {
-        try {
-            Properties queries = namedQueryRepository.getNumberQueries();
-
-            for (Object queryName:queries.keySet()) {
-                String query = queries.getProperty((String) queryName);
-
-                executorService.submit(new Updater(query, (String) queryName));
-            }
-        } catch (Exception e) {
-            throw new StatsServiceException(e);
-        }
-    }
-
-    @Override
-    public void promoteNumbers() {
-        redisTemplate.rename(SHADOW_STATS_NUMBERS, STATS_NUMBERS);
-    }
-
-    class Updater implements Runnable {
-
-        private final String query;
-        private final String queryName;
-
-        public Updater(String query, String queryName) {
-            this.query = query;
-            this.queryName = queryName;
-        }
-
-        @Override
-        public void run() {
-            try {
-                String result = statsRepository.executeNumberQuery(query);
-
-                if (result != null)
-                    jedis.put(SHADOW_STATS_NUMBERS, queryName, result);
-
-                log.info("updating cache number:" + queryName + ": " + result);
-            } catch (Exception e){
-                log.error("Error updating number:" + queryName, e);
-            }
-        }
     }
 
     private void doUpdateCache() {
