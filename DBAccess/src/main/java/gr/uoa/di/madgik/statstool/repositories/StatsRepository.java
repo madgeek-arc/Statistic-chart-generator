@@ -54,26 +54,6 @@ public class StatsRepository {
         return result;
     }
 
-    public String executeNumberQuery(String query) {
-        String result = null;
-
-        try (Connection connection = dataSource.getConnection();
-            Statement st = connection.createStatement();
-            ResultSet rs = st.executeQuery(query)) {
-
-            if (rs.next()) {
-                Object o = rs.getObject(1);
-
-                result = o != null ? o.toString() : null;
-            }
-        } catch (Exception e) {
-            log.error("Error executing query", e);
-            return null;
-        }
-
-        return result;
-    }
-
     public class ResultCallable implements Callable<Result> {
         private final QueryWithParameters query;
 
