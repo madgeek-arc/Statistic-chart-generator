@@ -11,16 +11,18 @@ public class CacheEntry {
     private QueryWithParameters query;
     private Result result;
     private Result shadowResult;
+    private String source;
     private Date created = new Date();
     private Date updated = new Date();
     private int totalHits = 0;
     private int sessionHits = 0;
     private boolean pinned = false;
 
-    public CacheEntry(String key, QueryWithParameters query, Result result) {
+    public CacheEntry(String key, QueryWithParameters query, Result result, String source) {
         this.key = key;
         this.query = query;
         this.result = result;
+        this.source = source;
     }
 
     public String getKey() {
@@ -95,6 +97,14 @@ public class CacheEntry {
         this.pinned = pinned;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
     @Override
     public String toString() {
         return "CacheEntry{" +
@@ -102,6 +112,7 @@ public class CacheEntry {
                 ", query=" + query +
                 ", result=" + result +
                 ", shadowResult=" + shadowResult +
+                ", source='" + source + '\'' +
                 ", created=" + created +
                 ", updated=" + updated +
                 ", totalHits=" + totalHits +

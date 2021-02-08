@@ -119,7 +119,9 @@ public class StatsRedisRepository {
 
         assert keys != null;
 
-        return keys.stream().map(key -> {
+        return keys.stream().filter(key -> {
+            return !(key.equals("SHADOW_STATS_NUMBERS") || key.equals("STATS_NUMBERS"));
+        }).map(key -> {
             try {
                 return getEntry(key);
             } catch (Exception e) {
