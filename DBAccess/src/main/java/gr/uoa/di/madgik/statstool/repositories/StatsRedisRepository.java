@@ -65,8 +65,8 @@ public class StatsRedisRepository {
         try {
             String key = getCacheKey(fullSqlQuery);
 
-            if (exists(key))
-                throw new RedisException("Entry for query " + fullSqlQuery + " (" + key + ") already exists!");
+//            if (exists(key))
+//                throw new RedisException("Entry for query " + fullSqlQuery + " (" + key + ") already exists!");
 
             storeEntry(new CacheEntry(key, fullSqlQuery, result));
 
