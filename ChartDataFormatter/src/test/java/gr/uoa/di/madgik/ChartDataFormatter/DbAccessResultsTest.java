@@ -17,7 +17,7 @@ import java.util.List;
 
 public class DbAccessResultsTest {
 
-    @Test
+//    @Test
     public void getResultsFromDBAccess() throws IOException, CantDealWithException, DataFormatter.DataFormationException {
 
         ObjectMapper mapper = new ObjectMapper();

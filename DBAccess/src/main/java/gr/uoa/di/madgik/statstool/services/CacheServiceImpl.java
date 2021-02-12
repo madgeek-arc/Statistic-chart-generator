@@ -8,7 +8,6 @@ import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -89,9 +88,9 @@ public class CacheServiceImpl implements CacheService {
 
                 if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
                     i.getAndIncrement();
-                    log.debug(i.get() + ". Updating entry " + entry.getKey() + " with query " + entry.getQuery());
+                    log.debug(i.get() + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
 
-                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters()));
+                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow")));
                 } else {
                     log.debug("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
 

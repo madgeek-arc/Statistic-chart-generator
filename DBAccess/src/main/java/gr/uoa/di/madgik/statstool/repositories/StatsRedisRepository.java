@@ -31,8 +31,8 @@ public class StatsRedisRepository {
         this.jedis = redisTemplate.opsForHash();
     }
 
-    public static String getCacheKey(String query, List<Object> parameters) throws NoSuchAlgorithmException {
-        return getCacheKey(new QueryWithParameters(query, parameters));
+    public static String getCacheKey(String query, List<Object> parameters, String dbId) throws NoSuchAlgorithmException {
+        return getCacheKey(new QueryWithParameters(query, parameters, dbId));
     }
 
     public static String getCacheKey(QueryWithParameters query) throws NoSuchAlgorithmException {
@@ -80,6 +80,7 @@ public class StatsRedisRepository {
         CacheEntry entry;
         QueryWithParameters query = new ObjectMapper().readValue(jedis.get(key, "query"), QueryWithParameters.class);
         Result result = new ObjectMapper().readValue(jedis.get(key, "result"), Result.class);
+        String dbId = jedis.get(key, "dbId");
 
         entry = new CacheEntry(key, query, result);
 
