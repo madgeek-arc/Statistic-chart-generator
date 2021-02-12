@@ -43,3 +43,5 @@ statstool:
     update:
       entries: 5000
       time: 10800
+  namedqueries:
+    path: ...

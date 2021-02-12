@@ -9,5 +9,7 @@ spring:
             enabled: false
 
 # mappings filepath
-# mappings.file.path=classpath:mappings.json
-# mappings.file.path=file:/etc/sth/
+#mappings:
+#    file:
+#        path: classpath:mappings.json
+#        path: file:/etc/sth/
