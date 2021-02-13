@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
+import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import java.sql.*;
@@ -11,7 +12,9 @@ import java.util.concurrent.Future;
 import javax.sql.DataSource;
 
 import gr.uoa.di.madgik.statstool.domain.Result;
+import org.springframework.stereotype.Repository;
 
+@Repository
 public class StatsRepository {
 
     private final DataSource dataSource;
@@ -27,8 +30,8 @@ public class StatsRepository {
         this.executorService = executorService;
     }
 
-    public Result executeQuery(String query, List<Object> parameters) throws Exception {
-        QueryWithParameters q = new QueryWithParameters(query, parameters);
+    public Result executeQuery(String query, List<Object> parameters, String dbId) throws Exception {
+        QueryWithParameters q = new QueryWithParameters(query, parameters, dbId);
         Future<Result> future;
 
         synchronized (tasks) {
@@ -54,26 +57,6 @@ public class StatsRepository {
         return result;
     }
 
-    public String executeNumberQuery(String query) {
-        String result = null;
-
-        try (Connection connection = dataSource.getConnection();
-            Statement st = connection.createStatement();
-            ResultSet rs = st.executeQuery(query)) {
-
-            if (rs.next()) {
-                Object o = rs.getObject(1);
-
-                result = o != null ? o.toString() : null;
-            }
-        } catch (Exception e) {
-            log.error("Error executing query", e);
-            return null;
-        }
-
-        return result;
-    }
-
     public class ResultCallable implements Callable<Result> {
         private final QueryWithParameters query;
 
@@ -84,6 +67,8 @@ public class StatsRepository {
         @Override
         public Result call() throws Exception {
             Result result = new Result();
+
+            DatasourceContext.setContext(query.getDbId());
 
             try (Connection connection = dataSource.getConnection()) {
                 PreparedStatement st = connection.prepareStatement(query.getQuery());

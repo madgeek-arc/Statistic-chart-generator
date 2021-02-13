@@ -1,0 +1,47 @@
+spring:
+  datasources:
+    - id: openaire.public
+      username:
+      password:
+      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats;UseNativeQuery=1
+      driver-class-name: com.cloudera.impala.jdbc41.Driver
+    - id: openaire.shadow
+      username:
+      password:
+      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_shadow;UseNativeQuery=1
+      driver-class-name: com.cloudera.impala.jdbc41.Driver
+    - id: monitor.public
+      username:
+      password:
+      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_monitor;UseNativeQuery=1
+      driver-class-name: com.cloudera.impala.jdbc41.Driver
+    - id: monitor.public
+      username:
+      password:
+      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_monitor_shadow;UseNativeQuery=1
+      driver-class-name: com.cloudera.impala.jdbc41.Driver
+  redis:
+    host: localhost
+    port: 6379
+  # Disable feature detection by this undocumented parameter. Check the org.hibernate.engine.jdbc.internal.JdbcServiceImpl.configure method for more details.
+  jpa:
+    properties:
+      hibernate:
+        temp:
+          use_jdbc_metadata_defaults: false
+  # Because detection is disabled you have to set correct dialect by hand.
+    database-platform: org.hibernate.dialect.PostgreSQL9Dialect
+  datasource:
+    hikari:
+      connectionTimeout: 20000
+      maximumPoolSize: 55
+
+  # custom configuration
+statstool:
+  result_limit: 70
+  cache:
+    update:
+      entries: 5000
+      time: 10800
+  namedqueries:
+    path: ...

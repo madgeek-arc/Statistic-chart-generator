@@ -54,6 +54,7 @@ public class StatsServiceImpl implements StatsService {
                 Result result;
                 String querySql;
                 String cacheKey;
+                String profile = query.getProfile() + ".public";
 
                 log.info("query: " + query);
 
@@ -69,7 +70,7 @@ public class StatsServiceImpl implements StatsService {
                         throw new StatsServiceException("query " + queryName + " not found!");
                 }
 
-                cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters);
+                cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters, profile);
 
                 if (statsRedisRepository.exists(cacheKey)) {
                     result = statsRedisRepository.get(cacheKey);
@@ -77,9 +78,9 @@ public class StatsServiceImpl implements StatsService {
                     log.info("Key " + cacheKey + " in cache! Returning: " + result);
                 } else {
                     log.info("result for key " + cacheKey + " not in cache. Querying db!");
-                    result = statsRepository.executeQuery(querySql, parameters);
+                    result = statsRepository.executeQuery(querySql, parameters, profile);
                     log.info("result: " + result);
-                    statsRedisRepository.save(new QueryWithParameters(querySql, parameters), result);
+                    statsRedisRepository.save(new QueryWithParameters(querySql, parameters, profile), result);
                 }
 
                 results.add(result);

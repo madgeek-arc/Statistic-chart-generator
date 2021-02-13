@@ -1,0 +1,15 @@
+server:
+    port: 8080
+    max-http-header-size: 65536
+
+# Disable favicon
+spring:
+    mvc:
+        favicon:
+            enabled: false
+
+# mappings filepath
+#mappings:
+#    file:
+#        path: classpath:mappings.json
+#        path: file:/etc/sth/

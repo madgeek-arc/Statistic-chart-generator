@@ -5,11 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.PropertySource;
 
 import java.util.Properties;
 
 @ComponentScan(basePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})
+@PropertySource(value="classpath:application.yml", factory = YamlPropertySourceFactory.class)
 public class appBoot extends SpringBootServletInitializer {
 
     public static void main(String[] args) {

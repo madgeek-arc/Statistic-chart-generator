@@ -4,7 +4,6 @@ import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 
 import java.util.Date;
-import java.util.List;
 
 public class CacheEntry {
     private String key;
