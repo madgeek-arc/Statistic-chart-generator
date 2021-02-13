@@ -35,7 +35,7 @@ public class Mapper {
     private ResourceLoader resourceLoader;
 
     @Autowired
-    public Mapper(@Value("${mappings.file.path:classpath:mappings.json}")String mappingsJson, ResourceLoader resourceLoader) {
+    public Mapper(@Value("${statstool.mappings.file.path}")String mappingsJson, ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
         try {
             ObjectMapper mapper = new ObjectMapper();

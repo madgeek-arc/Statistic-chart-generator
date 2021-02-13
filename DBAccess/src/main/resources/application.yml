@@ -33,8 +33,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQL9Dialect
   datasource:
     hikari:
-      connectionTimeout:20000
-      maximumPoolSize:55
+      connectionTimeout: 20000
+      maximumPoolSize: 55
 
   # custom configuration
 statstool:
