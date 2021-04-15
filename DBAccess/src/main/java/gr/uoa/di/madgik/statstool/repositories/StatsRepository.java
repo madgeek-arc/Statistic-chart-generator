@@ -48,13 +48,14 @@ public class StatsRepository {
             log.info("size of queue: " + tasks.size());
         }
 
-        Result result = future.get();
+	try {
 
-        synchronized (tasks) {
-            tasks.remove(q);
-        }
-
-        return result;
+        return future.get();
+	} finally {
+        	synchronized (tasks) {
+        	    tasks.remove(q);
+        	}
+	}
     }
 
     public class ResultCallable implements Callable<Result> {
