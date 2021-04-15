@@ -403,8 +403,11 @@ function convertToValidHighchartJson(responseData, originJson){
         if(responseData.dataSeriesTypes !== null)
             seriesInstance.type = responseData.dataSeriesTypes[index];
             
-        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
-            seriesInstance.color = originJson.chartDescription.queries[index].color;
+        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length) {
+            if (originJson.chartDescription.queries[index].color)
+                seriesInstance.color = originJson.chartDescription.queries[index].color;
+        }
+
 
         convertedJson.series[index] = seriesInstance;
     }
@@ -475,6 +478,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         }
 
         if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
+            //TODO if (originJson.chartDescription.queries[index].color)
             seriesInstance.color = originJson.chartDescription.queries[index].color;
 
         convertedJson.series[index] = seriesInstance;
