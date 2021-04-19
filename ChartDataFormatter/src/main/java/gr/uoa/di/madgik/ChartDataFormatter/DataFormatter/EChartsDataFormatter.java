@@ -97,8 +97,8 @@ public class EChartsDataFormatter extends DataFormatter{
             }
         }
 
-        log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
-        log.info("DataSeries Types: " + namesToTypes.values().toString());
+        log.debug("DataSeries Names: " + namesToDataSeries.keySet().toString());
+        log.debug("DataSeries Types: " + namesToTypes.values().toString());
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
@@ -133,10 +133,10 @@ public class EChartsDataFormatter extends DataFormatter{
                     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
                     if(chartType.name().equals("column")) {
                         dataSeriesTypes.add("bar");
-                        log.info("Added " + "bar");
+                        log.debug("Added " + "bar");
                     } else {
                         dataSeriesTypes.add(chartType.name());
-                        log.info("Added " + chartType.name());
+                        log.debug("Added " + chartType.name());
                     }
                     break;
 
@@ -312,10 +312,10 @@ public class EChartsDataFormatter extends DataFormatter{
                     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
                     if(chartType.name().equals("column")) {
                         dataSeriesTypes.add("bar");
-                        log.info("Added " + "bar");
+                        log.debug("Added " + "bar");
                     } else {
                         dataSeriesTypes.add(chartType.name());
-                        log.info("Added " + chartType.name());
+                        log.debug("Added " + chartType.name());
                     }
                 }
 
@@ -364,10 +364,10 @@ public class EChartsDataFormatter extends DataFormatter{
                 // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
                 if(chartType.name().equals("column")) {
                     dataSeriesTypes.add("bar");
-                    log.info("Added " + "bar");
+                    log.debug("Added " + "bar");
                 } else {
                     dataSeriesTypes.add(chartType.name());
-                    log.info("Added " + chartType.name());
+                    log.debug("Added " + chartType.name());
                 }
 
                 EChartsJsonResponse ret = new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),

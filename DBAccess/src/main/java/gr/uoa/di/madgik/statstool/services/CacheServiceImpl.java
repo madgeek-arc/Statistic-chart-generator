@@ -92,7 +92,7 @@ public class CacheServiceImpl implements CacheService {
 
                     entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow")));
                 } else {
-                    log.debug("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
+                    log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
 
                     entry.setShadowResult(null);
                 }

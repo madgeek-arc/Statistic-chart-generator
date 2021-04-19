@@ -65,7 +65,7 @@ public class ChartDataFormatterRestController {
 
         JsonResponse responseData;
 
-        log.info("requestJson: " + requestJson.toString());
+        log.debug("requestJson: " + requestJson.toString());
 
         try {
             responseData = requestBodyHandler.handleRequest(requestJson);
@@ -136,7 +136,7 @@ public class ChartDataFormatterRestController {
             URI getUri = new URI(getUrl);
             ResponseEntity responseEntity =  rt.getForEntity(getUri,String.class);
             shortenedUrl = responseEntity.getBody().toString();
-            log.info(shortenedUrl);
+            log.debug(shortenedUrl);
 
         } catch (URISyntaxException e) {
             log.error(e.getMessage(), e);

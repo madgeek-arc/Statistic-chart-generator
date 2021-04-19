@@ -56,13 +56,13 @@ public class StatsServiceImpl implements StatsService {
                 String cacheKey;
                 String profile = query.getProfile() + ".public";
 
-                log.info("query: " + query);
+                log.debug("query: " + query);
 
                 if (queryName == null) {
-                    log.info("Building query from description");
+                    log.debug("Building query from description");
                     querySql = mapper.map(query, parameters, orderBy);
                 } else {
-                    log.info("Retrieving named sql query from repository");
+                    log.debug("Retrieving named sql query from repository");
                     querySql = getNamedQuery(queryName);
                     parameters = query.getParameters();
 
@@ -75,11 +75,11 @@ public class StatsServiceImpl implements StatsService {
                 if (statsRedisRepository.exists(cacheKey)) {
                     result = statsRedisRepository.get(cacheKey);
 
-                    log.info("Key " + cacheKey + " in cache! Returning: " + result);
+                    log.debug("Key " + cacheKey + " in cache! Returning: " + result);
                 } else {
-                    log.info("result for key " + cacheKey + " not in cache. Querying db!");
+                    log.debug("result for key " + cacheKey + " not in cache. Querying db!");
                     result = statsRepository.executeQuery(querySql, parameters, profile);
-                    log.info("result: " + result);
+                    log.debug("result: " + result);
                     statsRedisRepository.save(new QueryWithParameters(querySql, parameters, profile), result);
                 }
 

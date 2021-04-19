@@ -38,11 +38,11 @@ public class StatsRepository {
             future = tasks.get(q);
 
             if (future == null) {
-                log.info("Query " + q + " was not in queue. Submitting");
+                log.debug("Query " + q + " was not in queue. Submitting");
                 future = executorService.submit(new ResultCallable(q));
                 tasks.put(q, future);
             } else {
-                log.info("query " + q + " was already submitted. Waiting for completion");
+                log.debug("query " + q + " was already submitted. Waiting for completion");
             }
 
             log.info("size of queue: " + tasks.size());
@@ -54,6 +54,7 @@ public class StatsRepository {
 	} finally {
         	synchronized (tasks) {
         	    tasks.remove(q);
+                log.info("size of queue: " + tasks.size());
         	}
 	}
     }

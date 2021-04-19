@@ -89,8 +89,8 @@ public class GoogleChartsDataFormatter extends DataFormatter {
             }
         }
 
-        log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
-        log.info("DataSeries Types: " + namesToTypes.values().toString());
+        log.debug("DataSeries Names: " + namesToDataSeries.keySet().toString());
+        log.debug("DataSeries Types: " + namesToTypes.values().toString());
 
         ArrayList<String> dataSeriesNames = new ArrayList<>(namesToDataSeries.keySet());
         ArrayList<String> dataSeriesTypes = new ArrayList<>();

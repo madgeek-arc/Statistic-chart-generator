@@ -79,7 +79,7 @@ public class RequestBodyHandler {
                     break;
                 case eCharts:
 
-                    log.info("handling eCharts request");
+                    log.debug("handling eCharts request");
                     this.logChartInfo(requestJson, statsServiceResults);
 
                     EChartsJsonResponse eChartsJsonResponse;
@@ -120,7 +120,7 @@ public class RequestBodyHandler {
                     throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
             }
 
-            log.info("response: " + jsonResponse);
+            log.debug("response: " + jsonResponse);
 
             return jsonResponse;
         } catch (RequestBodyException e) {
@@ -135,7 +135,7 @@ public class RequestBodyHandler {
         List<Result> statsServiceResults;
 
         for (Query q:requestInfo.getQueries())
-            log.info("Query:" + q.getName() );
+            log.debug("Query:" + q.getName() );
 
         try {
             statsServiceResults = this.statsService.query(requestInfo.getQueries());
@@ -183,12 +183,12 @@ public class RequestBodyHandler {
 
     private void logChartInfo(RequestInfo requestJson, List<Result> statsServiceResults) {
         if(log.isInfoEnabled()) {
-            log.info("Chart Types: " + requestJson.getChartTypes());
-            log.info("Chart Names: " + requestJson.getChartNames());
+            log.debug("Chart Types: " + requestJson.getChartTypes());
+            log.debug("Chart Names: " + requestJson.getChartNames());
 
             for (int i = 0; i < statsServiceResults.size(); i++) {
                 Result res = statsServiceResults.get(i);
-                log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
+                log.debug("Stats Service Results [" + i + "]: " + res.getRows().toString());
             }
         }
     }
@@ -198,7 +198,7 @@ public class RequestBodyHandler {
 
             for (int i = 0; i < statsServiceResults.size(); i++) {
                 Result res = statsServiceResults.get(i);
-                log.info("Stats Service Results [" + i + "]: " + res.getRows().toString());
+                log.debug("Stats Service Results [" + i + "]: " + res.getRows().toString());
             }
         }
     }

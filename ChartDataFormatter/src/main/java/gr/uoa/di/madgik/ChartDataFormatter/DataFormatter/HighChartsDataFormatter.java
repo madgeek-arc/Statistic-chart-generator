@@ -95,8 +95,8 @@ public class HighChartsDataFormatter extends DataFormatter{
             }
         }
 
-        log.info("DataSeries Names: " + namesToDataSeries.keySet().toString());
-        log.info("DataSeries Types: " + namesToTypes.values().toString());
+        log.debug("DataSeries Names: " + namesToDataSeries.keySet().toString());
+        log.debug("DataSeries Types: " + namesToTypes.values().toString());
 
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
@@ -341,7 +341,7 @@ public class HighChartsDataFormatter extends DataFormatter{
 
                 dataSeries.add(new ArrayOfDataObjects(mainSlicesValuesArray));
                 dataSeriesTypes.add(chartType.name());
-                log.info("Added " + chartType.name());
+                log.debug("Added " + chartType.name());
 
                 HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
                         null, dataSeriesTypes);
