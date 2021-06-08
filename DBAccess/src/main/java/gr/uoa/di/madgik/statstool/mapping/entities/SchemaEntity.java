@@ -6,7 +6,7 @@ import java.util.List;
 public class SchemaEntity {
     private String name;
     private List<EntityField> fields;
-    private List<SchemaEntity> relations;
+    private List<String> relations;
 
     public SchemaEntity(String name, List<EntityField> fields) {
         this.name = name;
@@ -14,7 +14,7 @@ public class SchemaEntity {
         this.relations = new ArrayList<>();
     }
 
-    public void addRelation(SchemaEntity entity) {
+    public void addRelation(String entity) {
         relations.add(entity);
     }
 
@@ -34,11 +34,11 @@ public class SchemaEntity {
         this.fields = fields;
     }
 
-    public List<SchemaEntity> getRelations() {
+    public List<String> getRelations() {
         return relations;
     }
 
-    public void setRelations(List<SchemaEntity> relations) {
+    public void setRelations(List<String> relations) {
         this.relations = relations;
     }
 }

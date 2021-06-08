@@ -50,13 +50,9 @@ public class SchemaServiceImpl implements SchemaService{
             return null;
         }
         SchemaEntity schemaEntity = new SchemaEntity(ent.getName(), ent.getFields());
-        Set<String> path = new HashSet<>();
-        path.add(entity);
-        for(String relation : ent.getRelations()) {
-            path.add(relation);
-            schemaEntity.addRelation(createRelation(profile, relation, path));
-            path.remove(relation);
-        }
+
+        schemaEntity.setRelations(ent.getRelations());
+
         return schemaEntity;
     }
 
@@ -93,18 +89,4 @@ public class SchemaServiceImpl implements SchemaService{
             return new FieldValues(0, null);
         }
     }
-
-    private SchemaEntity createRelation(String profile, String entityName, Set<String> path) {
-        Entity entity = mapper.getEntities(profile).get(entityName);
-        SchemaEntity schemaEntity = new SchemaEntity(entity.getName(), entity.getFields());
-        for(String relation : entity.getRelations()) {
-            if(!path.contains(relation)) {
-                path.add(relation);
-                schemaEntity.addRelation(createRelation(profile, relation, path));
-                path.remove(relation);
-            }
-        }
-        return schemaEntity;
-    }
-
 }
