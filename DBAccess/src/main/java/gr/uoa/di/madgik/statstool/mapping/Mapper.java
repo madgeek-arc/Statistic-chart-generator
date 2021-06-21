@@ -36,9 +36,8 @@ public class Mapper {
     private ResourceLoader resourceLoader;
 
     @Autowired
-    public Mapper(@Value("${statstool.mappings.file.path}")String mappingsJson, ResourceLoader resourceLoader) {
+    public Mapper(@Value("${statstool.mappings.file.path}")String mappingsJson, ResourceLoader resourceLoader) throws IOException {
         this.resourceLoader = resourceLoader;
-        try {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(resourceLoader.getResource(mappingsJson).getURL(), MappingProfile[].class);
 
@@ -73,9 +72,6 @@ public class Mapper {
                 }
                 profileConfigurations.put(mappingProfile.getName(), profileConfiguration);
             }
-        } catch (Exception e) {
-            log.error(e.getMessage());
-        }
     }
 
     private ProfileConfiguration buildConfiguration(String mappingFile) throws IOException {
