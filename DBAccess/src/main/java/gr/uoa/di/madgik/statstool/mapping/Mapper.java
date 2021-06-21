@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import gr.uoa.di.madgik.statstool.mapping.entities.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,12 +41,14 @@ public class Mapper {
         try {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(resourceLoader.getResource(mappingsJson).getURL(), MappingProfile[].class);
+
             for(MappingProfile mappingProfile : mappings) {
+                log.info("mapping:" + mappingProfile.getName());
+
                 if(!mappingProfile.isHidden()) {
                     profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
                 }
-                ProfileConfiguration profileConfiguration = new ProfileConfiguration();
-                buildConfiguration(mappingProfile.getFile(), profileConfiguration);
+                ProfileConfiguration profileConfiguration = buildConfiguration(mappingProfile.getFile());
 
                 if(mappingProfile.isPrimary()) {
                     primaryProfile = mappingProfile.getName();
@@ -53,13 +56,19 @@ public class Mapper {
 
                 Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingProfile.getFile()).getURL(), Mapping.class);
                 for(MappingEntity entity : mapping.getEntities()) {
+                    log.info("  entity:" + entity.getName());
                     Entity schemaEntity = new Entity(entity.getName());
+
                     for(MappingField field : entity.getFields()) {
+                        log.info("    field: " + field.getName());
                         schemaEntity.addField(new EntityField(field.getName(), field.getDatatype()));
                     }
+
                     for(String relation : entity.getRelations()) {
+                        log.info("    relation: " + relation);
                         schemaEntity.addRelation(relation);
                     }
+
                     profileConfiguration.entities.put(entity.getName(), schemaEntity);
                 }
                 profileConfigurations.put(mappingProfile.getName(), profileConfiguration);
@@ -69,120 +78,122 @@ public class Mapper {
         }
     }
 
-    private void buildConfiguration(String mappingFile, ProfileConfiguration profileConfiguration) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingFile).getURL(), Mapping.class);
-            for(MappingEntity entity : mapping.getEntities()) {
-                if(entity.getFilters() != null) {
-                    List<Filter> filters = new ArrayList<>();
-                    for (MappingFilter filter : entity.getFilters()) {
-                        filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
-                    }
-                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
-                } else {
-                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
-                }
+    private ProfileConfiguration buildConfiguration(String mappingFile) throws IOException {
 
-                for(MappingField field : entity.getFields()) {
-                    if(field.getSqlTable() != null) {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
-                    } else {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
-                    }
+        ProfileConfiguration profileConfiguration = new ProfileConfiguration();
+
+        ObjectMapper mapper = new ObjectMapper();
+        Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingFile).getURL(), Mapping.class);
+
+        for(MappingEntity entity : mapping.getEntities()) {
+            if(entity.getFilters() != null) {
+                List<Filter> filters = new ArrayList<>();
+                for (MappingFilter filter : entity.getFilters()) {
+                    filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
                 }
+                profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
+            } else {
+                profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
             }
 
-            for(MappingRelation relation : mapping.getRelations()) {
-                HashMap<String, List<Join>> joinsMap = new HashMap<>();
-                if(relation.getFrom().equals(relation.getTo())) {
-                    for (MappingJoin join : relation.getJoins()) {
-                        List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
-                    }
-                    String tempFrom = relation.getFrom();
-                    List<Join> joinList = new ArrayList<>();
-                    Set<String> doneTables = new HashSet<>();
-                    while (true) {
-                        List<Join> joins = joinsMap.get(tempFrom);
-                        if (joins.size() == 1) {
-                            joinList.add(joins.get(0));
-                            doneTables.add(tempFrom);
-                            tempFrom = joins.get(0).getSecond_table();
-                        } else {
-                            for (Join join : joins) {
-                                if (!doneTables.contains(join.getSecond_table())) {
-                                    joinList.add(join);
-                                    doneTables.add(tempFrom);
-                                    tempFrom = join.getSecond_table();
-                                }
-                            }
-                        }
-                        if (tempFrom.equals(relation.getTo())) {
-                            break;
-                        }
-                    }
-                    profileConfiguration.relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
+            for(MappingField field : entity.getFields()) {
+                if(field.getSqlTable() != null) {
+                    profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
                 } else {
-                    for (MappingJoin join : relation.getJoins()) {
-                        List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
-
-                        joins = joinsMap.computeIfAbsent(join.getTo(), k -> new ArrayList<>());
-                        joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField()));
-                    }
-                    String tempFrom = relation.getFrom();
-                    List<Join> joinList = new ArrayList<>();
-                    Set<String> doneTables = new HashSet<>();
-                    while (true) {
-                        List<Join> joins = joinsMap.get(tempFrom);
-                        if (joins.size() == 1) {
-                            joinList.add(joins.get(0));
-                            doneTables.add(tempFrom);
-                            tempFrom = joins.get(0).getSecond_table();
-                        } else {
-                            for (Join join : joins) {
-                                if (!doneTables.contains(join.getSecond_table())) {
-                                    joinList.add(join);
-                                    doneTables.add(tempFrom);
-                                    tempFrom = join.getSecond_table();
-                                }
-                            }
-                        }
-                        if (tempFrom.equals(relation.getTo())) {
-                            break;
-                        }
-                    }
-                    tempFrom = relation.getTo();
-                    List<Join> revJoinList = new ArrayList<>();
-                    doneTables = new HashSet<>();
-                    while (true) {
-                        List<Join> joins = joinsMap.get(tempFrom);
-                        if (joins.size() == 1) {
-                            revJoinList.add(joins.get(0));
-                            doneTables.add(tempFrom);
-                            tempFrom = joins.get(0).getSecond_table();
-                        } else {
-                            for (Join join : joins) {
-                                if (!doneTables.contains(join.getSecond_table())) {
-                                    revJoinList.add(join);
-                                    doneTables.add(tempFrom);
-                                    tempFrom = join.getSecond_table();
-                                }
-                            }
-                        }
-                        if (tempFrom.equals(relation.getFrom())) {
-                            break;
-                        }
-                    }
-
-                    profileConfiguration.relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
-                    profileConfiguration.relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
+                    profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
                 }
             }
-        } catch (Exception e) {
-            log.error(e.getMessage());
         }
+
+        for(MappingRelation relation : mapping.getRelations()) {
+            HashMap<String, List<Join>> joinsMap = new HashMap<>();
+            if(relation.getFrom().equals(relation.getTo())) {
+                for (MappingJoin join : relation.getJoins()) {
+                    List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
+                    joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
+                }
+                String tempFrom = relation.getFrom();
+                List<Join> joinList = new ArrayList<>();
+                Set<String> doneTables = new HashSet<>();
+                while (true) {
+                    List<Join> joins = joinsMap.get(tempFrom);
+                    if (joins.size() == 1) {
+                        joinList.add(joins.get(0));
+                        doneTables.add(tempFrom);
+                        tempFrom = joins.get(0).getSecond_table();
+                    } else {
+                        for (Join join : joins) {
+                            if (!doneTables.contains(join.getSecond_table())) {
+                                joinList.add(join);
+                                doneTables.add(tempFrom);
+                                tempFrom = join.getSecond_table();
+                            }
+                        }
+                    }
+                    if (tempFrom.equals(relation.getTo())) {
+                        break;
+                    }
+                }
+                profileConfiguration.relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
+            } else {
+                for (MappingJoin join : relation.getJoins()) {
+                    List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
+                    joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
+
+                    joins = joinsMap.computeIfAbsent(join.getTo(), k -> new ArrayList<>());
+                    joins.add(new Join(join.getTo(), join.getToField(), join.getFrom(), join.getFromField()));
+                }
+                String tempFrom = relation.getFrom();
+                List<Join> joinList = new ArrayList<>();
+                Set<String> doneTables = new HashSet<>();
+                while (true) {
+                    List<Join> joins = joinsMap.get(tempFrom);
+                    if (joins.size() == 1) {
+                        joinList.add(joins.get(0));
+                        doneTables.add(tempFrom);
+                        tempFrom = joins.get(0).getSecond_table();
+                    } else {
+                        for (Join join : joins) {
+                            if (!doneTables.contains(join.getSecond_table())) {
+                                joinList.add(join);
+                                doneTables.add(tempFrom);
+                                tempFrom = join.getSecond_table();
+                            }
+                        }
+                    }
+                    if (tempFrom.equals(relation.getTo())) {
+                        break;
+                    }
+                }
+                tempFrom = relation.getTo();
+                List<Join> revJoinList = new ArrayList<>();
+                doneTables = new HashSet<>();
+                while (true) {
+                    List<Join> joins = joinsMap.get(tempFrom);
+                    if (joins.size() == 1) {
+                        revJoinList.add(joins.get(0));
+                        doneTables.add(tempFrom);
+                        tempFrom = joins.get(0).getSecond_table();
+                    } else {
+                        for (Join join : joins) {
+                            if (!doneTables.contains(join.getSecond_table())) {
+                                revJoinList.add(join);
+                                doneTables.add(tempFrom);
+                                tempFrom = join.getSecond_table();
+                            }
+                        }
+                    }
+                    if (tempFrom.equals(relation.getFrom())) {
+                        break;
+                    }
+                }
+
+                profileConfiguration.relations.put(relation.getFrom() + "." + relation.getTo(), joinList);
+                profileConfiguration.relations.put(relation.getTo() + "." + relation.getFrom(), revJoinList);
+            }
+        }
+
+        return profileConfiguration;
     }
 
     public String map(Query query, List<Object> parameters, String orderBy) {
