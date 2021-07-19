@@ -112,6 +112,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 case bar:
                 case column:
                 case line:
+                case spider:
                     ArrayList<Number> yValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_Categories) {
@@ -192,6 +193,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             case bar:
             case column:
             case line:
+            case spider:
                 ArrayList<Number> yValuesArray = new ArrayList<>();
                 for (List<String> row : result.getRows()) {
 
@@ -275,6 +277,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             case bar:
             case column:
             case line:
+            case spider:
 
                 for (HashMap<String, String> XValueToYValueMapping : groupByMap.values()) {
 

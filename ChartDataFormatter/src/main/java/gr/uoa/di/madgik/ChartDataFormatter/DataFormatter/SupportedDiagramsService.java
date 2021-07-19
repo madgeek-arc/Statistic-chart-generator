@@ -50,15 +50,15 @@ public class SupportedDiagramsService {
 
     private void initSupportedCharts() {
         this.supportedCharts = new ArrayList<>();
-        List<SupportedLibraries> chartLibs = new ArrayList<>();
-        chartLibs.add(HighCharts);
-        chartLibs.add(GoogleCharts);
-        chartLibs.add(eCharts);
+        List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
+
         this.supportedCharts.add(new SupportedChart(area,chartLibs));
         this.supportedCharts.add(new SupportedChart(pie,chartLibs));
         this.supportedCharts.add(new SupportedChart(column,chartLibs));
         this.supportedCharts.add(new SupportedChart(bar,chartLibs));
         this.supportedCharts.add(new SupportedChart(line,chartLibs));
+
+        this.supportedCharts.add(new SupportedChart(spider, Arrays.asList(HighCharts)));
     }
 
     private void initSupportedMisc() {
