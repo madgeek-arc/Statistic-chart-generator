@@ -83,7 +83,7 @@ public class ChartDataFormatterRestController {
 
     @GetMapping(path = "/libraries",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity getSupportedLibraries(){
+    public @ResponseBody ResponseEntity<String[]> getSupportedLibraries(){
 
         String[] supportedLibraries = getNames(SupportedLibraries.class);
         return new ResponseEntity<>(supportedLibraries, HttpStatus.OK);
@@ -91,15 +91,22 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/types",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity getSupportedChartTypes(){
+    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedChart>> getSupportedChartTypes(){
 
         List<SupportedDiagramsService.SupportedChart> supportedTypes = this.supportedDiagramsService.getSupportedCharts();
+        return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
+    }
+    @GetMapping( path = "/polar/types",
+    produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedPolar>> getSupportedPolarTypes(){
+
+        List<SupportedDiagramsService.SupportedPolar> supportedTypes = this.supportedDiagramsService.getSupportedPolars();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
 
     @GetMapping( path = "/maps",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity getSupportedMaps(){
+    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedMap>> getSupportedMaps(){
 
         List<SupportedDiagramsService.SupportedMap> supportedMaps = this.supportedDiagramsService.getSupportedMaps();
         return new ResponseEntity<>(supportedMaps, HttpStatus.OK);
@@ -107,7 +114,7 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/special",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity getSupportedSpecialisedChartTypes(){
+    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedSpecialDiagram>> getSupportedSpecialisedChartTypes(){
 
         List<SupportedDiagramsService.SupportedSpecialDiagram> supportedSpecialCharts = this.supportedDiagramsService.getSupportedSpecialDiagrams();
         return new ResponseEntity<>(supportedSpecialCharts, HttpStatus.OK);
@@ -115,7 +122,7 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/misc",
             produces = "application/json; charset=UTF-8")
-    public ResponseEntity getSupportedMiscTypes() {
+    public ResponseEntity<List<SupportedDiagramsService.SupportedMisc>> getSupportedMiscTypes() {
         List<SupportedDiagramsService.SupportedMisc> supportedMiscs = this.supportedDiagramsService.getSupportedMiscs();
 
         return new ResponseEntity<>(supportedMiscs, HttpStatus.OK);
@@ -134,7 +141,7 @@ public class ChartDataFormatterRestController {
         JSONObject response = new JSONObject();
         try {
             URI getUri = new URI(getUrl);
-            ResponseEntity responseEntity =  rt.getForEntity(getUri,String.class);
+            ResponseEntity<String> responseEntity =  rt.getForEntity(getUri,String.class);
             shortenedUrl = responseEntity.getBody().toString();
             log.debug(shortenedUrl);
 
@@ -154,8 +161,6 @@ public class ChartDataFormatterRestController {
 
         JsonResponse responseData;
         ObjectMapper mapper = new ObjectMapper();
-
-
 
         try {
             RequestInfo requestJson = mapper.readValue(json, RequestInfo.class);
