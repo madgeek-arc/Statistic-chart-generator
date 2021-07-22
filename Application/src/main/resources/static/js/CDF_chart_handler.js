@@ -121,7 +121,7 @@ function handleAdminSideData(dataJSONobj)
                 
         //Dynamically add JS library
         loadJS("//code.highcharts.com/highcharts.js",
-        () => loadJS("//code.highcharts.com/highcharts-more.js"),
+        () => loadJS("//code.highcharts.com/highcharts-more.js",
         () => loadJS("//code.highcharts.com/modules/drilldown.js",
         () => loadJS("//code.highcharts.com/modules/no-data-to-display.js",
         () => loadJS("//code.highcharts.com/highcharts-3d.js",
@@ -166,7 +166,7 @@ function handleAdminSideData(dataJSONobj)
                         domainLink+"/chart");
         }
             
-        )))))));
+        ))))))));
         
         break;
     }
