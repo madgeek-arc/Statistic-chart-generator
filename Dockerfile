@@ -7,7 +7,16 @@ run update-java-alternatives --set java-1.8.0-openjdk-amd64
 
 workdir /usr/local/app
 
-copy ./ /usr/local/app
+copy pom.xml .
+copy ./Application/pom.xml ./Application/pom.xml
+copy ./ChartDataFormatter/pom.xml ./ChartDataFormatter/pom.xml
+copy ./DBAccess/pom.xml ./DBAccess/pom.xml
+
+run mvn dependency:go-offline 
+
+copy ./Application/src ./Application/src
+copy ./ChartDataFormatter/src ./ChartDataFormatter/src
+copy ./DBAccess/src ./DBAccess/src
 
 run mvn clean package  -DskipTests
 
