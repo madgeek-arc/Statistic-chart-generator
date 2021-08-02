@@ -65,7 +65,7 @@ public class Mapper {
                 profileConfigurations.put(mappingProfile.getName(), profileConfiguration);
             }
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error building configuration", e);
         }
     }
 
@@ -181,7 +181,7 @@ public class Mapper {
                 }
             }
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error building configuration", e);
         }
     }
 
