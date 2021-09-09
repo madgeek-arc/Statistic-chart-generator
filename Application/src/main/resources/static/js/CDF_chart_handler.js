@@ -392,24 +392,32 @@ function fillGoogleChartsDataTable(responseData, originJson){
 function convertToValidHighchartJson(responseData, originJson){
 
     var convertedJson = originJson.chartDescription;
-    convertedJson.series = new Array( Object.keys(responseData.series).length );
+    var seriesLength = Object.keys(responseData.series).length;
 
-    for (let index = 0; index < Object.keys(responseData.series).length; index++){
+    if(convertedJson.series == null || convertedJson.series.length != seriesLength)
+        convertedJson.series = new Array( seriesLength );
+
+    for (let index = 0; index < seriesLength; index++){
         var seriesInstance = new Object();
         seriesInstance.data = responseData.series[index].data;
+
+        // Propagate if this data series will be stacking
+        if(convertedJson.series[index].stacking != null)
+            seriesInstance.stacking = convertedJson.series[index].stacking;
         
+        // Pass the data series name to the response data object
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
         
+        // Pass the data series type to the response data object
         if(responseData.dataSeriesTypes !== null)
             seriesInstance.type = responseData.dataSeriesTypes[index];
-            
-        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length) {
+        
+        // Pass the data series color to the response data object
+        if(seriesLength === Object.keys(originJson.chartDescription.queries).length) {
             if (originJson.chartDescription.queries[index].color)
                 seriesInstance.color = originJson.chartDescription.queries[index].color;
         }
-
-
         convertedJson.series[index] = seriesInstance;
     }
 
