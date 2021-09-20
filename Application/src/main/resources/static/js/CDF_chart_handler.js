@@ -400,11 +400,11 @@ function convertToValidHighchartJson(responseData, originJson){
     for (let index = 0; index < seriesLength; index++){
         var seriesInstance = new Object();
         seriesInstance.data = responseData.series[index].data;
+	
+	// Propagate if this data series will be stacking
+	if(convertedJson.series[index] != null && convertedJson.series[index].stacking != null)
+	    seriesInstance.stacking = convertedJson.series[index].stacking;
 
-        // Propagate if this data series will be stacking
-        if(convertedJson.series[index].stacking != null)
-            seriesInstance.stacking = convertedJson.series[index].stacking;
-        
         // Pass the data series name to the response data object
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
@@ -418,7 +418,7 @@ function convertToValidHighchartJson(responseData, originJson){
             if (originJson.chartDescription.queries[index].color)
                 seriesInstance.color = originJson.chartDescription.queries[index].color;
         }
-        convertedJson.series[index] = seriesInstance;
+        convertedJson.series[index] = seriesInstance;       
     }
 
     if(responseData.drilldown !== null){
