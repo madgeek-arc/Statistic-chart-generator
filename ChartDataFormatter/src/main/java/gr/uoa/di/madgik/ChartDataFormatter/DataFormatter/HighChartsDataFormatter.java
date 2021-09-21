@@ -54,13 +54,9 @@ public class HighChartsDataFormatter extends DataFormatter{
         for (int i = 0; i < dbAccessResults.size(); i++) {
             Result result = dbAccessResults.get(i);
 
-            // if (result.getRows().isEmpty())
-            //     continue;
-
-
+            // Error if the results are not empty and break the [y,x] or a [y,x1,x2] format assumption
             if (!result.getRows().isEmpty() && (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3))
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
-
 
             HashMap<String, String> XtoYMapping = null;
             if (result.getRows().isEmpty() || result.getRows().get(0).size() == 2) {
