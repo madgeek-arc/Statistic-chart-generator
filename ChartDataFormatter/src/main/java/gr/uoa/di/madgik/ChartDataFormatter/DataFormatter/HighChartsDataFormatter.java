@@ -63,7 +63,7 @@ public class HighChartsDataFormatter extends DataFormatter{
 
 
             HashMap<String, String> XtoYMapping = null;
-            if (result.getRows().get(0).size() == 2 || result.getRows().isEmpty()) {
+            if (result.getRows().isEmpty() || result.getRows().get(0).size() == 2) {
 
                 XtoYMapping = new HashMap<>();
                 String chartName = chartNames.get(i) == null ? "Series " + (i + 1) : chartNames.get(i);
