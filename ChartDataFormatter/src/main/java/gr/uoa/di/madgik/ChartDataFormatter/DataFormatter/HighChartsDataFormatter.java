@@ -58,7 +58,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             //     continue;
 
 
-            if (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
+            if (!result.getRows().isEmpty() && (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3))
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
 
 
