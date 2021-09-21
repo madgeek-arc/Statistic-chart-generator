@@ -54,8 +54,8 @@ public class HighChartsDataFormatter extends DataFormatter{
         for (int i = 0; i < dbAccessResults.size(); i++) {
             Result result = dbAccessResults.get(i);
 
-            if (result.getRows().isEmpty())
-                continue;
+            // if (result.getRows().isEmpty())
+            //     continue;
 
 
             if (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
@@ -63,7 +63,7 @@ public class HighChartsDataFormatter extends DataFormatter{
 
 
             HashMap<String, String> XtoYMapping = null;
-            if (result.getRows().get(0).size() == 2) {
+            if (result.getRows().get(0).size() == 2 || result.getRows().isEmpty()) {
 
                 XtoYMapping = new HashMap<>();
                 String chartName = chartNames.get(i) == null ? "Series " + (i + 1) : chartNames.get(i);
