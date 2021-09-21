@@ -27,7 +27,7 @@ public abstract class DataFormatter {
         for(Result result: dbAccessResults) {
 
             if (result.getRows().isEmpty())
-                break;
+                continue;
 
             for (List<String> row : result.getRows()) {
                 // Get the first groupBy of the result row
