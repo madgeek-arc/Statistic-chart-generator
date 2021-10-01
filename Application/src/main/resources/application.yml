@@ -8,6 +8,12 @@ spring:
         favicon:
             enabled: false
 
+management:
+        endpoints:
+                web:
+                        exposure:
+                                include: health,info,prometheus
+
 # mappings filepath
 #mappings:
 #    file:
