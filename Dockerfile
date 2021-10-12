@@ -20,7 +20,7 @@ copy ./DBAccess/src ./DBAccess/src
 
 run mvn clean package  -DskipTests
 
-run git clone https://code-repo.d4science.org/antonis.lempesis/stats-tool-configuration.git
+run git clone -c http.sslVerify=false https://code-repo.d4science.org/antonis.lempesis/stats-tool-configuration.git
 run mkdir -p /var/lib/tomcat8/lib/statsConfig
 run cp /usr/local/app/stats-tool-configuration/madgik/* /var/lib/tomcat8/lib/statsConfig
 
