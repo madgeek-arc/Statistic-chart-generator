@@ -73,6 +73,7 @@ public class SupportedDiagramsService {
         public String description;
         public String imageURL;
         public boolean isPolar;
+        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedDiagram() {
             this.imageURL = "images/imagePlaceholder.svg";
@@ -82,7 +83,6 @@ public class SupportedDiagramsService {
 
     public class SupportedChart extends SupportedDiagram{
         public SupportedChartTypes type;
-        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedChart(SupportedChartTypes type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -92,7 +92,6 @@ public class SupportedDiagramsService {
 
     public class SupportedPolar extends SupportedDiagram{
         public SupportedPolarTypes type;
-        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedPolar(SupportedPolarTypes type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -104,7 +103,6 @@ public class SupportedDiagramsService {
     public class SupportedMap extends SupportedDiagram{
         public String type;
         public String name;
-        public List<SupportedLibraries>  supportedLibraries;
 
         public SupportedMap(String type, String name, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -115,7 +113,6 @@ public class SupportedDiagramsService {
 
     public class SupportedSpecialDiagram extends SupportedDiagram{
         public String type;
-        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedSpecialDiagram(String type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -125,7 +122,6 @@ public class SupportedDiagramsService {
 
     public class SupportedMisc extends SupportedDiagram{
         public String type;
-        public List<SupportedLibraries> supportedLibraries;
 
        public SupportedMisc(String type, List<SupportedLibraries> supportedLibraries) {
            this.type = type;
