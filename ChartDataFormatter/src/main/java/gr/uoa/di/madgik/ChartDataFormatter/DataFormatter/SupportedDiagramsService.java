@@ -78,6 +78,8 @@ public class SupportedDiagramsService {
         public SupportedDiagram() {
             this.imageURL = "images/imagePlaceholder.svg";
             this.isPolar = false;
+            this.name = "";
+            this.description = "";
         }
     }
 
