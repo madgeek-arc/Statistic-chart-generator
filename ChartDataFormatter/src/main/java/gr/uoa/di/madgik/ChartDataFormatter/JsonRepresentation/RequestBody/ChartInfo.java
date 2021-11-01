@@ -9,6 +9,8 @@ public class ChartInfo {
     private String chartType;
     @JsonProperty(value = "name")
     private String chartName;
+    @JsonProperty(value = "color")
+    private String chartColor;
     @JsonProperty
     private Query query;
 
@@ -30,4 +32,8 @@ public class ChartInfo {
     public String getChartName() { return chartName; }
 
     public void setChartName(String chartName) { this.chartName = chartName; }
+    
+    public String getChartColor() { return this.chartColor; }
+
+    public void setChartColor(String chartColor) { this.chartColor = chartColor; }
 }

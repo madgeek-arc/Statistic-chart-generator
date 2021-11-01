@@ -67,9 +67,24 @@ public class SupportedDiagramsService {
         this.supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
     }
 
-    public class SupportedChart {
-        public SupportedChartTypes type;
+    public abstract class SupportedDiagram {
+        public String name;
+        public int diagramId;
+        public String description;
+        public String imageURL;
+        public boolean isPolar;
         public List<SupportedLibraries> supportedLibraries;
+
+        public SupportedDiagram() {
+            this.imageURL = "images/imagePlaceholder.svg";
+            this.isPolar = false;
+            this.name = "";
+            this.description = "";
+        }
+    }
+
+    public class SupportedChart extends SupportedDiagram{
+        public SupportedChartTypes type;
 
         public SupportedChart(SupportedChartTypes type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -77,20 +92,19 @@ public class SupportedDiagramsService {
         }
     }
 
-    public class SupportedPolar {
+    public class SupportedPolar extends SupportedDiagram{
         public SupportedPolarTypes type;
-        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedPolar(SupportedPolarTypes type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
             this.supportedLibraries = supportedLibraries;
+            this.isPolar = true;
         }
     }
 
-    public class SupportedMap {
+    public class SupportedMap extends SupportedDiagram{
         public String type;
         public String name;
-        public List<SupportedLibraries>  supportedLibraries;
 
         public SupportedMap(String type, String name, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -99,9 +113,8 @@ public class SupportedDiagramsService {
         }
     }
 
-    public class SupportedSpecialDiagram {
+    public class SupportedSpecialDiagram extends SupportedDiagram{
         public String type;
-        public List<SupportedLibraries> supportedLibraries;
 
         public SupportedSpecialDiagram(String type, List<SupportedLibraries> supportedLibraries) {
             this.type = type;
@@ -109,9 +122,8 @@ public class SupportedDiagramsService {
         }
     }
 
-    public class SupportedMisc {
+    public class SupportedMisc extends SupportedDiagram{
         public String type;
-        public List<SupportedLibraries> supportedLibraries;
 
        public SupportedMisc(String type, List<SupportedLibraries> supportedLibraries) {
            this.type = type;
