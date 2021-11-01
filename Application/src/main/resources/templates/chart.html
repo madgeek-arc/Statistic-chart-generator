@@ -16,7 +16,7 @@
             let jsonParam = params.get("json");
             let errorElement = document.getElementById("errorSpan");
             let loadingElement = document.getElementById("loader");
-
+            
             if(!jsonParam){
                 loadingElement.style.display = "none";
                 errorElement.style.display = "inline-block";
@@ -34,6 +34,13 @@
                   console.error(e);
                 }
             }
+
+            let testButton = document.getElementById("highmapsTest");
+            testButton.addEventListener("click", ()=>{
+                var mapChart = document.getElementById("container").highcharts();
+                mapChart.get('GR').zoomTo();
+                mapChart.mapZoom(5);
+            });
         });    
     /*]]>*/
     </script>
@@ -49,6 +56,7 @@
     </div>
     <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;"></span>
 </div>
+<button id="highmapsTest"></button>
 
 </body>
 </html>
