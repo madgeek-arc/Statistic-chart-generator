@@ -295,7 +295,13 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                     console.log("Drawing HighMaps");
                 }
 
-                Highcharts.mapChart('container',mapJson);
+                var mapChart = Highcharts.mapChart('container',mapJson);
+
+                let testButton = document.getElementById("highmapsTest");
+                testButton.addEventListener("click", ()=>{
+                    mapChart.get('GR').zoomTo();
+                    mapChart.mapZoom(5);
+                });
             });
 
 
