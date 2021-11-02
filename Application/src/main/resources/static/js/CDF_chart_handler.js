@@ -288,14 +288,14 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
             () => {
                 
                 mapJson = originalDataJSONobj.mapDescription;
-                mapJson.series[0].data = responseData.dataTable;
                 mapJson.series[0].keys.push('id');
 
-                for (let index = 0; index < mapJson.series[0].data.length; index++) {
-                    const mapData = mapJson.series[0].data[index];
+                for (let index = 0; index < responseData.dataTable.length; index++) {
 
-                    mapJson.series[0].data[index].id = mapJson.series[0].data[index]["iso-a2"];
+                    responseData.dataTable[index].id = responseData.dataTable[index]["iso-a2"];
                 }
+
+                mapJson.series[0].data = responseData.dataTable;
 
                 if(DEBUGMODE) {
                     console.log(mapJson);
