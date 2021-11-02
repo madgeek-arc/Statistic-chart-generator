@@ -293,7 +293,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                 for (let index = 0; index < mapJson.series[0].data.length; index++) {
                     const mapData = mapJson.series[0].data[index];
 
-                    mapJson.series[0].data[index].id = mapJson.series[0].data[index].iso-a2;
+                    mapJson.series[0].data[index].id = mapJson.series[0].data[index]["iso-a2"];
                 }
 
                 if(DEBUGMODE) {
