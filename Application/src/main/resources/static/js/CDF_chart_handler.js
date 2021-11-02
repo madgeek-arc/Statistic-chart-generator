@@ -291,7 +291,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                 
                 var mapIdData = [];
                 responseData.dataTable.forEach(responseMapData => {
-                    responseMapData.id = responseData["iso-a2"];
+                    responseMapData.id = Object.values(responseData)[0];
                     mapIdData.push(responseMapData);
                 });
                 mapJson.series[0].data = mapIdData;
