@@ -288,7 +288,10 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
             () => {
                 
                 mapJson = originalDataJSONobj.mapDescription;
-                mapJson.series[0].data = responseData.dataTable;
+                
+                var mapIdData = [];
+                responseData.dataTable.forEach(responseMapData => mapIdData.push({...responseMapData, id:mapData['iso-a2']}) );
+                mapJson.series[0].data = mapIdData;
 
                 if(DEBUGMODE) {
                     console.log(mapJson);
