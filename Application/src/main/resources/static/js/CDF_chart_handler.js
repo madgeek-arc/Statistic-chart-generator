@@ -292,7 +292,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
 
                 for (let index = 0; index < responseData.dataTable.length; index++) {
 
-                    responseData.dataTable[index].push(responseData.dataTable[index]["iso-a2"]);
+                    responseData.dataTable[index].push(responseData.dataTable[index][0]);
                 }
 
                 mapJson.series[0].data = responseData.dataTable;
