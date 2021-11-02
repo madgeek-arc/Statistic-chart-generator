@@ -289,6 +289,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                 
                 mapJson = originalDataJSONobj.mapDescription;
                 mapJson.series[0].data = responseData.dataTable;
+                mapJson.series[0].keys.push('id');
 
                 for (let index = 0; index < mapJson.series[0].data.length; index++) {
                     const mapData = mapJson.series[0].data[index];
