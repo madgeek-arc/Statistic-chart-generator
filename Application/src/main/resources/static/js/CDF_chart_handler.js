@@ -288,27 +288,30 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
             () => {
                 
                 mapJson = originalDataJSONobj.mapDescription;
-                mapJson.series[0].keys.push('id');
+                
+                if(mapJson.zoomTo != null)
+                {
+                    // Add id to the [iso-a2, value] keys
+                    mapJson.series[0].keys.push('id');
+                    
+                    // Append to the received data the iso-a2 value as id.
+                    // mapData is now [iso-a2, value, id]
+                    responseData.dataTable.forEach(mapData => {mapData.push(mapData[0]); });
 
-                for (let index = 0; index < responseData.dataTable.length; index++) {
-
-                    responseData.dataTable[index].push(responseData.dataTable[index][0]);
+                    // Assign the queried data to the highmaps ready Json
+                    mapJson.series[0].data = responseData.dataTable;
                 }
-
-                mapJson.series[0].data = responseData.dataTable;
-
-                if(DEBUGMODE) {
-                    console.log(mapJson);
-                    console.log("Drawing HighMaps");
-                }
+                
+                if(DEBUGMODE) 
+                    console.log("Drawing HighMaps", mapJson);
 
                 var mapChart = Highcharts.mapChart('container',mapJson);
-
-                let testButton = document.getElementById("highmapsTest");
-                testButton.addEventListener("click", ()=>{
-                    mapChart.get('GR').zoomTo();
-                    mapChart.mapZoom(5);
-                });
+                
+                if(mapJson.zoomTo != null)
+                {
+                    mapChart.get(mapJson.zoomTo.destination).zoomTo();
+                    mapChart.mapZoom(mapJson.zoomTo.zoomValue);
+                }
             });
 
 
