@@ -288,13 +288,13 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
             () => {
                 
                 mapJson = originalDataJSONobj.mapDescription;
-                
-                var mapIdData = [];
-                responseData.dataTable.forEach(responseMapData => {
-                    responseMapData.id = Object.values(responseMapData)[0];
-                    mapIdData.push(responseMapData);
-                });
-                mapJson.series[0].data = mapIdData;
+                mapJson.series[0].data = responseData.dataTable;
+
+                for (let index = 0; index < mapJson.series[0].data.length; index++) {
+                    const mapData = mapJson.series[0].data[index];
+
+                    mapJson.series[0].data[index].id = mapJson.series[0].data[index].iso-a2;
+                }
 
                 if(DEBUGMODE) {
                     console.log(mapJson);
