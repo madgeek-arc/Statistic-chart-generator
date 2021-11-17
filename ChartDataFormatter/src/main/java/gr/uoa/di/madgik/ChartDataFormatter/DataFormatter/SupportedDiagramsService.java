@@ -28,72 +28,87 @@ public class SupportedDiagramsService {
     private static final String SupportedDiagramsProperties = "src/main/resources/supportedDiagrams.properties.xml";
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    private List<SupportedChart> supportedCharts;
-    private List<SupportedPolar> supportedPolars;
-    private List<SupportedMap> supportedMaps;
-    private List<SupportedSpecialDiagram> supportedSpecialDiagrams;
-    private List<SupportedMisc> supportedMiscs;
+    private SupportedDiagrams supportedDiagrams;
 
     public SupportedDiagramsService() {
 
         try {
-            JAXBContext context = JAXBContext.newInstance(SupportedDiagram.class);
+            JAXBContext context = JAXBContext.newInstance(SupportedDiagrams.class);
 
             Unmarshaller um = context.createUnmarshaller();
-            um.unmarshal(new FileReader(SupportedDiagramsProperties));
+            this.supportedDiagrams = (SupportedDiagrams) um.unmarshal(new FileReader(SupportedDiagramsProperties));
 
         } catch (JAXBException e) {
+            log.info("JAXB Exception, reverting to hardcoded logic");
+
+            this.supportedDiagrams = new SupportedDiagrams();
             
             // In case there is a JAXB Exception, initialize the Supported Diagrams with the hardcoded logic
-            this.initSupportedCharts();
-            this.initSupportedPolars();
-            this.initSupportedMaps();
-            this.initSupportedSpecialDiagrams();
-            this.initSupportedMisc();
+            this.supportedDiagrams.setSupportedCharts(this.initSupportedCharts());
+            this.supportedDiagrams.setSupportedPolars(this.initSupportedPolars());
+            this.supportedDiagrams.setSupportedMaps(this.initSupportedMaps());
+            this.supportedDiagrams.setSupportedSpecialDiagrams(this.initSupportedSpecialDiagrams());
+            this.supportedDiagrams.setSupportedMiscs(this.initSupportedMisc());
+
         } catch (FileNotFoundException e) {
-            log.error("Supported Diagrams properties file not found");;
+            log.error("Supported Diagrams properties file not found");
         } 
     }
 
-    public List<SupportedChart> getSupportedCharts() { return supportedCharts; }
-    public List<SupportedPolar> getSupportedPolars() { return supportedPolars; }
-    public List<SupportedMap> getSupportedMaps() { return supportedMaps; }
-    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return supportedSpecialDiagrams; }
-    public List<SupportedMisc> getSupportedMiscs() { return this.supportedMiscs; }
+    public List<SupportedChart> getSupportedCharts() { return this.supportedDiagrams.supportedCharts; }
+    public List<SupportedPolar> getSupportedPolars() { return this.supportedDiagrams.supportedPolars; }
+    public List<SupportedMap> getSupportedMaps() { return this.supportedDiagrams.supportedMaps; }
+    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return this.supportedDiagrams.supportedSpecialDiagrams; }
+    public List<SupportedMisc> getSupportedMiscs() { return this.supportedDiagrams.supportedMiscs; }
 
-    private void initSupportedMaps() {
-        this.supportedMaps = new ArrayList<>();
+    private ArrayList<SupportedMap> initSupportedMaps() {
+        ArrayList<SupportedMap> supportedMaps = new ArrayList<>();
         List<SupportedLibraries> mapLibs = new ArrayList<>();
+
         mapLibs.add(HighMaps);
-        this.supportedMaps.add(new SupportedMap("world", "custom/world-robinson-highres", mapLibs));
+        supportedMaps.add(new SupportedMap("world", "custom/world-robinson-highres", mapLibs));
+
+        return supportedMaps;
     }
 
-    private void initSupportedSpecialDiagrams() {
-        this.supportedSpecialDiagrams = new ArrayList<>();
+    private ArrayList<SupportedSpecialDiagram> initSupportedSpecialDiagrams() {
+
+        ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams = new ArrayList<>();
+        
         List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
+        
+        supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
 
-        this.supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
+        return supportedSpecialDiagrams;
     }
 
-    private void initSupportedCharts() {
-        this.supportedCharts = new ArrayList<>();
+    private ArrayList<SupportedChart> initSupportedCharts() {
+        
+        ArrayList<SupportedChart> supportedCharts = new ArrayList<>();
         List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
 
         for (SupportedChartTypes chartType : SupportedChartTypes.values())
-            this.supportedCharts.add(new SupportedChart(chartType,chartLibs));
+            supportedCharts.add(new SupportedChart(chartType,chartLibs));
+        
+        return supportedCharts;
     }
 
-    private void initSupportedPolars() {
-        this.supportedPolars = new ArrayList<>();
+    private ArrayList<SupportedPolar> initSupportedPolars() {
+        ArrayList<SupportedPolar> supportedPolars = new ArrayList<>();
+        
         List<SupportedLibraries> chartLibs = Arrays.asList((HighCharts));
 
         for (SupportedPolarTypes polarType : SupportedPolarTypes.values())
-            this.supportedPolars.add(new SupportedPolar(polarType, chartLibs));
+            supportedPolars.add(new SupportedPolar(polarType, chartLibs));
+
+        return supportedPolars;
     }
 
-    private void initSupportedMisc() {
-        this.supportedMiscs = new ArrayList<>();
-        this.supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
+    private ArrayList<SupportedMisc> initSupportedMisc() {
+        ArrayList<SupportedMisc> supportedMiscs = new ArrayList<>();
+        supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
+
+        return supportedMiscs;
     }
 
     @XmlRootElement(name = "supportedDiagrams")
