@@ -325,8 +325,8 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
         {
             var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
             if(DEBUGMODE) {
-                console.log("Drawing GoogleCharts \nOptions | ChartType", 
-                    originalDataJSONobj.chartDescription.options, originalDataJSONobj.chartDescription.chartType);
+                console.log("Drawing GoogleCharts \nOptions | ChartType | Data", 
+                    originalDataJSONobj.chartDescription.options, originalDataJSONobj.chartDescription.chartType, data);
             }
             
             const chartType = getCompatibleGoogleChartsType(originalDataJSONobj.chartDescription.chartType);
@@ -388,6 +388,7 @@ function fillGoogleChartsDataTable(responseData, originJson){
     var data = new google.visualization.DataTable();
     var dataColumns = responseData.columns;
     var columnsType = responseData.columnsType;
+    const chartType = originJson.chartDescription.chartType;
     
     // datacolumns has the same size of columnsType PLUS a header column
     if(dataColumns.length > 0 && ( columnsType === null || ((columnsType !== null) && (dataColumns.length === (columnsType.length + 1))))){
@@ -397,12 +398,30 @@ function fillGoogleChartsDataTable(responseData, originJson){
 
         for(let index = 0; index < dataColumns.length; index++){
             if(index == 0)
+            {
+                // Column for the name of the Data entry
                 data.addColumn('string', dataColumns[index]);
+
+                // Added a column that represents the ID of the parent node in a TreeMap. 
+                if(chartType === 'TreeMap')
+                    data.addColumn('string', 'Parent')
+            }
             else{
+                // Column for the value of the Data entry
                 data.addColumn('number', dataColumns[index]);
                 if(columnsType !== null)
                     originJson.chartDescription.options.series[index-1] = {type: columnsType[index-1]};
             }
+        }
+        // Added a row for a Root element as a GoogleChart TreeMaps does not have more than one root nodes 
+        if(chartType === 'TreeMap')
+        {
+            rootNode = ['Root', null];
+            for (let index = 2; index < dataColumns.length; index++)
+                rootNode.push(null);
+
+            responseData.dataTable.forEach(row => { row.splice(1,0,'Root')});
+            responseData.dataTable.splice(1,0,rootNode);
         }
         data.addRows(responseData.dataTable);
     }
