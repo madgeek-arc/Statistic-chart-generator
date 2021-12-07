@@ -417,11 +417,11 @@ function fillGoogleChartsDataTable(responseData, originJson){
         if(chartType === 'TreeMap')
         {
             rootNode = ['Root', null];
-            for (let index = 2; index < dataColumns.length; index++)
+            for (let index = 1; index < dataColumns.length; index++)
                 rootNode.push(null);
 
             responseData.dataTable.forEach(row => { row.splice(1,0,'Root')});
-            responseData.dataTable.splice(1,0,rootNode);
+            responseData.dataTable.splice(0,0,rootNode);
         }
         data.addRows(responseData.dataTable);
     }
