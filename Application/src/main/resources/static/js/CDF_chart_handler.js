@@ -33,6 +33,14 @@ function loadJS(url, afterLoadCallback){
     firstHeadTaginDOM.appendChild(fileref);        
 }
 
+function getCompatibleGoogleChartsType(originalChartType)
+{
+    if(originalChartType === 'treemap')
+        return 'TreeMap';
+
+    return originalChartType;
+}
+
 //Callback that handles the data sent from the Admin part of the app
 function handleAdminSideData(dataJSONobj)
 {   
@@ -321,8 +329,10 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                     originalDataJSONobj.chartDescription.options, originalDataJSONobj.chartDescription.chartType);
             }
             
+            const chartType = getCompatibleGoogleChartsType(originalDataJSONobj.chartDescription.chartType);
+
             var wrapper = new google.visualization.ChartWrapper({
-                    chartType: originalDataJSONobj.chartDescription.chartType,
+                    chartType: chartType,
                     dataTable: data,
                     options: originalDataJSONobj.chartDescription.options,
                     containerId: 'container'
