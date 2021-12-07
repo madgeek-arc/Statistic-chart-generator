@@ -345,6 +345,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                     // Create a DOM element that saves the chart
                     var buttonElement = document.createElement("button");
                     buttonElement.innerHTML = "Download as PNG";
+                    buttonElement.style = "margin: auto;"
                     buttonElement.onclick = () => {
                         const element = document.createElement('a');
                         element.setAttribute('href', wrapper.getChart().getImageURI() );
@@ -354,7 +355,9 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                         element.click();
                         document.body.removeChild(element);
                     }
-                    $("#container").before(buttonElement);
+
+                    const container = document.getElementById("container");
+                    container.parentNode.insertBefore(buttonElement, container.nextSibling);
                 });
             }
 
