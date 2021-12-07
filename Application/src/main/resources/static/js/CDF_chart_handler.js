@@ -47,7 +47,7 @@ function handleAdminSideData(dataJSONobj)
         
         loadJS("https://www.gstatic.com/charts/loader.js",                 
         function(){            
-            google.charts.load('45', {packages: ['corechart']});
+            google.charts.load('current', {packages: ['corechart','treemap']});
             google.charts.setOnLoadCallback(function(){
                 libraryType = dataJSONobj.library;
                 
@@ -55,7 +55,6 @@ function handleAdminSideData(dataJSONobj)
                 //Pass the Chart library to ChartDataFormatter
                 RequestInfoObj.library = dataJSONobj.library;
                 RequestInfoObj.orderBy = dataJSONobj.orderBy;
-                // RequestInfoObj.ord
                 
                 //Create ChartInfo Object Array
                 RequestInfoObj.chartsInfo = [];
@@ -73,7 +72,7 @@ function handleAdminSideData(dataJSONobj)
     {
         console.log("Asked for echarts library");
 
-            loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
+        loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
         function(){
 
             //Hold the Library state
@@ -110,8 +109,7 @@ function handleAdminSideData(dataJSONobj)
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
 
-            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                        domainLink+"/chart");
+            passToChartDataFormatter(dataJSONobj,RequestInfoObj,domainLink+"/chart");
 
         });
         break;
@@ -254,9 +252,7 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 
 function handleChartDataFormatterResponse(responseData, originalDataJSONobj, ChartDataFormatterReadyJSONobj)
 {   
-    if(DEBUGMODE) {
-        console.log("Got from CDF: ", responseData);
-    }
+    if(DEBUGMODE) console.log("Got from CDF: ", responseData);
     
     
     //Hide children elements of container
@@ -321,17 +317,16 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
         {
             var data = fillGoogleChartsDataTable(responseData, originalDataJSONobj);
             if(DEBUGMODE) {
-                console.log("Drawing GoogleCharts");
-                console.log('Options:');
-                console.log(originalDataJSONobj.chartDescription.options);
+                console.log("Drawing GoogleCharts \nOptions | ChartType", 
+                    originalDataJSONobj.chartDescription.options, originalDataJSONobj.chartDescription.chartType);
             }
-                
+            
             var wrapper = new google.visualization.ChartWrapper({
-                chartType: originalDataJSONobj.chartDescription.chartType,
-                dataTable: data,
-                options: originalDataJSONobj.chartDescription.options,
-                containerId: 'container'
-            });
+                    chartType: originalDataJSONobj.chartDescription.chartType,
+                    dataTable: data,
+                    options: originalDataJSONobj.chartDescription.options,
+                    containerId: 'container'
+                });
 
             if(originalDataJSONobj.chartDescription.options.exporting) {
 
