@@ -443,11 +443,10 @@ function convertToValidHighchartJson(responseData, originJson){
 
     for (let index = 0; index < seriesLength; index++){
         var seriesInstance = new Object();
-        seriesInstance.data = responseData.series[index].data;
 	
-	// Propagate if this data series will be stacking
-	if(convertedJson.series[index] != null && convertedJson.series[index].stacking != null)
-	    seriesInstance.stacking = convertedJson.series[index].stacking;
+        // Propagate if this data series will be stacking
+        if(convertedJson.series[index] != null && convertedJson.series[index].stacking != null)
+            seriesInstance.stacking = convertedJson.series[index].stacking;
 
         // Pass the data series name to the response data object
         if(responseData.dataSeriesNames !== null)
@@ -462,6 +461,21 @@ function convertToValidHighchartJson(responseData, originJson){
             if (originJson.chartDescription.queries[index].color)
                 seriesInstance.color = originJson.chartDescription.queries[index].color;
         }
+
+        if(seriesInstance.type == "treemap")
+        {
+            seriesInstance.data = [];
+            for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
+
+                var dataValue = responseData.series[index].data[dataIndex]
+                var dataName = originJson.xAxis.categories[dataIndex];
+
+                seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
+            }
+        }
+        else
+            seriesInstance.data = responseData.series[index].data;
+
         convertedJson.series[index] = seriesInstance;       
     }
 
