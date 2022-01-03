@@ -271,13 +271,15 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
     switch(libraryType) {
         case "HighCharts":
         {
-            var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
-            
             Highcharts.setOptions({
                 lang: {
                     drillUpText: '<< Back'
-                }
+                },
+                colors: originalDataJSONobj.chartDescription.colors
             })
+            
+            originalDataJSONobj.chartDescription.colors = undefined;
+            var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
 
             if(DEBUGMODE) {
                 console.log("Final formed JSON", chartJson);
@@ -473,7 +475,7 @@ function convertToValidHighchartJson(responseData, originJson){
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
 
-            convertedJson.colorAxis = { minColor: '#FFFFFF', maxColor: convertedJson.colors[0] };
+            convertedJson.colorAxis = { minColor: '#FFFFFF', maxColor: Highcharts.getOptions().colors[0] };
         }
         else
         {
