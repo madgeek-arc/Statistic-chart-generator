@@ -472,6 +472,8 @@ function convertToValidHighchartJson(responseData, originJson){
 
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
+
+            convertedJson.colorAxis = { minColor: '#FFFFFF', maxColor: Highcharts.getOptions().colors[0] };
         }
         else
         {
