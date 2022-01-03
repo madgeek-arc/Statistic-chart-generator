@@ -47,7 +47,7 @@ function handleAdminSideData(dataJSONobj)
     // dataJSONobj holds the option-ready version of the JSON that will be passed to the Chart library,
     // along with the queries that must be passed to ChartDataFormatter and eventually to DBAccess
     if(DEBUGMODE)
-        console.log("dataJSONobj", dataJSONobj);
+        console.log("Admin data JSON", dataJSONobj);
 
     switch(dataJSONobj.library){
     case "GoogleCharts":
@@ -225,6 +225,7 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 {
     if(DEBUGMODE) {
         console.log("Passing to CDF: ", ChartDataFormatterReadyJSONobj);
+        console.log("")
     }
     
     $.ajax(
@@ -468,7 +469,7 @@ function convertToValidHighchartJson(responseData, originJson){
             for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
 
                 var dataValue = responseData.series[index].data[dataIndex]
-                var dataName = originJson.xAxis.categories[dataIndex];
+                var dataName = convertedJson.xAxis.categories[dataIndex];
 
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
