@@ -225,7 +225,6 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 {
     if(DEBUGMODE) {
         console.log("Passing to CDF: ", ChartDataFormatterReadyJSONobj);
-        console.log("")
     }
     
     $.ajax(
@@ -280,7 +279,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
             })
 
             if(DEBUGMODE) {
-                console.log("chartJson", chartJson);
+                console.log("Final formed JSON", chartJson);
                 console.log("Drawing HighCharts");
             }
 
@@ -469,13 +468,19 @@ function convertToValidHighchartJson(responseData, originJson){
             for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
 
                 var dataValue = responseData.series[index].data[dataIndex]
-                var dataName = convertedJson.xAxis.categories[dataIndex];
+                var dataName = responseData.xAxis_categories[dataIndex];
 
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
         }
         else
+        {
             seriesInstance.data = responseData.series[index].data;
+            
+            if(convertedJson.xAxis === undefined)
+                convertedJson.xAxis = {};    
+            convertedJson.xAxis.categories = responseData.xAxis_categories;
+        }
 
         convertedJson.series[index] = seriesInstance;       
     }
@@ -495,10 +500,6 @@ function convertToValidHighchartJson(responseData, originJson){
             convertedJson.drilldown.series[index].type = "pie";
         }
     }
-
-    if(convertedJson.xAxis === undefined)
-        convertedJson.xAxis = {};    
-    convertedJson.xAxis.categories = responseData.xAxis_categories;
 
     return convertedJson;
 }
