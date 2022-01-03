@@ -128,6 +128,7 @@ function handleAdminSideData(dataJSONobj)
         //Dynamically add JS library
         loadJS("//code.highcharts.com/highcharts.js",
         () => loadJS("//code.highcharts.com/highcharts-more.js",
+        () => loadJS("//code.highcharts.com/modules/heatmap.js"),
         () => loadJS("//code.highcharts.com/modules/treemap.js",
         () => loadJS("//code.highcharts.com/modules/drilldown.js",
         () => loadJS("//code.highcharts.com/modules/no-data-to-display.js",
@@ -280,9 +281,8 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
 
             if(DEBUGMODE) {
                 console.log("Final formed JSON", chartJson);
-                console.log("Drawing HighCharts");
             }
-
+            console.log("Drawing HighCharts");
             Highcharts.chart('container',chartJson);
             
             break;
@@ -476,7 +476,7 @@ function convertToValidHighchartJson(responseData, originJson){
         else
         {
             seriesInstance.data = responseData.series[index].data;
-            
+
             if(convertedJson.xAxis === undefined)
                 convertedJson.xAxis = {};    
             convertedJson.xAxis.categories = responseData.xAxis_categories;
