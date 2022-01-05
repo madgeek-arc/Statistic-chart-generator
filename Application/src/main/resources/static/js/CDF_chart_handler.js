@@ -307,7 +307,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
 
                 var mapChart = Highcharts.mapChart('container',mapJson);
                 
-                if(mapJson.zoomTo != null)
+                if(mapJson.zoomTo != null && mapJson.zoomTo.destination != null)
                 {
                     mapChart.get(mapJson.zoomTo.destination).zoomTo();
                     mapChart.mapZoom(mapJson.zoomTo.zoomValue);
