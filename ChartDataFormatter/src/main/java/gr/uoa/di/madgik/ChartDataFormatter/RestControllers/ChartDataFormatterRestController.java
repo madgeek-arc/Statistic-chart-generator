@@ -2,7 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagramsService;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.Service.SupportedDiagramsService;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
@@ -91,39 +91,39 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/types",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedChart>> getSupportedChartTypes(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart>> getSupportedChartTypes(){
 
-        List<SupportedDiagramsService.SupportedChart> supportedTypes = this.supportedDiagramsService.getSupportedCharts();
+        List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart> supportedTypes = this.supportedDiagramsService.getSupportedCharts();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
     @GetMapping( path = "/polar/types",
     produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedPolar>> getSupportedPolarTypes(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar>> getSupportedPolarTypes(){
 
-        List<SupportedDiagramsService.SupportedPolar> supportedTypes = this.supportedDiagramsService.getSupportedPolars();
+        List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar> supportedTypes = this.supportedDiagramsService.getSupportedPolars();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
 
     @GetMapping( path = "/maps",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedMap>> getSupportedMaps(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap>> getSupportedMaps(){
 
-        List<SupportedDiagramsService.SupportedMap> supportedMaps = this.supportedDiagramsService.getSupportedMaps();
+        List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap> supportedMaps = this.supportedDiagramsService.getSupportedMaps();
         return new ResponseEntity<>(supportedMaps, HttpStatus.OK);
     }
 
     @GetMapping( path = "/special",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<SupportedDiagramsService.SupportedSpecialDiagram>> getSupportedSpecialisedChartTypes(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram>> getSupportedSpecialisedChartTypes(){
 
-        List<SupportedDiagramsService.SupportedSpecialDiagram> supportedSpecialCharts = this.supportedDiagramsService.getSupportedSpecialDiagrams();
+        List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram> supportedSpecialCharts = this.supportedDiagramsService.getSupportedSpecialDiagrams();
         return new ResponseEntity<>(supportedSpecialCharts, HttpStatus.OK);
     }
 
     @GetMapping( path = "/misc",
             produces = "application/json; charset=UTF-8")
-    public ResponseEntity<List<SupportedDiagramsService.SupportedMisc>> getSupportedMiscTypes() {
-        List<SupportedDiagramsService.SupportedMisc> supportedMiscs = this.supportedDiagramsService.getSupportedMiscs();
+    public ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc>> getSupportedMiscTypes() {
+        List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc> supportedMiscs = this.supportedDiagramsService.getSupportedMiscs();
 
         return new ResponseEntity<>(supportedMiscs, HttpStatus.OK);
     }

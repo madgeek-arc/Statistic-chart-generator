@@ -1,0 +1,16 @@
+supportedDiagrams:
+    supportedCharts:
+        -
+            name: "column"
+            diagramId: 0
+            description: "Column Diagram"
+            imageURL: "images/imagePlaceholder.svg"
+            isPolar: false
+            supportedLibraries:
+                - "HighCharts"
+                - "GoogleCharts"
+                - "eCharts"
+    supportedPolars:
+    supportedMaps:
+    supportedSpecialDiagrams:
+    supportedMiscs:
