@@ -1,29 +1,30 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "supportedDiagrams")
+@ConfigurationProperties("supported-diagrams")
 public class SupportedDiagrams {
 
-    private ArrayList<SupportedChart> supportedCharts;
-    private ArrayList<SupportedPolar> supportedPolars;
-    private ArrayList<SupportedMap> supportedMaps;
-    private ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams;
-    private ArrayList<SupportedMisc> supportedMiscs;
+    private List<SupportedChart> charts = new ArrayList<>();;
+    private List<SupportedPolar> polars = new ArrayList<>();;
+    private List<SupportedMap> maps = new ArrayList<>();;
+    private List<SupportedSpecialDiagram> specials = new ArrayList<>();;
+    private List<SupportedMisc> miscs = new ArrayList<>();;
 
-    public void setSupportedCharts(ArrayList<SupportedChart> supportedCharts) { this.supportedCharts = supportedCharts; }
-    public void setSupportedPolars(ArrayList<SupportedPolar> supportedPolars) { this.supportedPolars = supportedPolars; }
-    public void setSupportedMaps(ArrayList<SupportedMap> supportedMaps) { this.supportedMaps = supportedMaps; }
-    public void setSupportedSpecialDiagrams(ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams) { this.supportedSpecialDiagrams = supportedSpecialDiagrams; }
-    public void setSupportedMiscs(ArrayList<SupportedMisc> supportedMiscs) { this.supportedMiscs = supportedMiscs; }
+    public void setCharts(List<SupportedChart> supportedCharts) { this.charts = supportedCharts; }
+    public void setPolars(List<SupportedPolar> supportedPolars) { this.polars = supportedPolars; }
+    public void setMaps(List<SupportedMap> supportedMaps) { this.maps = supportedMaps; }
+    public void setSpecials(List<SupportedSpecialDiagram> supportedSpecialDiagrams) { this.specials = supportedSpecialDiagrams; }
+    public void setMiscs(List<SupportedMisc> supportedMiscs) { this.miscs = supportedMiscs; }
 
-    public ArrayList<SupportedChart> getSupportedCharts() { return this.supportedCharts; }
-    public ArrayList<SupportedPolar> getSupportedPolars() { return this.supportedPolars; }
-    public ArrayList<SupportedMap> getSupportedMaps() { return this.supportedMaps; }
-    public ArrayList<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return this.supportedSpecialDiagrams; }
-    public ArrayList<SupportedMisc> getSupportedMiscs() { return this.supportedMiscs; }
+    public List<SupportedChart> getCharts() { return this.charts; }
+    public List<SupportedPolar> getPolars() { return this.polars; }
+    public List<SupportedMap> getMaps() { return this.maps; }
+    public List<SupportedSpecialDiagram> getSpecials() { return this.specials; }
+    public List<SupportedMisc> getMiscs() { return this.miscs; }
 }

@@ -12,27 +12,16 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlRootElement;
 
 import static gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries.*;
 
 @Service
 public class SupportedDiagramsService {
 
-    private static final String SupportedDiagramsProperties = "supportedDiagrams.properties.xml";
     private final Logger log = LogManager.getLogger(this.getClass());
 
     @Autowired
@@ -40,39 +29,28 @@ public class SupportedDiagramsService {
 
     public SupportedDiagramsService() {
 
-        // try {
-        //     JAXBContext context = JAXBContext.newInstance(SupportedDiagrams.class);
-            
-        //     URL propertiesUrl = getClass().getResource(SupportedDiagramsProperties);
+        if(this.supportedDiagrams == null)
+        {
+            log.error("Supported Diagrams could not be read by the YAML file. Back up initialization used");
 
-        //     Unmarshaller um = context.createUnmarshaller();
-        //     this.supportedDiagrams = (SupportedDiagrams) um.unmarshal(propertiesUrl);
+            this.supportedDiagrams.setCharts(initSupportedCharts());
+            this.supportedDiagrams.setMaps(initSupportedMaps());
+            this.supportedDiagrams.setMiscs(initSupportedMisc());
+            this.supportedDiagrams.setPolars(initSupportedPolars());
+            this.supportedDiagrams.setSpecials(initSupportedSpecialDiagrams());
+        }
 
-        // } catch (JAXBException e) {
-        //     log.info("JAXB Exception, reverting to hardcoded logic");
-
-        //     this.supportedDiagrams = new SupportedDiagrams();
-            
-        //     // In case there is a JAXB Exception, initialize the Supported Diagrams with the hardcoded logic
-        //     this.supportedDiagrams.setSupportedCharts(this.initSupportedCharts());
-        //     this.supportedDiagrams.setSupportedPolars(this.initSupportedPolars());
-        //     this.supportedDiagrams.setSupportedMaps(this.initSupportedMaps());
-        //     this.supportedDiagrams.setSupportedSpecialDiagrams(this.initSupportedSpecialDiagrams());
-        //     this.supportedDiagrams.setSupportedMiscs(this.initSupportedMisc());
-
-        // } catch (IllegalArgumentException e) {
-        //     log.error("Supported Diagrams properties file not found");
-        // } 
     }
 
-    public List<SupportedChart> getSupportedCharts() { return this.supportedDiagrams.getSupportedCharts(); }
-    public List<SupportedPolar> getSupportedPolars() { return this.supportedDiagrams.getSupportedPolars(); }
-    public List<SupportedMap> getSupportedMaps() { return this.supportedDiagrams.getSupportedMaps(); }
-    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return this.supportedDiagrams.getSupportedSpecialDiagrams(); }
-    public List<SupportedMisc> getSupportedMiscs() { return this.supportedDiagrams.getSupportedMiscs(); }
+    public SupportedDiagrams getSupportedDiagrams() { return this.supportedDiagrams; }
+    public List<SupportedChart> getSupportedCharts() { return this.supportedDiagrams.getCharts(); }
+    public List<SupportedPolar> getSupportedPolars() { return this.supportedDiagrams.getPolars(); }
+    public List<SupportedMap> getSupportedMaps() { return this.supportedDiagrams.getMaps(); }
+    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return this.supportedDiagrams.getSpecials(); }
+    public List<SupportedMisc> getSupportedMiscs() { return this.supportedDiagrams.getMiscs(); }
 
 
-    // Old Init Methods
+    // Backup Initialization
 
     private ArrayList<SupportedMap> initSupportedMaps() {
         ArrayList<SupportedMap> supportedMaps = new ArrayList<>();
