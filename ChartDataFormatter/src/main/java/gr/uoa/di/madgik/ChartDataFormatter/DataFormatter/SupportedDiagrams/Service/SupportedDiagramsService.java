@@ -27,21 +27,21 @@ public class SupportedDiagramsService {
     @Autowired
     private SupportedDiagrams supportedDiagrams;
 
-    public SupportedDiagramsService() {
+    // public SupportedDiagramsService() {
 
-        if(this.supportedDiagrams == null)
-        {
-            log.error("Supported Diagrams could not be read by the YAML file. Back up initialization used");
-            this.supportedDiagrams = new SupportedDiagrams();
-            
-            this.supportedDiagrams.setCharts(initSupportedCharts());
-            this.supportedDiagrams.setMaps(initSupportedMaps());
-            this.supportedDiagrams.setMiscs(initSupportedMisc());
-            this.supportedDiagrams.setPolars(initSupportedPolars());
-            this.supportedDiagrams.setSpecials(initSupportedSpecialDiagrams());
-        }
+    //     if(this.supportedDiagrams == null)
+    //     {
+    //         log.error("Supported Diagrams could not be read by the YAML file. Back up initialization used");
+    //         this.supportedDiagrams = new SupportedDiagrams();
 
-    }
+    //         this.supportedDiagrams.setCharts(initSupportedCharts());
+    //         this.supportedDiagrams.setMaps(initSupportedMaps());
+    //         this.supportedDiagrams.setMiscs(initSupportedMisc());
+    //         this.supportedDiagrams.setPolars(initSupportedPolars());
+    //         this.supportedDiagrams.setSpecials(initSupportedSpecialDiagrams());
+    //     }
+
+    // }
 
     public SupportedDiagrams getSupportedDiagrams() { return this.supportedDiagrams; }
     public List<SupportedChart> getSupportedCharts() { return this.supportedDiagrams.getCharts(); }
