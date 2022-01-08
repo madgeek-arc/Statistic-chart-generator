@@ -32,7 +32,8 @@ public class SupportedDiagramsService {
         if(this.supportedDiagrams == null)
         {
             log.error("Supported Diagrams could not be read by the YAML file. Back up initialization used");
-
+            this.supportedDiagrams = new SupportedDiagrams();
+            
             this.supportedDiagrams.setCharts(initSupportedCharts());
             this.supportedDiagrams.setMaps(initSupportedMaps());
             this.supportedDiagrams.setMiscs(initSupportedMisc());
