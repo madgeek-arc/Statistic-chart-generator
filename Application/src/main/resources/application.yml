@@ -19,3 +19,19 @@ management:
 #    file:
 #        path: classpath:mappings.json
 #        path: file:/etc/sth/
+supported-diagrams:
+  charts:
+      -
+        name: "column"
+        diagram-id: 0
+        description: "Column Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        supported-libraries:
+            - "HighCharts"
+            - "GoogleCharts"
+            - "eCharts"
+  polars:
+  maps:
+  specials:
+  miscs:
