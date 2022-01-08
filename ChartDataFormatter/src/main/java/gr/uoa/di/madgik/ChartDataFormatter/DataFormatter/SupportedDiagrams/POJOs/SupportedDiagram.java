@@ -13,13 +13,6 @@ public class SupportedDiagram {
     public boolean isPolar; 
     public List<SupportedLibraries> supportedLibraries;
 
-    public SupportedDiagram() {
-        this.imageURL = "images/imagePlaceholder.svg";
-        this.isPolar = false;
-        this.name = "";
-        this.description = "";
-    }
-
     public void setName(String name) { this.name = name; }
     public String getName() { return this.name; }
 

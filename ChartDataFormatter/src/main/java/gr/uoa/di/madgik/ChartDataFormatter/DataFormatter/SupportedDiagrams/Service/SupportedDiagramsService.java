@@ -53,54 +53,54 @@ public class SupportedDiagramsService {
 
     // Backup Initialization
 
-    private ArrayList<SupportedMap> initSupportedMaps() {
-        ArrayList<SupportedMap> supportedMaps = new ArrayList<>();
-        List<SupportedLibraries> mapLibs = new ArrayList<>();
+    // private ArrayList<SupportedMap> initSupportedMaps() {
+    //     ArrayList<SupportedMap> supportedMaps = new ArrayList<>();
+    //     List<SupportedLibraries> mapLibs = new ArrayList<>();
 
-        mapLibs.add(HighMaps);
-        supportedMaps.add(new SupportedMap("world", "custom/world-robinson-highres", mapLibs));
+    //     mapLibs.add(HighMaps);
+    //     supportedMaps.add(new SupportedMap("world", "custom/world-robinson-highres", mapLibs));
 
-        return supportedMaps;
-    }
+    //     return supportedMaps;
+    // }
 
-    private ArrayList<SupportedSpecialDiagram> initSupportedSpecialDiagrams() {
+    // private ArrayList<SupportedSpecialDiagram> initSupportedSpecialDiagrams() {
 
-        ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams = new ArrayList<>();
+    //     ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams = new ArrayList<>();
         
-        List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
+    //     List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
         
-        supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
+    //     supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
 
-        return supportedSpecialDiagrams;
-    }
+    //     return supportedSpecialDiagrams;
+    // }
 
-    private ArrayList<SupportedChart> initSupportedCharts() {
+    // private ArrayList<SupportedChart> initSupportedCharts() {
         
-        ArrayList<SupportedChart> supportedCharts = new ArrayList<>();
-        List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
+    //     ArrayList<SupportedChart> supportedCharts = new ArrayList<>();
+    //     List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
 
-        for (SupportedChartTypes chartType : SupportedChartTypes.values())
-            supportedCharts.add(new SupportedChart(chartType,chartLibs));
+    //     for (SupportedChartTypes chartType : SupportedChartTypes.values())
+    //         supportedCharts.add(new SupportedChart(chartType,chartLibs));
         
-        return supportedCharts;
-    }
+    //     return supportedCharts;
+    // }
 
-    private ArrayList<SupportedPolar> initSupportedPolars() {
-        ArrayList<SupportedPolar> supportedPolars = new ArrayList<>();
+    // private ArrayList<SupportedPolar> initSupportedPolars() {
+    //     ArrayList<SupportedPolar> supportedPolars = new ArrayList<>();
         
-        List<SupportedLibraries> chartLibs = Arrays.asList((HighCharts));
+    //     List<SupportedLibraries> chartLibs = Arrays.asList((HighCharts));
 
-        for (SupportedPolarTypes polarType : SupportedPolarTypes.values())
-            supportedPolars.add(new SupportedPolar(polarType, chartLibs));
+    //     for (SupportedPolarTypes polarType : SupportedPolarTypes.values())
+    //         supportedPolars.add(new SupportedPolar(polarType, chartLibs));
 
-        return supportedPolars;
-    }
+    //     return supportedPolars;
+    // }
 
-    private ArrayList<SupportedMisc> initSupportedMisc() {
-        ArrayList<SupportedMisc> supportedMiscs = new ArrayList<>();
-        supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
+    // private ArrayList<SupportedMisc> initSupportedMisc() {
+    //     ArrayList<SupportedMisc> supportedMiscs = new ArrayList<>();
+    //     supportedMiscs.add(new SupportedMisc("numbers", Arrays.asList(HighCharts, GoogleCharts, eCharts)));
 
-        return supportedMiscs;
-    }
+    //     return supportedMiscs;
+    // }
 }
 
