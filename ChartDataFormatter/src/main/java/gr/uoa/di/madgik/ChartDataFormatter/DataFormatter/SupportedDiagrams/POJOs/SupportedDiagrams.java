@@ -7,14 +7,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties("supported-diagrams")
+@ConfigurationProperties("statstool.supported-diagrams")
 public class SupportedDiagrams {
 
-    private List<SupportedChart> charts = new ArrayList<>();;
-    private List<SupportedPolar> polars = new ArrayList<>();;
-    private List<SupportedMap> maps = new ArrayList<>();;
-    private List<SupportedSpecialDiagram> specials = new ArrayList<>();;
-    private List<SupportedMisc> miscs = new ArrayList<>();;
+    private List<SupportedChart> charts = new ArrayList<>();
+    private List<SupportedPolar> polars = new ArrayList<>();
+    private List<SupportedMap> maps = new ArrayList<>();
+    private List<SupportedSpecialDiagram> specials = new ArrayList<>();
+    private List<SupportedMisc> miscs = new ArrayList<>();
 
     public void setCharts(List<SupportedChart> supportedCharts) { this.charts = supportedCharts; }
     public void setPolars(List<SupportedPolar> supportedPolars) { this.polars = supportedPolars; }

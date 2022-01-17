@@ -1,23 +1,16 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.Service;
 
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedPolarTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedDiagrams;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram;
-import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import static gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries.*;
 
 @Service
 public class SupportedDiagramsService {

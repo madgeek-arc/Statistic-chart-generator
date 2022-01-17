@@ -1,0 +1,21 @@
+spring:
+  config:
+    activate:
+      on-profile: test
+statstool:
+  supported-diagrams:
+    charts:
+        -
+          name: "column"
+          diagram-id: 0
+          description: "Column Diagram"
+          image-url: "images/imagePlaceholder.svg"
+          is-polar: false
+          supported-libraries:
+              - "HighCharts"
+              - "GoogleCharts"
+              - "eCharts"
+    polars:
+    maps:
+    specials:
+    miscs:
