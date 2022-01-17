@@ -7,6 +7,8 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
 
+import gr.uoa.di.madgik.ChartDataFormatter.Utility.YamlPropertySourceFactory;
+
 import java.util.Properties;
 
 @ComponentScan(basePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})

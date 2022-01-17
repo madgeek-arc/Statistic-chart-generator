@@ -1,4 +1,4 @@
-package gr.uoa.di.madgik.StatisticChartGenerator_App;
+package gr.uoa.di.madgik.ChartDataFormatter.Utility;
 
 
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -12,7 +12,7 @@ import java.util.List;
 public class YamlPropertySourceFactory extends DefaultPropertySourceFactory {
 
     @Override
-    public PropertySource createPropertySource(String name, EncodedResource resource) throws IOException {
+    public PropertySource<?> createPropertySource(String name, EncodedResource resource) throws IOException {
         if (resource == null) {
             return super.createPropertySource(name, resource);
         }
