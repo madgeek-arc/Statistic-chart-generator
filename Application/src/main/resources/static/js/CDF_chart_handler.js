@@ -72,8 +72,8 @@ function handleAdminSideData(dataJSONobj)
     case "eCharts":
     {
         console.log("Asked for echarts library");
-
-            loadJS("https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js",
+            // loadJS("https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js",
+            loadJS("https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.js",
         function(){
 
             //Hold the Library state
