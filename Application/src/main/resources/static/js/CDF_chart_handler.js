@@ -52,7 +52,6 @@ function handleAdminSideData(dataJSONobj)
     switch(dataJSONobj.library){
     case "GoogleCharts":
     {
-        
         loadJS("https://www.gstatic.com/charts/loader.js",                 
         function(){            
             google.charts.load('current', {packages: ['corechart','treemap']});
@@ -78,8 +77,6 @@ function handleAdminSideData(dataJSONobj)
     }
     case "eCharts":
     {
-        console.log("Asked for echarts library");
-
         loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
         function(){
 
@@ -92,19 +89,18 @@ function handleAdminSideData(dataJSONobj)
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
             RequestInfoObj.orderBy = dataJSONobj.orderBy;
-            //Pass the Chart type to ChartDataFormatter
-            var defaultType = dataJSONobj.chartDescription.chart.type;
+            
             //Create ChartInfo Object Array
             RequestInfoObj.chartsInfo = [];
 
             //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
             //along with the requested Chart type
-            dataJSONobj.chartDescription.queries.
-            forEach(element => {
+            for (let index = 0; index < dataJSONobj.chartDescription.queries.length; index++) {
+                
                 var ChartInfoObj = new Object();
 
                 if(element.type === undefined)
-                    ChartInfoObj.type = defaultType;
+                    ChartInfoObj.type = dataJSONobj.chartDescription.series[index].type;
                 else
                     ChartInfoObj.type = element.type;
 
@@ -114,11 +110,10 @@ function handleAdminSideData(dataJSONobj)
                     ChartInfoObj.name = element.name;
 
                 ChartInfoObj.query = element.query;
-                RequestInfoObj.chartsInfo.push(ChartInfoObj);
-            });
+                RequestInfoObj.chartsInfo.push(ChartInfoObj);   
+            }
 
             passToChartDataFormatter(dataJSONobj,RequestInfoObj,domainLink+"/chart");
-
         });
         break;
     }
@@ -573,21 +568,13 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
     if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'bar') {
         if (convertedJson.yAxis === undefined)
-            convertedJson.yAxis = {};
-        convertedJson.yAxis.data = responseData.xAxis_categories;
-    } else if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'pie') {
-        //remove xAxis and yAxis
+            convertedJson.yAxis = {data: responseData.xAxis_categories};
+    } //remove xAxis and yAxis on pie and treemaps
+    else if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'pie' || ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'treemap') {
         convertedJson.xAxis = null;
         convertedJson.yAxis = null;
-    } else {
-        if(convertedJson.xAxis === undefined)
-            convertedJson.xAxis = {};
-        convertedJson.xAxis.data = responseData.xAxis_categories;
-
-        // eCharts do not have autoRotate on column chart if too many
-        // convertedJson.xAxis.axisLabel = {};
-        // convertedJson.xAxis.axisLabel.rotate = 45;
-    }
+    } else if(convertedJson.xAxis === undefined)
+        convertedJson.xAxis = {data: responseData.xAxis_categories};
 
     console.log("convertedJson", convertedJson);
 
