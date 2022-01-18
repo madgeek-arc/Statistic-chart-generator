@@ -511,10 +511,14 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
     console.log("OriginJson.chartDescription", originJson.chartDescription);
 
     var convertedJson = originJson.chartDescription;
-    convertedJson.series = new Array( Object.keys(responseData.series).length );
+    if (convertedJson.series == null)
+        convertedJson.series = new Array( Object.keys(responseData.series).length );
 
     for (let index = 0; index < Object.keys(responseData.series).length; index++){
-        var seriesInstance = new Object();
+        if(convertedJson.series[index] == null)
+            convertedJson.series[index] = new Object();
+        
+        var seriesInstance = convertedJson.series[index];
         seriesInstance.data = responseData.series[index].data;
 
         if(responseData.dataSeriesNames !== null)
@@ -551,22 +555,6 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             seriesInstance.color = originJson.chartDescription.queries[index].color;
 
         convertedJson.series[index] = seriesInstance;
-    }
-
-    if(responseData.drilldown !== null){
-        convertedJson.drilldown = new Object();
-        convertedJson.drilldown.series = new Array( Object.keys(responseData.drilldown).length );
-
-        for (let index = 0; index < Object.keys(responseData.drilldown).length; index++){
-
-            convertedJson.drilldown.series[index] = new Object();
-            convertedJson.drilldown.series[index].data = responseData.drilldown[index].data;
-            convertedJson.drilldown.series[index].id = responseData.series[0].data[index].drilldown;
-            convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
-            // ! Hardcoded Selection that a drilldown is always a pie !
-            // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
-            convertedJson.drilldown.series[index].type = "pie";
-        }
     }
 
     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
