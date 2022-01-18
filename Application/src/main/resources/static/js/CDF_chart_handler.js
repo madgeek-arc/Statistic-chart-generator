@@ -519,36 +519,49 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             convertedJson.series[index] = new Object();
         
         var seriesInstance = convertedJson.series[index];
-        seriesInstance.data = responseData.series[index].data;
 
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
-        if(responseData.dataSeriesTypes !== null) {
-            if(responseData.dataSeriesTypes[index] === 'area') {
-                seriesInstance.type = 'line';
-                seriesInstance.areaStyle = new Object();
-            } else
-                seriesInstance.type = responseData.dataSeriesTypes[index];
-        }
+        // if(responseData.dataSeriesTypes !== null) {
+        //     if(responseData.dataSeriesTypes[index] === 'area') {
+        //         seriesInstance.type = 'line';
+        //         seriesInstance.areaStyle = new Object();
+        //     } else
+        //         seriesInstance.type = responseData.dataSeriesTypes[index];
+        // }
 
-        if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
-            && originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
-            seriesInstance.label = new Object();
-            seriesInstance.label.show = true;
-            seriesInstance.label.position = 'right';
-            seriesInstance.label.formatter = function(a){return a.value.toLocaleString()}
-        }
+        // if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
+        //     && originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
+        //     seriesInstance.label = new Object();
+        //     seriesInstance.label.show = true;
+        //     seriesInstance.label.position = 'right';
+        //     seriesInstance.label.formatter = function(a){return a.value.toLocaleString()}
+        // }
 
-        if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
-            && originJson.chartDescription.plotOptions.series.stacking) {
-            seriesInstance.stack = 'stackedSeries';
+        // if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
+        //     && originJson.chartDescription.plotOptions.series.stacking) {
+        //     seriesInstance.stack = 'stackedSeries';
 
-            //for stacked series put the data label inside by default
-            if(originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
-                seriesInstance.label.position = 'inside';
+        //     //for stacked series put the data label inside by default
+        //     if(originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
+        //         seriesInstance.label.position = 'inside';
+        //     }
+        // }
+
+        if(seriesInstance.type == "treemap")
+        {
+            seriesInstance.data = [];
+            for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
+
+                var dataValue = responseData.series[index].data[dataIndex]
+                var dataName = responseData.xAxis_categories[dataIndex];
+
+                seriesInstance.data.push({ name: dataName, value: dataValue });
             }
         }
+        else
+            seriesInstance.data = responseData.series[index].data;
 
         if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
             //TODO if (originJson.chartDescription.queries[index].color)
