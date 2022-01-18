@@ -567,11 +567,11 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
     }
 
     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
-    if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'bar') {
+    if(convertedJson.series[0].type === 'bar') {
         if (convertedJson.yAxis === undefined)
             convertedJson.yAxis = {data: responseData.xAxis_categories};
     } //remove xAxis and yAxis on pie and treemaps
-    else if(ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'pie' || ChartDataFormatterReadyJSONobj.chartsInfo[0].type === 'treemap') {
+    else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap') {
         convertedJson.xAxis = null;
         convertedJson.yAxis = null;
     } else if(convertedJson.xAxis === undefined)
