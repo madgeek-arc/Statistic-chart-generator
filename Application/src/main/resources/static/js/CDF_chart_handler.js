@@ -97,6 +97,7 @@ function handleAdminSideData(dataJSONobj)
             //along with the requested Chart type
             for (let index = 0; index < dataJSONobj.chartDescription.queries.length; index++) {
                 
+                var element = dataJSONobj.chartDescription.queries[index];
                 var ChartInfoObj = new Object();
 
                 if(element.type === undefined)
