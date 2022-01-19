@@ -500,7 +500,6 @@ function convertToValidHighchartJson(responseData, originJson){
     return convertedJson;
 }
 
-//TODO fix this method
 function convertToValideChartsJson(responseData, originJson, ChartDataFormatterReadyJSONobj) {
 
     console.log("ChartDataFormatterReadyJSONobj", ChartDataFormatterReadyJSONobj);
@@ -518,32 +517,6 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
-
-        // if(responseData.dataSeriesTypes !== null) {
-        //     if(responseData.dataSeriesTypes[index] === 'area') {
-        //         seriesInstance.type = 'line';
-        //         seriesInstance.areaStyle = new Object();
-        //     } else
-        //         seriesInstance.type = responseData.dataSeriesTypes[index];
-        // }
-
-        // if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
-        //     && originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
-        //     seriesInstance.label = new Object();
-        //     seriesInstance.label.show = true;
-        //     seriesInstance.label.position = 'right';
-        //     seriesInstance.label.formatter = function(a){return a.value.toLocaleString()}
-        // }
-
-        // if(originJson.chartDescription.plotOptions && originJson.chartDescription.plotOptions.series
-        //     && originJson.chartDescription.plotOptions.series.stacking) {
-        //     seriesInstance.stack = 'stackedSeries';
-
-        //     //for stacked series put the data label inside by default
-        //     if(originJson.chartDescription.plotOptions.series.dataLabels && originJson.chartDescription.plotOptions.series.dataLabels.enabled) {
-        //         seriesInstance.label.position = 'inside';
-        //     }
-        // }
 
         if(seriesInstance.type == "treemap")
         {
@@ -568,13 +541,12 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
     if(convertedJson.series[0].type === 'bar') {
-        if (convertedJson.yAxis === undefined)
-            convertedJson.yAxis = {data: responseData.xAxis_categories};
+        convertedJson.yAxis = {data: responseData.xAxis_categories};
     } //remove xAxis and yAxis on pie and treemaps
     else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap') {
         convertedJson.xAxis = null;
         convertedJson.yAxis = null;
-    } else if(convertedJson.xAxis === undefined)
+    } else
         convertedJson.xAxis = {data: responseData.xAxis_categories};
 
     console.log("convertedJson", convertedJson);
