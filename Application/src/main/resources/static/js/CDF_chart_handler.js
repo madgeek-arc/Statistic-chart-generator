@@ -535,11 +535,9 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
         // Series type formatting
 
-        // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
+        // in eCharts a bar chart is a bar chart with the categories on yAxis
         if(seriesInstance.type === 'bar')
             convertedJson.yAxis = {data: responseData.xAxis_categories};
-        if(seriesInstance.type === 'column')
-            seriesInstance.type = 'bar';
         else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
         {
             convertedJson.xAxis = null;
@@ -547,6 +545,10 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         }
         else
             convertedJson.xAxis = {data: responseData.xAxis_categories};
+
+        // in eCharts a column chart is a bar chart
+        if(seriesInstance.type === 'column')
+            seriesInstance.type = 'bar';
 
         if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
             //TODO if (originJson.chartDescription.queries[index].color)
