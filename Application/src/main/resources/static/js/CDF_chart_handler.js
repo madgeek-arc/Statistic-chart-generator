@@ -77,7 +77,7 @@ function handleAdminSideData(dataJSONobj)
     }
     case "eCharts":
     {
-        loadJS("https://cdn.bootcss.com/echarts/4.0.4/echarts-en.min.js",
+        loadJS("https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js",
         function(){
 
             //Hold the Library state
