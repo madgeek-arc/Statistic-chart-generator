@@ -7,8 +7,6 @@ import org.apache.logging.log4j.LogManager;
 
 import java.util.*;
 
-import static gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes.*;
-
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
  * to a format convenient for GoogleCharts library.
@@ -113,6 +111,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                     switch (chartType) {
                         case area:
                         case line:
+                        case treemap:
                             dataSeriesTypes.add(chartType.name());
                             break;
                         case bar:

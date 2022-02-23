@@ -114,6 +114,7 @@ public class EChartsDataFormatter extends DataFormatter{
                 case bar:
                 case column:
                 case line:
+                case treemap:
                     ArrayList<Number> yValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_Categories) {
@@ -201,6 +202,7 @@ public class EChartsDataFormatter extends DataFormatter{
             case bar:
             case column:
             case line:
+            case treemap:
                 ArrayList<Number> yValuesArray = new ArrayList<>();
                 for (List<String> row : result.getRows()) {
 
@@ -288,6 +290,7 @@ public class EChartsDataFormatter extends DataFormatter{
             case bar:
             case column:
             case line:
+            case treemap:
 
                 for (HashMap<String, String> XValueToYValueMapping : groupByMap.values()) {
 
