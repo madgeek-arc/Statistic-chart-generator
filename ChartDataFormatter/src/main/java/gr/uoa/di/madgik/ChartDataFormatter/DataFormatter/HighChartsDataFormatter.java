@@ -367,7 +367,10 @@ public class HighChartsDataFormatter extends DataFormatter{
     }
 
     private HighChartsJsonResponse HCcircularLayoutGraph(Result result){
-        result.toString();
+        
+        for (List<String> row : result.getRows()) {
+         log.info(row);
+        }
         return new HighChartsJsonResponse();
     }
 }
