@@ -126,6 +126,8 @@ function handleAdminSideData(dataJSONobj)
         () => loadJS("//code.highcharts.com/highcharts-more.js",
         () => loadJS("//code.highcharts.com/modules/heatmap.js",
         () => loadJS("//code.highcharts.com/modules/treemap.js",
+        () => loadJS("//code.highcharts.com/modules/sankey.js",
+        () => loadJS("//code.highcharts.com/modules/dependency-wheel.js",
         () => loadJS("//code.highcharts.com/modules/drilldown.js",
         () => loadJS("//code.highcharts.com/modules/no-data-to-display.js",
         () => loadJS("//code.highcharts.com/highcharts-3d.js",
@@ -170,7 +172,7 @@ function handleAdminSideData(dataJSONobj)
                         domainLink+"/chart");
         }
             
-        ))))))))));
+        ))))))))))));
         
         break;
     }
