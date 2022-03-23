@@ -469,6 +469,11 @@ function convertToValidHighchartJson(responseData, originJson){
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
         }
+        if(seriesInstance.type == "dependencywheel")
+        {
+            seriesInstance.data = responseData.series[index].data;
+            seriesInstance.keys = responseData.series[index].keys;
+        }
         else
         {
             seriesInstance.data = responseData.series[index].data;

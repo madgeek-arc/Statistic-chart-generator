@@ -68,9 +68,14 @@ public class HighChartsDataFormatter extends DataFormatter{
             case 2:
                 return HCSingleGroupBy(result, chartType, chartName);
             case 3:
+
+                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                    return HCDependencyWheel(result, false, chartType, chartName);
+
                 return HCDoubleGroupBy(result, chartType);
             case 4:
-                HCcircularLayoutGraph(result);
+                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                    return HCDependencyWheel(result, true, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
         }
@@ -366,11 +371,52 @@ public class HighChartsDataFormatter extends DataFormatter{
         return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
-    private HighChartsJsonResponse HCcircularLayoutGraph(Result result){
+    private HighChartsJsonResponse HCDependencyWheel(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
+        // For the purpose of making this as scalable as possible, we will consider the following assumption:
+        // The query for the dependency wheel responds with the following rows :
+        //  4 rows result: | from node | from node value | to node | from-to edge weight |
+        //  3 rows result: | from node | to node | from-to edge weight |
+
+        // Highcharts Dependency Wheel and Sankey data are :
+        //  | from node | to node | from-to edge weight |
         
+        // Initialize the keys array
+        String[] keys = {"from", "to", "weight"};
+
+        // Initialize the data array
+        ArrayList<Object[]> data = new ArrayList<>(result.getRows().size());
+
         for (List<String> row : result.getRows()) {
-         log.info(row);
+            
+            // Ignore the 'from' node weight
+            if(ignoreNodeWeight)
+            {
+                // Initialize each data row with exactly the size of the keys
+                ArrayList<Object> dataRow = new ArrayList<>(keys.length);
+
+                dataRow.set(0, row.get(0));
+                dataRow.set(1, row.get(2));
+                dataRow.set(2, row.get(3));
+
+                // Push it into data list
+                data.add(dataRow.stream().toArray());
+                continue;
+            }
+
+            // Push the row into the data list
+            data.add(row.stream().toArray());
         }
-        return new HighChartsJsonResponse();
+        // Create the graph
+        GraphData graph = new GraphData(new ArrayList<String>(Arrays.asList(keys)), data);
+
+        // Fill the HighChartsJsonResponse
+        ArrayList<AbsData> dataSeries = new ArrayList<>();
+        dataSeries.add(graph);
+        ArrayList<String> chartNames = new ArrayList<>();
+        chartNames.add(chartName);
+        ArrayList<String> chartTypes = new ArrayList<>();
+        chartTypes.add(chartType.name());
+
+        return new HighChartsJsonResponse(dataSeries, null, chartNames, chartTypes);
     }
 }
