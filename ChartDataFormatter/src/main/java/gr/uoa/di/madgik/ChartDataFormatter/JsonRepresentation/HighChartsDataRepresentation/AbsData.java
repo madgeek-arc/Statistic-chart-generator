@@ -24,8 +24,12 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
         ObjectMapper mapper = (ObjectMapper) jsonParser.getCodec();
         ObjectNode root = mapper.readTree(jsonParser);
 
-        JsonNode dataNode = root.get("data");
+        JsonNode keysNode = root.get("keys");
+        // If there is a 'keys' field, we found a GraphNode
+        if(keysNode != null)
+            return mapper.treeToValue(root, GraphNode.class);
 
+        JsonNode dataNode = root.get("data");
         if (dataNode != null){
             switch (dataNode.get(0).getNodeType()){
                 case ARRAY:
