@@ -27,7 +27,7 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
         JsonNode keysNode = root.get("keys");
         // If there is a 'keys' field, we found a GraphNode
         if(keysNode != null)
-            return mapper.treeToValue(root, GraphNode.class);
+            return mapper.treeToValue(root, GraphData.class);
 
         JsonNode dataNode = root.get("data");
         if (dataNode != null){
