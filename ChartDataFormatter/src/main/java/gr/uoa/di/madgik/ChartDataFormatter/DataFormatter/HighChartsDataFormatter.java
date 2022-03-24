@@ -388,22 +388,26 @@ public class HighChartsDataFormatter extends DataFormatter{
 
         for (List<String> row : result.getRows()) {
             
+            // Initialize each data row with exactly the size of the keys
+            ArrayList<Object> dataRow = new ArrayList<>();
+            
+            dataRow.add(row.get(0));
+            
             // Ignore the 'from' node weight
             if(ignoreNodeWeight)
-            {
-                // Initialize each data row with exactly the size of the keys
-                ArrayList<Object> dataRow = new ArrayList<>();
-
-                dataRow.add(row.get(0));
+            {  
                 dataRow.add(row.get(2));
-                dataRow.add(row.get(3));
-
-                // Push it into data list
-                data.add(dataRow.stream().toArray());
-                continue;
+                //Convert the String result to Int
+                dataRow.add(Integer.parseInt(row.get(3)));
+            }
+            else
+            {
+                dataRow.add(row.get(1));
+                //Convert the String result to Int
+                dataRow.add(Integer.parseInt(row.get(2)));
             }
             // Push the row into the data list
-            data.add(row.stream().toArray());
+            data.add(dataRow.stream().toArray());
         }
 
         // Create the graph
