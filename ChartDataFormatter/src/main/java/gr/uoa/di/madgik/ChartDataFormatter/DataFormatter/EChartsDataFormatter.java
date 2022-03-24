@@ -182,17 +182,28 @@ public class EChartsDataFormatter extends DataFormatter{
 
         //There are no Results
         if(result.getRows().isEmpty())
-            return singleECSingleGroupBy(result, chartType, chartName);
+            return ECSingleGroupBy(result, chartType, chartName);
+        
+            //If there are results handle them by row size
+        switch(result.getRows().get(0).size())
+        {
+            case 2:
+                return ECSingleGroupBy(result, chartType, chartName);
+            case 3:
 
-        if(result.getRows().get(0).size() == 2)
-            return singleECSingleGroupBy(result, chartType, chartName);
-        else if(result.getRows().get(0).size() == 3)
-            return singleECDoubleGroupBy(result, chartType);
-        else
-            throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
+                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                    return ECGraph(result, false, chartType, chartName);
+
+                return ECDoubleGroupBy(result, chartType);
+            case 4:
+                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                    return ECGraph(result, true, chartType, chartName);
+            default:
+                throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
+        }
     }
 
-    private EChartsJsonResponse singleECSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
+    private EChartsJsonResponse ECSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
 
         LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
@@ -260,7 +271,7 @@ public class EChartsDataFormatter extends DataFormatter{
         return new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
-    private EChartsJsonResponse singleECDoubleGroupBy(Result result, SupportedChartTypes chartType){
+    private EChartsJsonResponse ECDoubleGroupBy(Result result, SupportedChartTypes chartType){
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
@@ -382,5 +393,17 @@ public class EChartsDataFormatter extends DataFormatter{
             default:
                 return null;
         }
+    }
+
+    private EChartsJsonResponse ECGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
+        // For the purpose of making this as scalable as possible, we will consider the following assumption:
+        // The query for the dependency wheel responds with the following rows :
+        //  4 rows result: | from node | from node value | to node | from-to edge weight |
+        //  3 rows result: | from node | to node | from-to edge weight |
+
+        // ECharts Dependency Wheel and Sankey data are :
+        // links : [{source, target , value(optional)}]
+        // data : [{name, value}]
+        return null;
     }
 }
