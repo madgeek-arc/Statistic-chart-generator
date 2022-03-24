@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -10,20 +11,20 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 public class GraphData implements AbsData {
     
     @JsonProperty
-    private ArrayList<String> keys;
+    private List<String> keys;
     @JsonProperty
-    private ArrayList<Object[]> data;
+    private List<Object[]> data;
 
-    public GraphData(ArrayList<String> keys, ArrayList<Object[]> data)
+    public GraphData(List<String> keys, List<Object[]> data)
     {
         this.keys = keys;
         this.data = data;
     }
 
     @Override
-    public ArrayList<Object[]> getData() { return data; }
-    public void setData(ArrayList<Object[]> data) { this.data = data; }
+    public List<Object[]> getData() { return data; }
+    public void setData(List<Object[]> data) { this.data = data; }
 
-    public ArrayList<String> getKeys() { return keys; }
-    public void setKeys(ArrayList<String> keys) { this.keys = keys; }
+    public List<String> getKeys() { return keys; }
+    public void setKeys(List<String> keys) { this.keys = keys; }
 }

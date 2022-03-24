@@ -381,7 +381,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         //  | from node | to node | from-to edge weight |
         
         // Initialize the keys array
-        String[] keys = {"from", "to", "weight"};
+        List<String> keys = Arrays.asList("from", "to", "weight");
 
         // Initialize the data array
         ArrayList<Object[]> data = new ArrayList<>(result.getRows().size());
@@ -391,25 +391,23 @@ public class HighChartsDataFormatter extends DataFormatter{
             // Ignore the 'from' node weight
             if(ignoreNodeWeight)
             {
-                log.info("Keys: " + keys.toString());
                 // Initialize each data row with exactly the size of the keys
-                ArrayList<Object> dataRow = new ArrayList<>(keys.length);
-                log.info("DataRow size: " + dataRow.size());
+                ArrayList<Object> dataRow = new ArrayList<>();
 
-                dataRow.set(0, row.get(0));
-                dataRow.set(1, row.get(2));
-                dataRow.set(2, row.get(3));
+                dataRow.add(row.get(0));
+                dataRow.add(row.get(2));
+                dataRow.add(row.get(3));
 
                 // Push it into data list
                 data.add(dataRow.stream().toArray());
                 continue;
             }
-
             // Push the row into the data list
             data.add(row.stream().toArray());
         }
+
         // Create the graph
-        GraphData graph = new GraphData(new ArrayList<String>(Arrays.asList(keys)), data);
+        GraphData graph = new GraphData(keys, data);
 
         // Fill the HighChartsJsonResponse
         ArrayList<AbsData> dataSeries = new ArrayList<>();
