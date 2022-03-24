@@ -5,5 +5,5 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
  * This enumeration should be expanded with each new Chart type.
  */
 public enum SupportedChartTypes {
-    area,bar,column,line,pie,treemap,dependencywheel
+    area,bar,column,line,pie,treemap,dependencywheel,sankey
 }

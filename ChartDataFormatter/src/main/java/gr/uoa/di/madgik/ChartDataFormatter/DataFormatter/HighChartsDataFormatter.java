@@ -69,12 +69,12 @@ public class HighChartsDataFormatter extends DataFormatter{
                 return HCSingleGroupBy(result, chartType, chartName);
             case 3:
 
-                if(chartType == SupportedChartTypes.dependencywheel)
+                if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, false, chartType, chartName);
 
                 return HCDoubleGroupBy(result, chartType);
             case 4:
-                if(chartType == SupportedChartTypes.dependencywheel)
+                if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, true, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
@@ -371,14 +371,17 @@ public class HighChartsDataFormatter extends DataFormatter{
         return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
+    /**
+     * Highcharts Dependency Wheel and Sankey data are :
+     * <p> | from node (string) | to node (string) | from-to edge weight (int) |
+     * <p>In this method, we aim to create the above data representation into GraphData
+     * 
+     */
     private HighChartsJsonResponse HCGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
         // For the purpose of making this as scalable as possible, we will consider the following assumption:
-        // The query for the dependency wheel responds with the following rows :
+        // The named query for the dependency wheel responds with the following rows :
         //  4 rows result: | from node | from node value | to node | from-to edge weight |
         //  3 rows result: | from node | to node | from-to edge weight |
-
-        // Highcharts Dependency Wheel and Sankey data are :
-        //  | from node | to node | from-to edge weight |
         
         // Initialize the keys array
         List<String> keys = Arrays.asList("from", "to", "weight");
@@ -392,7 +395,7 @@ public class HighChartsDataFormatter extends DataFormatter{
             ArrayList<Object> dataRow = new ArrayList<>();
             
             dataRow.add(row.get(0));
-            
+
             // Ignore the 'from' node weight
             if(ignoreNodeWeight)
             {  
