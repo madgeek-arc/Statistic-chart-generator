@@ -70,12 +70,12 @@ public class HighChartsDataFormatter extends DataFormatter{
             case 3:
 
                 if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
-                    return HCDependencyWheel(result, false, chartType, chartName);
+                    return HCGraph(result, false, chartType, chartName);
 
                 return HCDoubleGroupBy(result, chartType);
             case 4:
                 if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
-                    return HCDependencyWheel(result, true, chartType, chartName);
+                    return HCGraph(result, true, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
         }
@@ -371,7 +371,7 @@ public class HighChartsDataFormatter extends DataFormatter{
         return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
-    private HighChartsJsonResponse HCDependencyWheel(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
+    private HighChartsJsonResponse HCGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
         // For the purpose of making this as scalable as possible, we will consider the following assumption:
         // The query for the dependency wheel responds with the following rows :
         //  4 rows result: | from node | from node value | to node | from-to edge weight |
