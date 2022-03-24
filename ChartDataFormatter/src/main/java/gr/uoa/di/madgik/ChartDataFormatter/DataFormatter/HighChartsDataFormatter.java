@@ -69,12 +69,12 @@ public class HighChartsDataFormatter extends DataFormatter{
                 return HCSingleGroupBy(result, chartType, chartName);
             case 3:
 
-                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                if(chartType == SupportedChartTypes.dependencywheel)
                     return HCGraph(result, false, chartType, chartName);
 
                 return HCDoubleGroupBy(result, chartType);
             case 4:
-                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+                if(chartType == SupportedChartTypes.dependencywheel)
                     return HCGraph(result, true, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
