@@ -391,8 +391,10 @@ public class HighChartsDataFormatter extends DataFormatter{
             // Ignore the 'from' node weight
             if(ignoreNodeWeight)
             {
+                log.info("Keys: " + keys.toString());
                 // Initialize each data row with exactly the size of the keys
                 ArrayList<Object> dataRow = new ArrayList<>(keys.length);
+                log.info("DataRow size: " + dataRow.size());
 
                 dataRow.set(0, row.get(0));
                 dataRow.set(1, row.get(2));
