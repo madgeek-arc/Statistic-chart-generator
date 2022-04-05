@@ -553,7 +553,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             if(seriesInstance.type == "dependencywheel")
             {   
                 seriesInstance.type = "graph"
-                seriesInstance.layout = "cicrular",
+                seriesInstance.layout = "circular",
                 seriesInstance.circular = {rotateLabel: true};
             }
             if(seriesInstance.type == "sankey")
