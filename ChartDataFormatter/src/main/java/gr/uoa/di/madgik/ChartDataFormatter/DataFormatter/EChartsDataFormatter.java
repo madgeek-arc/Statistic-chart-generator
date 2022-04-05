@@ -2,6 +2,8 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.ArrayOfEChartDataObjects;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsDataObject;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsGraphData;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsGraphLink;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
@@ -404,6 +406,63 @@ public class EChartsDataFormatter extends DataFormatter{
         // ECharts Dependency Wheel and Sankey data are :
         // links : [{source, target , value(optional)}]
         // data : [{name, value}]
-        return null;
+        
+        List<EChartsGraphLink> links = new ArrayList<>();
+        List<EChartsDataObject> data = new ArrayList<>();
+
+        // At this point we know that the result has 3 or 4 rows
+        if(ignoreNodeWeight)
+        {   
+            // The HashMap will help us find the fromNode value
+            HashMap<String, Number> nodeToValueMap = new HashMap<>();
+            for (List<String> row : result.getRows()) {
+                
+                // We assume the node and edge values are Integers
+
+                String fromNode = row.get(0);
+                String toNode = row.get(1);
+                Number edgeWeight = Integer.parseInt(row.get(2)); 
+                
+                links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
+
+                // Add the edgeWeight in the HashMap with the fromNode as a key
+                Number tempNodeValue = nodeToValueMap.putIfAbsent(fromNode, edgeWeight);
+                if(tempNodeValue != null)
+                    nodeToValueMap.put(fromNode, tempNodeValue.intValue() + edgeWeight.intValue());
+            }
+
+            // Convert the HashMap into the data list
+            nodeToValueMap.forEach((fromNode, fromNodeValue) -> {
+                data.add(new EChartsDataObject(fromNode, fromNodeValue));
+            });
+
+        }
+        else
+        {
+            for (List<String> row : result.getRows()) {
+                
+                // We assume the node and edge values are Integers
+
+                String fromNode = row.get(0);
+                Number fromNodeValue = Integer.parseInt(row.get(1));
+                String toNode = row.get(2);
+                Number edgeWeight = Integer.parseInt(row.get(3)); 
+                
+                links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
+                data.add(new EChartsDataObject(fromNode, fromNodeValue));
+            }
+        }
+
+        EChartsGraphData graph = new EChartsGraphData(links, data);
+
+        // Fill the EChartsJsonResponse
+        ArrayList<AbsData> dataSeries = new ArrayList<>();
+        dataSeries.add(graph);
+        ArrayList<String> chartNames = new ArrayList<>();
+        chartNames.add(chartName);
+        ArrayList<String> chartTypes = new ArrayList<>();
+        chartTypes.add(chartType.name());
+
+        return new EChartsJsonResponse(dataSeries, null, chartNames, chartTypes);
     }
 }

@@ -400,13 +400,13 @@ public class HighChartsDataFormatter extends DataFormatter{
             if(ignoreNodeWeight)
             {  
                 dataRow.add(row.get(2));
-                //Convert the String result to Int
+                // We assume the node and edge values are Integers
                 dataRow.add(Integer.parseInt(row.get(3)));
             }
             else
             {
                 dataRow.add(row.get(1));
-                //Convert the String result to Int
+                // We assume the node and edge values are Integers
                 dataRow.add(Integer.parseInt(row.get(2)));
             }
             // Push the row into the data list
