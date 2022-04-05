@@ -193,12 +193,12 @@ public class EChartsDataFormatter extends DataFormatter{
                 return ECSingleGroupBy(result, chartType, chartName);
             case 3:
 
-                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+            if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return ECGraph(result, true, chartType, chartName);
 
                 return ECDoubleGroupBy(result, chartType);
             case 4:
-                if(chartType.compareTo(SupportedChartTypes.dependencywheel) == 0)
+            if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return ECGraph(result, false, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
