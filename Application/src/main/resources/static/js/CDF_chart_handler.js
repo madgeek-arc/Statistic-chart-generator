@@ -550,6 +550,18 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
         {
             seriesInstance.data = responseData.series[index].links;
+            if(seriesInstance.type == "dependencywheel")
+            {   
+                seriesInstance.type = "graph"
+                seriesInstance.layout = "cicrular",
+                seriesInstance.circular = {rotateLabel: true};
+            }
+            if(seriesInstance.type == "sankey")
+            {
+                seriesInstance.layout = "none",
+                seriesInstance.emphasis = {focus: "adjacency"};
+            }
+
         }
         else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
         {
