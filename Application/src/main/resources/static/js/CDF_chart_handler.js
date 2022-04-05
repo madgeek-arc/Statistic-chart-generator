@@ -524,6 +524,23 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         
         var seriesInstance = convertedJson.series[index];
 
+        if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
+        {
+            seriesInstance.data = responseData.series[index].links;
+            if(seriesInstance.type == "dependencywheel")
+            {   
+                seriesInstance.type = "graph"
+                seriesInstance.layout = "circular",
+                seriesInstance.circular = {rotateLabel: true};
+            }
+            if(seriesInstance.type == "sankey")
+            {
+                seriesInstance.layout = "none",
+                seriesInstance.emphasis = {focus: "adjacency"};
+            }
+            continue;
+        }
+
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
@@ -547,22 +564,6 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         // in eCharts a bar chart is a bar chart with the categories on yAxis
         if(seriesInstance.type === 'bar')
             convertedJson.yAxis = {data: responseData.xAxis_categories};
-        if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
-        {
-            seriesInstance.data = responseData.series[index].links;
-            if(seriesInstance.type == "dependencywheel")
-            {   
-                seriesInstance.type = "graph"
-                seriesInstance.layout = "circular",
-                seriesInstance.circular = {rotateLabel: true};
-            }
-            if(seriesInstance.type == "sankey")
-            {
-                seriesInstance.layout = "none",
-                seriesInstance.emphasis = {focus: "adjacency"};
-            }
-
-        }
         else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
         {
             convertedJson.xAxis = null;
@@ -575,7 +576,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         if(seriesInstance.type === 'column')
             seriesInstance.type = 'bar';
 
-        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length)
+        if(Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length && !(seriesInstance.type == "graph" || seriesInstance.type == "sankey"))
             //TODO if (originJson.chartDescription.queries[index].color)
             seriesInstance.color = originJson.chartDescription.queries[index].color;
 
