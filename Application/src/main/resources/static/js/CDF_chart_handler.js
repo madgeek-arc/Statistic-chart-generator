@@ -511,12 +511,14 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
     console.log("ChartDataFormatterReadyJSONobj", ChartDataFormatterReadyJSONobj);
     console.log("OriginJson.chartDescription", originJson.chartDescription);
-
+   
     var convertedJson = originJson.chartDescription;
-    if (convertedJson.series == null)
-        convertedJson.series = new Array( Object.keys(responseData.series).length );
+    var seriesLength = Object.keys(responseData.series).length;
 
-    for (let index = 0; index < Object.keys(responseData.series).length; index++){
+    if (convertedJson.series == null)
+        convertedJson.series = new Array( seriesLength );
+
+    for (let index = 0; index < seriesLength; index++){
         if(convertedJson.series[index] == null)
             convertedJson.series[index] = new Object();
         
@@ -545,6 +547,10 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         // in eCharts a bar chart is a bar chart with the categories on yAxis
         if(seriesInstance.type === 'bar')
             convertedJson.yAxis = {data: responseData.xAxis_categories};
+        if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
+        {
+            seriesInstance.data = responseData.series[index].links;
+        }
         else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
         {
             convertedJson.xAxis = null;
