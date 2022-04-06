@@ -565,6 +565,9 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 convertedJson.xAxis.show = false;
                 convertedJson.yAxis.show = false;
                 
+                // Change color
+                convertedJson.colorBy = "data";
+
                 break;
             case "sankey":  
                 // Connecting the graph links
@@ -576,7 +579,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 convertedJson.xAxis.show = false;
                 convertedJson.yAxis.show = false;
 
-                // Change coloe
+                // Change color
                 convertedJson.colorBy = "data";
 
                 break;
