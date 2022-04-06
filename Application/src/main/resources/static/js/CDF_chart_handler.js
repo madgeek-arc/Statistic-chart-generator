@@ -552,12 +552,6 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 // Connecting the graph links
                 seriesInstance.links = responseData.series[index].links;
 
-                // Making the label show on a data node with symbolSize > 30
-                responseData.series[index].data.forEach(function (node) {
-                    node.label = {
-                        show: node.symbolSize > 30
-                    };
-                });
                 // Dependency wheel is a circular graph in eCharts
                 seriesInstance.type = "graph"
                 seriesInstance.layout = "circular",
