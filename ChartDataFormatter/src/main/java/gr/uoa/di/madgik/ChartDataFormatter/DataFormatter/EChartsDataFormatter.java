@@ -438,7 +438,10 @@ public class EChartsDataFormatter extends DataFormatter{
 
         }
         else
-        {
+        {   
+            // The HashMap will help us find the fromNode value
+            HashMap<String, Number> nodeToValueMap = new HashMap<>();
+            
             for (List<String> row : result.getRows()) {
                 
                 // We assume the node and edge values are Integers
@@ -449,8 +452,14 @@ public class EChartsDataFormatter extends DataFormatter{
                 Number edgeWeight = Integer.parseInt(row.get(3)); 
                 
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
-                data.add(new EChartsDataObject(fromNode, fromNodeValue));
+                
+                // Add the edgeWeight in the HashMap with the fromNode as a key
+                nodeToValueMap.putIfAbsent(fromNode, fromNodeValue);
             }
+            // Convert the HashMap into the data list
+            nodeToValueMap.forEach((fromNode, fromNodeValue) -> {
+                data.add(new EChartsDataObject(fromNode, fromNodeValue));
+            });
         }
 
         EChartsGraphData graph = new EChartsGraphData(links, data);
