@@ -560,6 +560,10 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 seriesInstance.roam = true;
                 seriesInstance.label = { position: 'right', formatter: '{b}' }
                 seriesInstance.lineStyle = { color: 'source', curveness: 0.3 }
+
+                // Dont show axes
+                convertedJson.xAxis.show = false;
+                convertedJson.yAxis.show = false;
                 
                 break;
             case "sankey":  
@@ -567,6 +571,13 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 seriesInstance.links = responseData.series[index].links;
                 seriesInstance.layout = "none",
                 seriesInstance.emphasis = {focus: "adjacency"};
+
+                // Dont show axes
+                convertedJson.xAxis.show = false;
+                convertedJson.yAxis.show = false;
+
+                // Change coloe
+                convertedJson.colorBy = "data";
 
                 break;
             case "bar":
