@@ -563,7 +563,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
                 // Making the label show on a data node with symbolSize > 30
                 responseData.series[index].data.forEach(function (node) {
-                    node.symbolSize = node.value * (2/3);
+                    node.symbolSize = node.value > 150 ? 150 : node.value * (2/3);
                     node.label = { show: node.symbolSize > 30 };
                   });
 
