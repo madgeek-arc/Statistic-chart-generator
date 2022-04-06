@@ -527,36 +527,6 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         
         var seriesInstance = convertedJson.series[index];
 
-        if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
-        {
-            // Connecting the graph links
-            seriesInstance.links = responseData.series[index].links;
-
-            // Managing the look of the diagram
-            if(seriesInstance.type == "dependencywheel")
-            {   
-                // Making the label show on a data node with symbolSize > 30
-                responseData.series[index].data.forEach(function (node) {
-                      node.label = {
-                        show: node.symbolSize > 30
-                      };
-                    });
-                seriesInstance.type = "graph"
-                seriesInstance.layout = "circular",
-                seriesInstance.circular = {rotateLabel: true};
-                seriesInstance.name = 
-                seriesInstance.roam = true;
-                seriesInstance.label = { position: 'right', formatter: '{b}' }
-                seriesInstance.lineStyle = { color: 'source', curveness: 0.3 }
-            }
-            if(seriesInstance.type == "sankey")
-            {
-                seriesInstance.layout = "none",
-                seriesInstance.emphasis = {focus: "adjacency"};
-            }
-            continue;
-        }
-
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
@@ -577,16 +547,57 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
         // Series type formatting
 
-        // in eCharts a bar chart is a bar chart with the categories on yAxis
-        if(seriesInstance.type === 'bar')
-            convertedJson.yAxis = {data: responseData.xAxis_categories};
-        else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
-        {
-            convertedJson.xAxis = null;
-            convertedJson.yAxis = null;
+        switch (seriesInstance.type) {
+            case "dependencywheel":
+                // Connecting the graph links
+                seriesInstance.links = responseData.series[index].links;
+
+                // Making the label show on a data node with symbolSize > 30
+                responseData.series[index].data.forEach(function (node) {
+                    node.label = {
+                        show: node.symbolSize > 30
+                    };
+                });
+                // Dependency wheel is a circular graph in eCharts
+                seriesInstance.type = "graph"
+                seriesInstance.layout = "circular",
+                seriesInstance.circular = {rotateLabel: true};
+                seriesInstance.roam = true;
+                seriesInstance.label = { position: 'right', formatter: '{b}' }
+                seriesInstance.lineStyle = { color: 'source', curveness: 0.3 }
+                
+                break;
+            case "sankey":  
+                // Connecting the graph links
+                seriesInstance.links = responseData.series[index].links;
+                seriesInstance.layout = "none",
+                seriesInstance.emphasis = {focus: "adjacency"};
+
+                break;
+            case "bar":
+                // in eCharts a bar chart is a bar chart with the categories on yAxis  
+                convertedJson.yAxis = {data: responseData.xAxis_categories};
+                break;
+            case "pie":
+            case "treemap":
+                convertedJson.xAxis = null;
+                convertedJson.yAxis = null;
+                break;
+            default:
+                convertedJson.xAxis = {data: responseData.xAxis_categories}
+                break;
         }
-        else
-            convertedJson.xAxis = {data: responseData.xAxis_categories};
+        
+        // // in eCharts a bar chart is a bar chart with the categories on yAxis
+        // if(seriesInstance.type === 'bar')
+        //     convertedJson.yAxis = {data: responseData.xAxis_categories};
+        // else if(convertedJson.series[0].type === 'pie' || convertedJson.series[0].type === 'treemap')
+        // {
+        //     convertedJson.xAxis = null;
+        //     convertedJson.yAxis = null;
+        // }
+        // else
+        //     convertedJson.xAxis = {data: responseData.xAxis_categories};
 
         // in eCharts a column chart is a bar chart
         if(seriesInstance.type === 'column')
