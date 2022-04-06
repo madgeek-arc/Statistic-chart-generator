@@ -365,6 +365,9 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
         }
         case "eCharts":
         {
+            var myChart = echarts.init(document.getElementById('container'));
+            myChart.showLoading();
+            
             var chartJson = convertToValideChartsJson(responseData, originalDataJSONobj,ChartDataFormatterReadyJSONobj);
 
             if(DEBUGMODE) {
@@ -372,7 +375,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                 console.log("Drawing eCharts");
             }
 
-            var myChart = echarts.init(document.getElementById('container'));
+            myChart.hideLoading();
             myChart.setOption(chartJson);
 
             break;
@@ -526,12 +529,25 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
         if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
         {
-            seriesInstance.data = responseData.series[index].links;
+            // Connecting the graph links
+            seriesInstance.links = responseData.series[index].links;
+
+            // Managing the look of the diagram
             if(seriesInstance.type == "dependencywheel")
             {   
+                // Making the label show on a data node with symbolSize > 30
+                responseData.series[index].data.forEach(function (node) {
+                      node.label = {
+                        show: node.symbolSize > 30
+                      };
+                    });
                 seriesInstance.type = "graph"
                 seriesInstance.layout = "circular",
                 seriesInstance.circular = {rotateLabel: true};
+                seriesInstance.name = 
+                seriesInstance.roam = true;
+                seriesInstance.label = { position: 'right', formatter: '{b}' }
+                seriesInstance.lineStyle = { color: 'source', curveness: 0.3 }
             }
             if(seriesInstance.type == "sankey")
             {
