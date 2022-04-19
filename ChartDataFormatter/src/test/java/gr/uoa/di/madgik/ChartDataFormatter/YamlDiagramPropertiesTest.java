@@ -7,22 +7,36 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ContextConfiguration;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedDiagrams;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
+import org.springframework.test.context.junit4.SpringRunner;
 
-@ExtendWith(SpringExtension.class)
 @SpringBootTest
-@ContextConfiguration(initializers = ConfigDataApplicationContextInitializer.class)
+@ExtendWith(SpringExtension.class)
+@TestPropertySource("classpath:application.yml")
+@RunWith(SpringRunner.class)
 public class YamlDiagramPropertiesTest {
  
     @Autowired
     private SupportedDiagrams diagrams;
+
+    @Configuration
+    @EnableConfigurationProperties(value = SupportedDiagrams.class)
+    @PropertySource("classpath:application.yml")
+    static class ContextConfiguration {
+    }
+
+
+
     @Test
     public void SupportedDiagramsReadFromYaml() {
         
@@ -35,7 +49,6 @@ public class YamlDiagramPropertiesTest {
         assertNull(diagrams.getMaps());
         assertNull(diagrams.getMiscs());
         assertNull(diagrams.getSpecials());
-        
     }
 	
 }
