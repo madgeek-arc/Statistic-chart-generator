@@ -2,12 +2,6 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 public class HighChartsJsonResponse extends JsonResponse {
@@ -24,8 +18,6 @@ public class HighChartsJsonResponse extends JsonResponse {
     private List<String> dataSeriesTypes;
 
     private List<AbsData> drilldown;
-
-    private final Logger log = LogManager.getLogger(this.getClass());
 
     public HighChartsJsonResponse() {}
 
@@ -56,21 +48,13 @@ public class HighChartsJsonResponse extends JsonResponse {
                 '}';
     }
 
-    public List<AbsData> getDataSeries() {
-        return dataSeries;
-    }
+    public List<AbsData> getDataSeries() { return dataSeries; }
 
-    public void setDataSeries(List<AbsData> dataSeries) {
-        this.dataSeries = dataSeries;
-    }
+    public void setDataSeries(List<AbsData> dataSeries) { this.dataSeries = dataSeries; }
 
-    public List<String> getxAxis_categories() {
-        return xAxis_categories;
-    }
+    public List<String> getxAxis_categories() { return xAxis_categories; }
 
-    public void setxAxis_categories(List<String> xAxis_categories) {
-        this.xAxis_categories = xAxis_categories;
-    }
+    public void setxAxis_categories(List<String> xAxis_categories) { this.xAxis_categories = xAxis_categories; }
 
     public List<String> getDataSeriesNames() { return dataSeriesNames; }
 

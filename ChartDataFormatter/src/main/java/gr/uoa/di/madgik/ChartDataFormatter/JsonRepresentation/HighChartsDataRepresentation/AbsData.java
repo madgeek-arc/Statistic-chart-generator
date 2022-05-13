@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsGraphData;
+
 import java.io.IOException;
 
 @JsonDeserialize(using=AbsDataDeserializer.class)
@@ -24,8 +26,17 @@ class AbsDataDeserializer extends JsonDeserializer<AbsData>{
         ObjectMapper mapper = (ObjectMapper) jsonParser.getCodec();
         ObjectNode root = mapper.readTree(jsonParser);
 
-        JsonNode dataNode = root.get("data");
+        JsonNode keysNode = root.get("keys");
+        // If there is a 'keys' field, we found a GraphNode
+        if(keysNode != null)
+            return mapper.treeToValue(root, GraphData.class);
 
+        JsonNode linksNode = root.get("links");
+        // If there is a 'links' field, we found a EChartsGraphData
+        if(linksNode != null)
+            return mapper.treeToValue(root, EChartsGraphData.class);
+
+        JsonNode dataNode = root.get("data");
         if (dataNode != null){
             switch (dataNode.get(0).getNodeType()){
                 case ARRAY:
