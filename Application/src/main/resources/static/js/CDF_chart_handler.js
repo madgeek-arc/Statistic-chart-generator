@@ -301,10 +301,9 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                     // Append to the received data the iso-a2 value as id.
                     // mapData is now [iso-a2, value, id]
                     responseData.dataTable.forEach(mapData => {mapData.push(mapData[0]); });
-
-                    // Assign the queried data to the highmaps ready Json
-                    mapJson.series[0].data = responseData.dataTable;
                 }
+                // Assign the queried data to the highmaps ready Json
+                mapJson.series[0].data = responseData.dataTable;
                 
                 if(DEBUGMODE) 
                     console.log("Drawing HighMaps", mapJson);
