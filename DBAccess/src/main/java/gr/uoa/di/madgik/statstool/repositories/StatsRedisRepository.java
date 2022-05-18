@@ -8,6 +8,7 @@ import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -25,6 +26,9 @@ public class StatsRedisRepository {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
+    @Value("${statstool.cache.enabled}")
+    private boolean enableCache;
+
     public StatsRedisRepository(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
 
@@ -40,6 +44,9 @@ public class StatsRedisRepository {
     }
 
     public boolean exists(String key) throws RedisException {
+        if (!enableCache)
+            return false;
+
         try {
             return jedis.hasKey(key, "result") && (jedis.get(key, "result") != null && !jedis.get(key, "result").equals("null"));
         } catch (Exception e) {
@@ -48,6 +55,9 @@ public class StatsRedisRepository {
     }
 
     public Result get(String key) throws RedisException {
+        if (!enableCache)
+            throw new RuntimeException("Cache is not enabled!");
+
         if (!exists(key))
             throw new RedisException("Key " + key + " does not exist");
 
@@ -62,13 +72,14 @@ public class StatsRedisRepository {
     }
 
     public String save(QueryWithParameters fullSqlQuery, Result result) throws RedisException {
+
         try {
             String key = getCacheKey(fullSqlQuery);
 
-//            if (exists(key))
-//                throw new RedisException("Entry for query " + fullSqlQuery + " (" + key + ") already exists!");
-
-            storeEntry(new CacheEntry(key, fullSqlQuery, result));
+            if (!enableCache)
+                log.debug("Cache is not enabled. Noop!");
+            else
+                storeEntry(new CacheEntry(key, fullSqlQuery, result));
 
             return key;
         } catch (Exception e) {
@@ -76,7 +87,7 @@ public class StatsRedisRepository {
         }
     }
 
-    public CacheEntry getEntry(String key) throws IOException {
+    private CacheEntry getEntry(String key) throws IOException {
         CacheEntry entry;
         QueryWithParameters query = new ObjectMapper().readValue(jedis.get(key, "query"), QueryWithParameters.class);
         Result result = new ObjectMapper().readValue(jedis.get(key, "result"), Result.class);
@@ -101,6 +112,12 @@ public class StatsRedisRepository {
     }
 
     public void storeEntry(CacheEntry entry) throws JsonProcessingException {
+
+        if (!enableCache) {
+            log.debug("Cache is not enabled. Noop");
+            return;
+        }
+
         String key = entry.getKey();
 
         log.debug("storing entry with result" + entry.getResult());
@@ -116,6 +133,13 @@ public class StatsRedisRepository {
     }
 
     public List<CacheEntry> getEntries() {
+
+        if (!enableCache) {
+            log.debug("Cache is not enabled. Returning empty list");
+
+            return Collections.emptyList();
+        }
+
         Set<String> keys = this.redisTemplate.keys("*");
 
         assert keys != null;
@@ -133,6 +157,11 @@ public class StatsRedisRepository {
     }
 
     public void deleteEntry(String key) {
+        if (!enableCache) {
+            log.debug("Cache is not enabled. Noop");
+            return;
+        }
+
         redisTemplate.delete(key);
     }
 
