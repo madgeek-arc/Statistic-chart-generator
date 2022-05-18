@@ -39,11 +39,6 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public CacheEntry getEntry(String key) throws Exception {
-        return null;
-    }
-
-    @Override
     public void storeEntry(CacheEntry entry) throws Exception {
 
     }

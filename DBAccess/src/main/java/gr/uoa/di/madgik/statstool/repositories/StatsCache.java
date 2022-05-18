@@ -22,8 +22,6 @@ public interface StatsCache {
 
     String save(QueryWithParameters fullSqlQuery, Result result) throws Exception;
 
-    CacheEntry getEntry(String key) throws Exception;
-
     void storeEntry(CacheEntry entry) throws Exception;
 
     List<CacheEntry> getEntries();
