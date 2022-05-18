@@ -2,56 +2,34 @@ package gr.uoa.di.madgik.statstool.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
-import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
-import gr.uoa.di.madgik.statstool.repositories.StatsRedisRepository;
+import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class CacheServiceImpl implements CacheService {
 
-    public static String SHADOW_STATS_NUMBERS = "SHADOW_STATS_NUMBERS";
-    public static String STATS_NUMBERS = "STATS_NUMBERS";
-
-    @Autowired
-    private NamedQueryRepository namedQueryRepository;
-
     @Autowired
     private StatsRepository statsRepository;
 
     @Autowired
-    private StatsRedisRepository redisRepository;
-
-    @Autowired
-    private ExecutorService executorService;
+    private StatsCache statsCache;
 
     @Value("${statstool.cache.update.entries:5000}")
     private int numberLimit;
     @Value("${statstool.cache.update.seconds:10800}")
     private int timeLimit;
 
-    private final RedisTemplate<String, String> redisTemplate;
-
-    private final HashOperations<String, String, String> jedis;
-
     private final Logger log = LogManager.getLogger(this.getClass());
 
     private Boolean updating = false;
-
-    public CacheServiceImpl(RedisTemplate<String, String> redisTemplate) {
-        this.redisTemplate = redisTemplate;
-        this.jedis = redisTemplate.opsForHash();
-    }
 
     @Override
     public void updateCache() {
@@ -76,7 +54,7 @@ public class CacheServiceImpl implements CacheService {
 
     private void doUpdateCache() {
         log.info("Starting cache update");
-        List<CacheEntry> entries = redisRepository.getEntries();
+        List<CacheEntry> entries = statsCache.getEntries();
 
         entries.sort(new EntriesComparator());
 
@@ -97,12 +75,12 @@ public class CacheServiceImpl implements CacheService {
                     entry.setShadowResult(null);
                 }
 
-                redisRepository.storeEntry(entry);
+                statsCache.storeEntry(entry);
             } catch (JsonProcessingException e) {
                 log.error("Error storing cache entry" ,e);
             } catch (Exception e) {
                 log.error("Error updating entry " + entry, e);
-                redisRepository.deleteEntry(entry.getKey());
+                statsCache.deleteEntry(entry.getKey());
             }
         });
 
@@ -112,7 +90,7 @@ public class CacheServiceImpl implements CacheService {
     private void doPromoteCache() {
         log.info("Promoting shadow cache values to public");
 
-        List<CacheEntry> entries = redisRepository.getEntries();
+        List<CacheEntry> entries = statsCache.getEntries();
 
         entries.forEach(entry -> {
             if (entry.getShadowResult() != null) {
@@ -126,8 +104,8 @@ public class CacheServiceImpl implements CacheService {
             entry.setUpdated(new Date());
 
             try {
-                redisRepository.storeEntry(entry);
-            } catch (JsonProcessingException e) {
+                statsCache.storeEntry(entry);
+            } catch (Exception e) {
                 log.error("Error updating cache entry", e);
             }
         });

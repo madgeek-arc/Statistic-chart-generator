@@ -13,13 +13,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
-public class StatsRedisRepository {
+public class StatsRedisRepository implements StatsCache {
     private final HashOperations<String, String, String> jedis;
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -31,14 +29,7 @@ public class StatsRedisRepository {
         this.jedis = redisTemplate.opsForHash();
     }
 
-    public static String getCacheKey(String query, List<Object> parameters, String dbId) throws NoSuchAlgorithmException {
-        return getCacheKey(new QueryWithParameters(query, parameters, dbId));
-    }
-
-    public static String getCacheKey(QueryWithParameters query) throws NoSuchAlgorithmException {
-        return MD5(query.toString());
-    }
-
+    @Override
     public boolean exists(String key) throws RedisException {
         try {
             return jedis.hasKey(key, "result") && (jedis.get(key, "result") != null && !jedis.get(key, "result").equals("null"));
@@ -47,6 +38,7 @@ public class StatsRedisRepository {
         }
     }
 
+    @Override
     public Result get(String key) throws RedisException {
         if (!exists(key))
             throw new RedisException("Key " + key + " does not exist");
@@ -61,9 +53,10 @@ public class StatsRedisRepository {
         }
     }
 
+    @Override
     public String save(QueryWithParameters fullSqlQuery, Result result) throws RedisException {
         try {
-            String key = getCacheKey(fullSqlQuery);
+            String key = StatsCache.getCacheKey(fullSqlQuery);
 
 //            if (exists(key))
 //                throw new RedisException("Entry for query " + fullSqlQuery + " (" + key + ") already exists!");
@@ -76,6 +69,7 @@ public class StatsRedisRepository {
         }
     }
 
+    @Override
     public CacheEntry getEntry(String key) throws IOException {
         CacheEntry entry;
         QueryWithParameters query = new ObjectMapper().readValue(jedis.get(key, "query"), QueryWithParameters.class);
@@ -100,6 +94,7 @@ public class StatsRedisRepository {
         return entry;
     }
 
+    @Override
     public void storeEntry(CacheEntry entry) throws JsonProcessingException {
         String key = entry.getKey();
 
@@ -115,6 +110,7 @@ public class StatsRedisRepository {
         jedis.put(key, "pinned", Boolean.valueOf(entry.isPinned()).toString());
     }
 
+    @Override
     public List<CacheEntry> getEntries() {
         Set<String> keys = this.redisTemplate.keys("*");
 
@@ -132,22 +128,8 @@ public class StatsRedisRepository {
         }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
+    @Override
     public void deleteEntry(String key) {
         redisTemplate.delete(key);
-    }
-
-    private static String MD5(String string) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-
-        md.update(string.getBytes());
-
-        byte[] byteData = md.digest();
-        StringBuilder sb = new StringBuilder();
-
-        for (byte aByteData : byteData) {
-            sb.append(Integer.toString((aByteData & 0xff) + 0x100, 16).substring(1));
-        }
-
-        return sb.toString();
     }
 }
