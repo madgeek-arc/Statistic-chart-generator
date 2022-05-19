@@ -28,8 +28,8 @@ import java.util.Objects;
 
 @Repository
 @ConditionalOnProperty(
-        value = "spring.datasources.id",
-        havingValue = "cache",
+        value = "statstool.cache.storage",
+        havingValue = "db",
         matchIfMissing = false)
 public class StatsDBRepository implements StatsCache {
 
