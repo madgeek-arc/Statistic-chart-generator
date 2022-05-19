@@ -9,6 +9,7 @@ import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -18,6 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
+@ConditionalOnMissingBean
 public class StatsRedisRepository implements StatsCache {
     private final HashOperations<String, String, String> jedis;
     private final RedisTemplate<String, String> redisTemplate;

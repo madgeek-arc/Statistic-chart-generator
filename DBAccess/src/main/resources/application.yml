@@ -20,6 +20,11 @@ spring:
       password:
       url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_monitor_shadow;UseNativeQuery=1
       driver-class-name: com.cloudera.impala.jdbc41.Driver
+    - id: cache
+      username: sa
+      password:
+      url: jdbc:hsqldb:file:/tmp/cache
+      driver-class-name: org.hsqldb.jdbcDriver
   redis:
     host: localhost
     port: 6379
