@@ -48,6 +48,8 @@ public class StatsDBRepository implements StatsCache {
 
     @PostConstruct
     public void postInit() {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+
         jdbcTemplate.execute("create table if not exists cache_entry (" +
                         "key text not null," +
                         "result text not null, " +
@@ -72,6 +74,7 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public Result get(String key) throws Exception {
+        DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache)
             throw new RuntimeException("Cache is not enabled!");
@@ -94,6 +97,7 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public String save(QueryWithParameters fullSqlQuery, Result result) throws Exception {
+        DatasourceContext.setContext(CACHE_DB_NAME);
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);
 
@@ -110,6 +114,7 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
+        DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache) {
             log.debug("Cache is not enabled. Noop");
@@ -130,6 +135,7 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public List<CacheEntry> getEntries() {
+        DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache) {
             log.debug("Cache is not enabled. Returning empty list");
@@ -170,6 +176,8 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public void deleteEntry(String key) {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+
         if (!enableCache) {
             log.debug("Cache is not enabled. Noop");
             return;
