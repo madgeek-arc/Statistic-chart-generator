@@ -9,28 +9,21 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 
 @Repository
 @ConditionalOnProperty(
         value = "statstool.cache.storage",
-        havingValue = "db",
-        matchIfMissing = false)
+        havingValue = "db")
 public class StatsDBRepository implements StatsCache {
 
     public static final String CACHE_DB_NAME = "cache";
@@ -51,10 +44,10 @@ public class StatsDBRepository implements StatsCache {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
         jdbcTemplate.execute("create table if not exists cache_entry (" +
-                        "key text not null," +
-                        "result text not null, " +
-                        "shadow text, " +
-                        "query text not null," +
+                        "key varchar(1000) not null," +
+                        "result varchar(10000) not null, " +
+                        "shadow varchar(10000), " +
+                        "query varchar(10000) not null," +
                         "created timestamp default now() not null, " +
                         "updated timestamp default now() not null, " +
                         "total_hits int default 0 not null," +
@@ -143,34 +136,31 @@ public class StatsDBRepository implements StatsCache {
             return Collections.emptyList();
         }
 
-        return jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')", new RowMapper<CacheEntry>() {
-            @Override
-            public CacheEntry mapRow(ResultSet rs, int rowNum) throws SQLException {
-                CacheEntry entry = null;
+        return jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')", (rs, rowNum) -> {
+            CacheEntry entry = null;
 
-                try {
-                    QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                    String key = rs.getString("key");
-                    Result result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
+            try {
+                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+                String key = rs.getString("key");
+                Result result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
 
-                    entry = new CacheEntry(key, query, result);
+                entry = new CacheEntry(key, query, result);
 
-                    if (rs.getTimestamp("created") != null)
-                        entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                    if (rs.getTimestamp("updated") != null)
-                        entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-                    if (rs.getString("shadow") != null)
-                        entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
+                if (rs.getTimestamp("created") != null)
+                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+                if (rs.getTimestamp("updated") != null)
+                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+                if (rs.getString("shadow") != null)
+                    entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
 
-                    entry.setTotalHits(rs.getInt("total_hits"));
-                    entry.setSessionHits(rs.getInt("session_hits"));
-                    entry.setPinned(rs.getBoolean("pinned"));
-                } catch (IOException e) {
-                    log.error("Error reading entry", e);
-                }
-
-                return entry;
+                entry.setTotalHits(rs.getInt("total_hits"));
+                entry.setSessionHits(rs.getInt("session_hits"));
+                entry.setPinned(rs.getBoolean("pinned"));
+            } catch (IOException e) {
+                log.error("Error reading entry", e);
             }
+
+            return entry;
         });
     }
 
@@ -183,6 +173,6 @@ public class StatsDBRepository implements StatsCache {
             return;
         }
 
-        jdbcTemplate.update("delete from cache_entry where key=?", new Object[] {key});
+        jdbcTemplate.update("delete from cache_entry where key=?", key);
     }
 }
