@@ -62,7 +62,7 @@ public class StatsDBRepository implements StatsCache {
 
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        return jdbcTemplate.queryForObject("select count(*) from cache where key=?",new Object[] {String.class}, Integer.class) == 1;
+        return jdbcTemplate.queryForObject("select count(*) from cache_entry where key=?",new Object[] {String.class}, Integer.class) == 1;
     }
 
     @Override
