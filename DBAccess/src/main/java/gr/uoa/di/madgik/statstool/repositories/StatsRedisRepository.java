@@ -26,7 +26,7 @@ public class StatsRedisRepository {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    @Value("${statstool.cache.enabled:true}")
+    @Value("${statstool.cache.enabled}")
     private boolean enableCache;
 
     public StatsRedisRepository(RedisTemplate<String, String> redisTemplate) {
