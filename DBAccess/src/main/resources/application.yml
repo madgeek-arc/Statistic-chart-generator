@@ -40,6 +40,7 @@ spring:
 statstool:
   result_limit: 70
   cache:
+    enabled: true
     update:
       entries: 5000
       time: 10800
