@@ -19,7 +19,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
-@ConditionalOnMissingBean
+@ConditionalOnMissingBean(StatsDBRepository.class)
 public class StatsRedisRepository implements StatsCache {
     private final HashOperations<String, String, String> jedis;
     private final RedisTemplate<String, String> redisTemplate;
