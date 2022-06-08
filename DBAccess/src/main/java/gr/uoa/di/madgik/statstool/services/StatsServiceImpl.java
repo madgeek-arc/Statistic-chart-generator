@@ -3,14 +3,12 @@ package gr.uoa.di.madgik.statstool.services;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
+import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
@@ -18,7 +16,6 @@ import org.apache.logging.log4j.LogManager;
 
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import gr.uoa.di.madgik.statstool.repositories.StatsRedisRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 
 @Service
@@ -28,7 +25,7 @@ public class StatsServiceImpl implements StatsService {
     private StatsRepository statsRepository;
 
     @Autowired
-    private StatsRedisRepository statsRedisRepository;
+    private StatsCache statsCache;
 
     @Autowired
     private NamedQueryRepository namedQueryRepository;
@@ -70,17 +67,17 @@ public class StatsServiceImpl implements StatsService {
                         throw new StatsServiceException("query " + queryName + " not found!");
                 }
 
-                cacheKey = StatsRedisRepository.getCacheKey(querySql, parameters, profile);
+                cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
 
-                if (statsRedisRepository.exists(cacheKey)) {
-                    result = statsRedisRepository.get(cacheKey);
+                if (statsCache.exists(cacheKey)) {
+                    result = statsCache.get(cacheKey);
 
                     log.debug("Key " + cacheKey + " in cache! Returning: " + result);
                 } else {
                     log.debug("result for key " + cacheKey + " not in cache. Querying db!");
                     result = statsRepository.executeQuery(querySql, parameters, profile);
                     log.debug("result: " + result);
-                    statsRedisRepository.save(new QueryWithParameters(querySql, parameters, profile), result);
+                    statsCache.save(new QueryWithParameters(querySql, parameters, profile), result);
                 }
 
                 results.add(result);
