@@ -9,18 +9,18 @@ import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
-public class StatsRedisRepository {
+@ConditionalOnMissingBean(StatsDBRepository.class)
+public class StatsRedisRepository implements StatsCache {
     private final HashOperations<String, String, String> jedis;
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -35,14 +35,7 @@ public class StatsRedisRepository {
         this.jedis = redisTemplate.opsForHash();
     }
 
-    public static String getCacheKey(String query, List<Object> parameters, String dbId) throws NoSuchAlgorithmException {
-        return getCacheKey(new QueryWithParameters(query, parameters, dbId));
-    }
-
-    public static String getCacheKey(QueryWithParameters query) throws NoSuchAlgorithmException {
-        return MD5(query.toString());
-    }
-
+    @Override
     public boolean exists(String key) throws RedisException {
         if (!enableCache)
             return false;
@@ -54,6 +47,7 @@ public class StatsRedisRepository {
         }
     }
 
+    @Override
     public Result get(String key) throws RedisException {
         if (!enableCache)
             throw new RuntimeException("Cache is not enabled!");
@@ -71,10 +65,11 @@ public class StatsRedisRepository {
         }
     }
 
+    @Override
     public String save(QueryWithParameters fullSqlQuery, Result result) throws RedisException {
 
         try {
-            String key = getCacheKey(fullSqlQuery);
+            String key = StatsCache.getCacheKey(fullSqlQuery);
 
             if (!enableCache)
                 log.debug("Cache is not enabled. Noop!");
@@ -111,6 +106,7 @@ public class StatsRedisRepository {
         return entry;
     }
 
+    @Override
     public void storeEntry(CacheEntry entry) throws JsonProcessingException {
 
         if (!enableCache) {
@@ -132,6 +128,7 @@ public class StatsRedisRepository {
         jedis.put(key, "pinned", Boolean.valueOf(entry.isPinned()).toString());
     }
 
+    @Override
     public List<CacheEntry> getEntries() {
 
         if (!enableCache) {
@@ -156,6 +153,7 @@ public class StatsRedisRepository {
         }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
+    @Override
     public void deleteEntry(String key) {
         if (!enableCache) {
             log.debug("Cache is not enabled. Noop");
@@ -163,20 +161,5 @@ public class StatsRedisRepository {
         }
 
         redisTemplate.delete(key);
-    }
-
-    private static String MD5(String string) throws NoSuchAlgorithmException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-
-        md.update(string.getBytes());
-
-        byte[] byteData = md.digest();
-        StringBuilder sb = new StringBuilder();
-
-        for (byte aByteData : byteData) {
-            sb.append(Integer.toString((aByteData & 0xff) + 0x100, 16).substring(1));
-        }
-
-        return sb.toString();
     }
 }
