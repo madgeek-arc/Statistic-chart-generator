@@ -95,6 +95,10 @@
 			<groupId>log4j</groupId>
 			<artifactId>apache-log4j-extras</artifactId>
 		</exclusion>
+		<exclusion>
+			<groupId>jdk.tools</groupId>
+			<artifactId>jdk.tools</artifactId>
+		</exclusion>
             </exclusions>
         </dependency>
 
