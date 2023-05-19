@@ -45,8 +45,8 @@ public class StatsDBRepository implements StatsCache {
 
         jdbcTemplate.execute("create table if not exists cache_entry (" +
                         "key varchar(10000) not null," +
-                        "result varchar(10000) not null, " +
-                        "shadow varchar(10000), " +
+                        "result longvarchar not null, " +
+                        "shadow longvarchar, " +
                         "query varchar(10000) not null," +
                         "created timestamp default now() not null, " +
                         "updated timestamp default now() not null, " +
