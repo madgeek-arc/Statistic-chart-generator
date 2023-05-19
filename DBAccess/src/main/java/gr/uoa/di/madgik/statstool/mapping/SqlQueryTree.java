@@ -268,19 +268,19 @@ public class SqlQueryTree {
                     }
                 } else if (filter.getType().equals("contains")) {
                     for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ? || \'%\'");
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(\'%\', ?, \'%\')");
                         parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                         break;
                     }
                 } else if (filter.getType().equals("starts_with")) {
                     for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE ? || \'%\'");
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(?, \'%\')");
                         parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                         break;
                     }
                 } else if (filter.getType().equals("ends_with")) {
                     for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
+                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(\'%\', ?)");
                         parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                         break;
                     }
