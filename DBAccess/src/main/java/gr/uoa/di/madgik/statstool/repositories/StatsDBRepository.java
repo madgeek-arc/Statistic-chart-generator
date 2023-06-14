@@ -43,6 +43,7 @@ public class StatsDBRepository implements StatsCache {
     public void postInit() {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
+        log.debug("Creating cache table");
         jdbcTemplate.execute("create table if not exists cache_entry (" +
                         "key varchar(10000) not null," +
                         "result longvarchar not null, " +
@@ -57,10 +58,14 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public boolean exists(String key) {
-        if (!enableCache)
-            return false;
+        if (!enableCache) {
+            log.warn("Calling exists method while cache is not enabled.");
+            throw new RuntimeException("Cache is not enabled!");
+        }
 
         DatasourceContext.setContext(CACHE_DB_NAME);
+
+        log.debug("Checking if entry with key " + key + " exists");
 
         return jdbcTemplate.queryForObject("select count(*) from cache_entry where key=?",new Object[] {key}, Integer.class) == 1;
     }
@@ -81,7 +86,7 @@ public class StatsDBRepository implements StatsCache {
             try {
                 return new ObjectMapper().readValue(resultSet.getString("result"), Result.class);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("Error getting entry with key " + key, e);
             }
 
             throw new RuntimeException("Something went baad");
@@ -95,9 +100,12 @@ public class StatsDBRepository implements StatsCache {
             String key = StatsCache.getCacheKey(fullSqlQuery);
 
             if (!enableCache)
-                log.debug("Cache is not enabled. Noop!");
-            else
-                storeEntry(new CacheEntry(key, fullSqlQuery, result));
+                throw new RuntimeException("Cache is not enabled!");
+            else {
+                CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
+
+                storeEntry(entry);
+            }
 
             return key;
         } catch (Exception e) {
@@ -109,9 +117,10 @@ public class StatsDBRepository implements StatsCache {
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
+        log.debug("Storing entry " + entry);
+
         if (!enableCache) {
-            log.debug("Cache is not enabled. Noop");
-            return;
+            throw new RuntimeException("Cache is not enabled!");
         }
         jdbcTemplate.update("insert into cache_entry (key, result, shadow, query, created, updated, total_hits, session_hits, pinned) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 entry.getKey(),
@@ -169,8 +178,7 @@ public class StatsDBRepository implements StatsCache {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache) {
-            log.debug("Cache is not enabled. Noop");
-            return;
+            throw new RuntimeException("Cache is not enabled!");
         }
 
         jdbcTemplate.update("delete from cache_entry where key=?", key);
