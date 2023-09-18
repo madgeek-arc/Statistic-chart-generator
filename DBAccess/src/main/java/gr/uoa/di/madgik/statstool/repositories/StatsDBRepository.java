@@ -116,13 +116,15 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
+//	String query = "insert into cache_entry (key, result, shadow, query, created, updated, total_hits, session_hits, pinned) values (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned;";
 
         log.debug("Storing entry " + entry);
 
         if (!enableCache) {
             throw new RuntimeException("Cache is not enabled!");
         }
-        jdbcTemplate.update("insert into cache_entry (key, result, shadow, query, created, updated, total_hits, session_hits, pinned) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        jdbcTemplate.update(query,
                 entry.getKey(),
                 new ObjectMapper().writeValueAsString(entry.getResult()),
                 new ObjectMapper().writeValueAsString(entry.getShadowResult()),
