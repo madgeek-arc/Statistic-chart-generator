@@ -36,6 +36,11 @@ public class StatsRedisRepository implements StatsCache {
     }
 
     @Override
+    public void dropCache() throws Exception {
+        this.redisTemplate.getConnectionFactory().getConnection().flushAll();
+    }
+
+    @Override
     public boolean exists(String key) throws RedisException {
         if (!enableCache)
             return false;

@@ -17,4 +17,9 @@ public class CacheController {
 
     @GetMapping("promoteCache")
     public void promoteCache() {cacheService.promoteCache();}
+
+    @GetMapping("dropCache")
+    public void dropCache() throws Exception {
+        cacheService.dropCache();
+    }
 }
