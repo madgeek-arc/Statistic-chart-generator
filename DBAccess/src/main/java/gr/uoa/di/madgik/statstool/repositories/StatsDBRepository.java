@@ -94,6 +94,8 @@ public class StatsDBRepository implements StatsCache {
     }
 
     public void dropCache() throws Exception {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+
         jdbcTemplate.execute("delete from cache_entry");
     }
 
