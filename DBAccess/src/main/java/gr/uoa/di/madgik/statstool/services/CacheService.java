@@ -5,4 +5,6 @@ public interface CacheService {
     public void updateCache();
 
     public void promoteCache();
+
+    public void dropCache() throws Exception;
 }

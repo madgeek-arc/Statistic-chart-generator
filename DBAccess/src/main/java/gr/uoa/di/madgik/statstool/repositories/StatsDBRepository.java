@@ -93,6 +93,10 @@ public class StatsDBRepository implements StatsCache {
         });
     }
 
+    public void dropCache() throws Exception {
+        jdbcTemplate.execute("delete from cache_entry");
+    }
+
     @Override
     public String save(QueryWithParameters fullSqlQuery, Result result) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
