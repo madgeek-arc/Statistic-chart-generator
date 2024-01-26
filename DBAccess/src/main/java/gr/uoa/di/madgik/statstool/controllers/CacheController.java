@@ -5,6 +5,8 @@ import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping(value = "/cache")
 @CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
@@ -24,7 +26,7 @@ public class CacheController {
     }
 
     @GetMapping("stats")
-    public void getStats() throws Exception {
-        cacheService.getStats();
+    public Map<String, Object> getStats() throws Exception {
+        return cacheService.getStats();
     }
 }
