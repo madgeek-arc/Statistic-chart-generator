@@ -22,4 +22,9 @@ public class CacheController {
     public void dropCache() throws Exception {
         cacheService.dropCache();
     }
+
+    @GetMapping("stats")
+    public void getStats() throws Exception {
+        cacheService.getStats();
+    }
 }

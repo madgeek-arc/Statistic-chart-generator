@@ -56,6 +56,10 @@ public class CacheServiceImpl implements CacheService {
         this.statsCache.dropCache();
     }
 
+    public Map<String, Object> getStats() throws Exception {
+        return this.statsCache.stats();
+    }
+
     private void doUpdateCache() {
         log.info("Starting cache update");
         List<CacheEntry> entries = statsCache.getEntries();

@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 
 import java.security.MessageDigest;
 import java.util.List;
+import java.util.Map;
 
 public interface StatsCache {
     static String getCacheKey(String query, List<Object> parameters, String dbId) throws Exception {
@@ -44,4 +45,6 @@ public interface StatsCache {
 
         return sb.toString();
     }
+
+    Map<String, Object> stats() throws Exception;
 }

@@ -16,9 +16,7 @@ import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Repository
 @ConditionalOnProperty(
@@ -190,5 +188,42 @@ public class StatsDBRepository implements StatsCache {
         }
 
         jdbcTemplate.update("delete from cache_entry where key=?", key);
+    }
+
+    public Map<String, Object> stats() {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+
+        Map<String, Object> stats = new HashMap<>();
+
+        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null",new Object[] {}, Integer.class));
+        stats.put("top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits", (rs, rowNum) -> {
+            CacheEntry entry = null;
+
+            try {
+                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+                String key = rs.getString("key");
+                Result result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
+
+                entry = new CacheEntry(key, query, result);
+
+                if (rs.getTimestamp("created") != null)
+                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+                if (rs.getTimestamp("updated") != null)
+                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+                if (rs.getString("shadow") != null)
+                    entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
+
+                entry.setTotalHits(rs.getInt("total_hits"));
+                entry.setSessionHits(rs.getInt("session_hits"));
+                entry.setPinned(rs.getBoolean("pinned"));
+            } catch (IOException e) {
+                log.error("Error reading entry", e);
+            }
+
+            return entry;
+        }));
+
+        return stats;
     }
 }

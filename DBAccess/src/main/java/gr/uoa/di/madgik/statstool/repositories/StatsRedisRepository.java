@@ -167,4 +167,10 @@ public class StatsRedisRepository implements StatsCache {
 
         redisTemplate.delete(key);
     }
+
+    @Override
+    public Map<String, Object> stats() throws Exception {
+        // TODO implement
+        return new HashMap<>();
+    }
 }
