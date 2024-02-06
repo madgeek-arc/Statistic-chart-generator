@@ -29,9 +29,9 @@ public abstract class DataFormatter {
             if (result.getRows().isEmpty())
                 continue;
 
-            for (List<String> row : result.getRows()) {
+            for (List<?> row : result.getRows()) {
                 // Get the first groupBy of the result row
-                String xValue = row.get(1);
+                String xValue = String.valueOf(row.get(1));
 
                 //Find a xAxis value and register it in the xAxis_categories
                 if (!xAxis_categories.contains(xValue))

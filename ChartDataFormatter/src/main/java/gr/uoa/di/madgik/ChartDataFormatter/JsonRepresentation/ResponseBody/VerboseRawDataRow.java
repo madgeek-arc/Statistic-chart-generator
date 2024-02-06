@@ -3,20 +3,20 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 import java.util.List;
 
 public class VerboseRawDataRow {
-    List<String> row;
+    List<?> row;
 
-    public VerboseRawDataRow(List<String> row) {
+    public VerboseRawDataRow(List<?> row) {
         this.row = row;
     }
 
     public VerboseRawDataRow() {
     }
 
-    public List<String> getRow() {
+    public List<?> getRow() {
         return row;
     }
 
-    public void setRow(List<String> row) {
+    public void setRow(List<?> row) {
         this.row = row;
     }
 }

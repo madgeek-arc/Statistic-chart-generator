@@ -10,11 +10,11 @@ import java.util.List;
 public class RawDataJsonResponse extends JsonResponse {
 
     @JsonProperty
-    private List<List<List<String>>> data;
+    private List<List<List<?>>> data;
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public RawDataJsonResponse(List<List<List<String>>> data) {
+    public RawDataJsonResponse(List<List<List<?>>> data) {
         this.data = data;
     }
 
@@ -28,11 +28,11 @@ public class RawDataJsonResponse extends JsonResponse {
                 '}';
     }
 
-    public List<List<List<String>>> getData() {
+    public List<List<List<?>>> getData() {
         return data;
     }
 
-    public void setData(List<List<List<String>>> data) {
+    public void setData(List<List<List<?>>> data) {
         this.data = data;
     }
 }

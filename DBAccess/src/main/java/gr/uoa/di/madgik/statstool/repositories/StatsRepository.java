@@ -1,18 +1,23 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
+import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import java.sql.*;
-import java.util.*;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Repository;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import javax.sql.DataSource;
-
-import gr.uoa.di.madgik.statstool.domain.Result;
-import org.springframework.stereotype.Repository;
 
 @Repository
 public class StatsRepository {
@@ -48,15 +53,15 @@ public class StatsRepository {
             log.info("size of queue: " + tasks.size());
         }
 
-	try {
+        try {
 
-        return future.get();
-	} finally {
-        	synchronized (tasks) {
-        	    tasks.remove(q);
+            return future.get();
+        } finally {
+            synchronized (tasks) {
+                tasks.remove(q);
                 log.info("size of queue: " + tasks.size());
-        	}
-	}
+            }
+        }
     }
 
     public class ResultCallable implements Callable<Result> {
@@ -82,9 +87,13 @@ public class StatsRepository {
                 ResultSet rs = st.executeQuery();
                 int columnCount = rs.getMetaData().getColumnCount();
                 while (rs.next()) {
-                    ArrayList<String> row = new ArrayList<>();
+                    ArrayList<Object> row = new ArrayList<>();
                     for (int i = 1; i <= columnCount; i++) {
-                        row.add(rs.getString(i));
+                        String stringResult = rs.getString(i);
+                        if ("null".equals(stringResult))
+                            row.add(null);
+                        else
+                            row.add(stringResult);
                     }
                     result.addRow(row);
                 }
