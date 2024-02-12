@@ -16,10 +16,19 @@ public class RawDataRequestInfo {
     private List<RawDataSeriesInfo> series;
 
     @JsonProperty
+    private String orderBy;
+
+    @JsonProperty
     private boolean verbose;
 
 
     public RawDataRequestInfo() {
+    }
+
+    public RawDataRequestInfo(List<RawDataSeriesInfo> series, String orderBy, boolean verbose) {
+        this.series = series;
+        this.orderBy = orderBy;
+        this.verbose = verbose;
     }
 
     @JsonIgnore
@@ -48,20 +57,11 @@ public class RawDataRequestInfo {
         this.verbose = verbose;
     }
 
-    public static void main(String[] args) throws JsonProcessingException {
-        RawDataRequestInfo requestInfo = new RawDataRequestInfo();
-        RawDataSeriesInfo seriesInfo = new RawDataSeriesInfo();
+    public String getOrderBy() {
+        return orderBy;
+    }
 
-        Query q = new Query();
-
-        q.setName("nananaann");
-        q.setParameters(Arrays.asList("asda", "adfsds"));
-
-        seriesInfo.setQuery(q);
-        requestInfo.setSeries(Arrays.asList(seriesInfo, seriesInfo));
-        requestInfo.setVerbose(true);
-
-
-        System.out.println(new ObjectMapper().writeValueAsString(requestInfo));
+    public void setOrderBy(String orderBy) {
+        this.orderBy = orderBy;
     }
 }

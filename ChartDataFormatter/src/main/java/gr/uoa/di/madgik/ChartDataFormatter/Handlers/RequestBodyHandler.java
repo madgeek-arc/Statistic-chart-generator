@@ -138,7 +138,7 @@ public class RequestBodyHandler {
             log.debug("Query:" + q.getName() );
 
         try {
-            statsServiceResults = this.statsService.query(requestInfo.getQueries());
+            statsServiceResults = this.statsService.query(requestInfo.getQueries(), requestInfo.getOrderBy());
 
             this.logChartInfo(requestInfo, statsServiceResults);
 
