@@ -67,7 +67,7 @@ public class StatsServiceImpl implements StatsService {
                         throw new StatsServiceException("query " + queryName + " not found!");
                 }
 
-                if (query.isUseCache) {
+                if (query.isUseCache()) {
                     cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
 
                     if (statsCache.exists(cacheKey)) {
