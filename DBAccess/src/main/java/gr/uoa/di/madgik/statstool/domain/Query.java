@@ -12,9 +12,11 @@ public class Query {
     private int limit;
     private String orderBy;
 
+    boolean useCache = true;
+
     public Query() {}
 
-    public Query(String name, List<Object> parameters, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy) {
+    public Query(String name, List<Object> parameters, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy, boolean useCache) {
         this.name = name;
         this.parameters = parameters;
         this.filters = filters;
@@ -23,6 +25,7 @@ public class Query {
         this.profile = profile;
         this.limit = limit;
         this.orderBy = orderBy;
+        this.useCache = useCache;
     }
 
     public List<FilterGroup> getFilters() {
@@ -87,6 +90,14 @@ public class Query {
 
     public void setParameters(List<Object> parameters) {
         this.parameters = parameters;
+    }
+
+    public boolean isUseCache() {
+        return useCache;
+    }
+
+    public void setUseCache(boolean useCache) {
+        this.useCache = useCache;
     }
 
     @Override

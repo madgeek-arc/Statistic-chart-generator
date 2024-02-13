@@ -67,17 +67,22 @@ public class StatsServiceImpl implements StatsService {
                         throw new StatsServiceException("query " + queryName + " not found!");
                 }
 
-                cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
+                if (query.isUseCache) {
+                    cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
 
-                if (statsCache.exists(cacheKey)) {
-                    result = statsCache.get(cacheKey);
+                    if (statsCache.exists(cacheKey)) {
+                        result = statsCache.get(cacheKey);
 
-                    log.debug("Key " + cacheKey + " in cache! Returning: " + result);
+                        log.debug("Key " + cacheKey + " in cache! Returning: " + result);
+                    } else {
+                        log.debug("result for key " + cacheKey + " not in cache. Querying db!");
+                        result = statsRepository.executeQuery(querySql, parameters, profile);
+                        log.debug("result: " + result);
+                        statsCache.save(new QueryWithParameters(querySql, parameters, profile), result);
+                    }
                 } else {
-                    log.debug("result for key " + cacheKey + " not in cache. Querying db!");
+                    log.debug("Cache disabled for query.");
                     result = statsRepository.executeQuery(querySql, parameters, profile);
-                    log.debug("result: " + result);
-                    statsCache.save(new QueryWithParameters(querySql, parameters, profile), result);
                 }
 
                 results.add(result);
