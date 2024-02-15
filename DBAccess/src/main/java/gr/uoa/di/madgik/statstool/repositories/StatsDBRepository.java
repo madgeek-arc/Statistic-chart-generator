@@ -52,6 +52,8 @@ public class StatsDBRepository implements StatsCache {
                         "total_hits int default 0 not null," +
                         "session_hits int default 0 not null," +
                         "pinned boolean default false not null)");
+
+        jdbcTemplate.execute("create index key_idx on cache_entry(key)");
     }
 
     @Override
@@ -196,7 +198,7 @@ public class StatsDBRepository implements StatsCache {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
-        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null",new Object[] {}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
         stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;
 
