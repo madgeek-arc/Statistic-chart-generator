@@ -82,7 +82,7 @@ public class CacheServiceImpl implements CacheService {
                     long execTime = new Date().getTime() - start;
 
                     entry.setShadowResult(shadow);
-                    entry.setExecTime(execTime);
+                    entry.setExecTime((int) execTime);
                 } else {
                     log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
 

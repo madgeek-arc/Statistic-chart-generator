@@ -18,7 +18,7 @@ public class CacheEntry {
 
     private String profile;
 
-    private long execTime;
+    private int execTime;
 
     public CacheEntry(String key, QueryWithParameters query, Result result) {
         this.key = key;
@@ -26,7 +26,7 @@ public class CacheEntry {
         this.result = result;
     }
 
-    public CacheEntry(String key, QueryWithParameters query, Result result, long execTime) {
+    public CacheEntry(String key, QueryWithParameters query, Result result, int execTime) {
         this.key = key;
         this.query = query;
         this.result = result;
@@ -105,11 +105,11 @@ public class CacheEntry {
         this.pinned = pinned;
     }
 
-    public long getExecTime() {
+    public int getExecTime() {
         return execTime;
     }
 
-    public void setExecTime(long execTime) {
+    public void setExecTime(int execTime) {
         this.execTime = execTime;
     }
 

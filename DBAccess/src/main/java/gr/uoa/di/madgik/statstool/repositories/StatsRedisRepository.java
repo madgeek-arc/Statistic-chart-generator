@@ -71,7 +71,7 @@ public class StatsRedisRepository implements StatsCache {
     }
 
     @Override
-    public void save(QueryWithParameters fullSqlQuery, Result result, long execTime) throws RedisException {
+    public void save(QueryWithParameters fullSqlQuery, Result result, int execTime) throws RedisException {
 
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);

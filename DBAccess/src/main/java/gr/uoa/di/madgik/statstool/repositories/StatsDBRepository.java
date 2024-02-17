@@ -102,7 +102,7 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public void save(QueryWithParameters fullSqlQuery, Result result, long execTime) throws Exception {
+    public void save(QueryWithParameters fullSqlQuery, Result result, int execTime) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);
@@ -177,7 +177,7 @@ public class StatsDBRepository implements StatsCache {
                 entry.setTotalHits(rs.getInt("total_hits"));
                 entry.setSessionHits(rs.getInt("session_hits"));
                 entry.setPinned(rs.getBoolean("pinned"));
-                entry.setExecTime(rs.getLong("exectime"));
+                entry.setExecTime(rs.getInt("exectime"));
                 entry.setProfile(rs.getString("profile"));
             } catch (IOException e) {
                 log.error("Error reading entry", e);
