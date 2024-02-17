@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
@@ -76,7 +77,12 @@ public class CacheServiceImpl implements CacheService {
                     i.getAndIncrement();
                     log.debug(i.get() + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
 
-                    entry.setShadowResult(statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow")));
+                    long start = new Date().getTime();
+                    Result shadow = statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow"));
+                    long execTime = new Date().getTime() - start;
+
+                    entry.setShadowResult(shadow);
+                    entry.setExecTime(execTime);
                 } else {
                     log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
 

@@ -71,17 +71,19 @@ public class StatsRedisRepository implements StatsCache {
     }
 
     @Override
-    public String save(QueryWithParameters fullSqlQuery, Result result) throws RedisException {
+    public void save(QueryWithParameters fullSqlQuery, Result result, long execTime) throws RedisException {
 
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);
+            CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
+
+            entry.setExecTime(execTime);
+            entry.setProfile(fullSqlQuery.getDbId());
 
             if (!enableCache)
                 log.debug("Cache is not enabled. Noop!");
             else
-                storeEntry(new CacheEntry(key, fullSqlQuery, result));
-
-            return key;
+                storeEntry(entry);
         } catch (Exception e) {
             throw new RedisException(e);
         }

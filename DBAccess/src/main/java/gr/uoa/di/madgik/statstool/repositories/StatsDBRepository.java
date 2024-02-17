@@ -51,7 +51,9 @@ public class StatsDBRepository implements StatsCache {
                         "updated timestamp default now() not null, " +
                         "total_hits int default 0 not null," +
                         "session_hits int default 0 not null," +
-                        "pinned boolean default false not null)");
+                        "pinned boolean default false not null," +
+                        "exectime long default 0 not null," +
+                        "profile varchar(100) not null)");
 
         jdbcTemplate.execute("create index key_idx on cache_entry(key)");
     }
@@ -100,7 +102,7 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public String save(QueryWithParameters fullSqlQuery, Result result) throws Exception {
+    public void save(QueryWithParameters fullSqlQuery, Result result, long execTime) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);
@@ -110,10 +112,11 @@ public class StatsDBRepository implements StatsCache {
             else {
                 CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
 
+                entry.setExecTime(execTime);
+                entry.setProfile(fullSqlQuery.getDbId());
+
                 storeEntry(entry);
             }
-
-            return key;
         } catch (Exception e) {
             throw new RedisException(e);
         }
@@ -122,8 +125,7 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-//	String query = "insert into cache_entry (key, result, shadow, query, created, updated, total_hits, session_hits, pinned) values (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned;";
+	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
 
         log.debug("Storing entry " + entry);
 
@@ -139,7 +141,9 @@ public class StatsDBRepository implements StatsCache {
                 Timestamp.from(entry.getUpdated().toInstant()),
                 entry.getTotalHits(),
                 entry.getSessionHits(),
-                entry.isPinned()
+                entry.isPinned(),
+                entry.getExecTime(),
+                entry.getProfile()
         );
     }
 
@@ -173,6 +177,8 @@ public class StatsDBRepository implements StatsCache {
                 entry.setTotalHits(rs.getInt("total_hits"));
                 entry.setSessionHits(rs.getInt("session_hits"));
                 entry.setPinned(rs.getBoolean("pinned"));
+                entry.setExecTime(rs.getLong("exectime"));
+                entry.setProfile(rs.getString("profile"));
             } catch (IOException e) {
                 log.error("Error reading entry", e);
             }
@@ -199,7 +205,7 @@ public class StatsDBRepository implements StatsCache {
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
         stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
-        stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits limit 10", (rs, rowNum) -> {
+        stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits desc limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;
 
             try {
@@ -222,7 +228,7 @@ public class StatsDBRepository implements StatsCache {
 
             return entry;
         }));
-        stats.put("session.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by session_hits limit 10", (rs, rowNum) -> {
+        stats.put("session.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by session_hits desc limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;
 
             try {
@@ -245,6 +251,30 @@ public class StatsDBRepository implements StatsCache {
 
             return entry;
         }));
+        stats.put("total.heavy10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by exectime desc limit 10", (rs, rowNum) -> {
+            CacheEntry entry = null;
+
+            try {
+                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+                String key = rs.getString("key");
+
+                entry = new CacheEntry(key, query, null);
+
+                if (rs.getTimestamp("created") != null)
+                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+                if (rs.getTimestamp("updated") != null)
+                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+
+                entry.setTotalHits(rs.getInt("total_hits"));
+                entry.setSessionHits(rs.getInt("session_hits"));
+                entry.setPinned(rs.getBoolean("pinned"));
+            } catch (IOException e) {
+                log.error("Error reading entry", e);
+            }
+
+            return entry;
+        }));
+
         return stats;
     }
 }

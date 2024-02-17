@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
@@ -76,9 +77,12 @@ public class StatsServiceImpl implements StatsService {
                         log.debug("Key " + cacheKey + " in cache! Returning: " + result);
                     } else {
                         log.debug("result for key " + cacheKey + " not in cache. Querying db!");
+                        long start = new Date().getTime();
                         result = statsRepository.executeQuery(querySql, parameters, profile);
                         log.debug("result: " + result);
-                        statsCache.save(new QueryWithParameters(querySql, parameters, profile), result);
+                        long execTime = new Date().getTime() - start;
+
+                        statsCache.save(new QueryWithParameters(querySql, parameters, profile), result, execTime);
                     }
                 } else {
                     log.debug("Cache disabled for query.");

@@ -16,10 +16,21 @@ public class CacheEntry {
     private int sessionHits = 0;
     private boolean pinned = false;
 
+    private String profile;
+
+    private long execTime;
+
     public CacheEntry(String key, QueryWithParameters query, Result result) {
         this.key = key;
         this.query = query;
         this.result = result;
+    }
+
+    public CacheEntry(String key, QueryWithParameters query, Result result, long execTime) {
+        this.key = key;
+        this.query = query;
+        this.result = result;
+        this.execTime = execTime;
     }
 
     public String getKey() {
@@ -94,6 +105,22 @@ public class CacheEntry {
         this.pinned = pinned;
     }
 
+    public long getExecTime() {
+        return execTime;
+    }
+
+    public void setExecTime(long execTime) {
+        this.execTime = execTime;
+    }
+
+    public String getProfile() {
+        return profile;
+    }
+
+    public void setProfile(String profile) {
+        this.profile = profile;
+    }
+
     @Override
     public String toString() {
         return "CacheEntry{" +
@@ -106,6 +133,8 @@ public class CacheEntry {
                 ", totalHits=" + totalHits +
                 ", sessionHits=" + sessionHits +
                 ", pinned=" + pinned +
+                ", execTime= " + execTime +
+                ", profile= " + profile +
                 '}';
     }
 }

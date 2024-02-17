@@ -23,7 +23,7 @@ public interface StatsCache {
 
     Result get(String key) throws Exception;
 
-    String save(QueryWithParameters fullSqlQuery, Result result) throws Exception;
+    void save(QueryWithParameters fullSqlQuery, Result result, long execTime) throws Exception;
 
     void storeEntry(CacheEntry entry) throws Exception;
 
