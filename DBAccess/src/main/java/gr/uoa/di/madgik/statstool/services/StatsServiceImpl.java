@@ -82,7 +82,7 @@ public class StatsServiceImpl implements StatsService {
                         log.debug("result: " + result);
                         long execTime = new Date().getTime() - start;
 
-                        statsCache.save(new QueryWithParameters(querySql, parameters, profile), result, execTime);
+                        statsCache.save(new QueryWithParameters(querySql, parameters, profile), result, (int) execTime);
                     }
                 } else {
                     log.debug("Cache disabled for query.");
