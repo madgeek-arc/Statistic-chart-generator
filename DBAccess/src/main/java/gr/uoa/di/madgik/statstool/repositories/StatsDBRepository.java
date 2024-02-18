@@ -52,7 +52,7 @@ public class StatsDBRepository implements StatsCache {
                         "total_hits int default 0 not null," +
                         "session_hits int default 0 not null," +
                         "pinned boolean default false not null," +
-                        "exectime long default 0 not null," +
+                        "exectime int default 0 not null," +
                         "profile varchar(100) not null)");
 
         jdbcTemplate.execute("create index key_idx on cache_entry(key)");
