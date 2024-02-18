@@ -125,7 +125,7 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
+	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
 
         log.debug("Storing entry " + entry);
 
