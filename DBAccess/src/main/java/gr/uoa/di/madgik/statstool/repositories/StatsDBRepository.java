@@ -222,6 +222,8 @@ public class StatsDBRepository implements StatsCache {
                 entry.setTotalHits(rs.getInt("total_hits"));
                 entry.setSessionHits(rs.getInt("session_hits"));
                 entry.setPinned(rs.getBoolean("pinned"));
+                entry.setExecTime(rs.getInt("exectime"));
+                entry.setProfile(rs.getString("profile"));
             } catch (IOException e) {
                 log.error("Error reading entry", e);
             }
@@ -245,6 +247,8 @@ public class StatsDBRepository implements StatsCache {
                 entry.setTotalHits(rs.getInt("total_hits"));
                 entry.setSessionHits(rs.getInt("session_hits"));
                 entry.setPinned(rs.getBoolean("pinned"));
+                entry.setExecTime(rs.getInt("exectime"));
+                entry.setProfile(rs.getString("profile"));
             } catch (IOException e) {
                 log.error("Error reading entry", e);
             }
@@ -268,6 +272,8 @@ public class StatsDBRepository implements StatsCache {
                 entry.setTotalHits(rs.getInt("total_hits"));
                 entry.setSessionHits(rs.getInt("session_hits"));
                 entry.setPinned(rs.getBoolean("pinned"));
+                entry.setExecTime(rs.getInt("exectime"));
+                entry.setProfile(rs.getString("profile"));
             } catch (IOException e) {
                 log.error("Error reading entry", e);
             }
