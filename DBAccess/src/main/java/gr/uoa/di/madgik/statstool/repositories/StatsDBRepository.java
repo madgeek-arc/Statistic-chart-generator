@@ -205,6 +205,8 @@ public class StatsDBRepository implements StatsCache {
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
         stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
+        stats.put("profiles", jdbcTemplate.queryForMap("select profile, count(key) as c from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by count(key) desc group by profile"));
+
         stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits desc limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;
 
