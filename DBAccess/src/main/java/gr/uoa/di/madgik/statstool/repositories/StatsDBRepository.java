@@ -200,12 +200,19 @@ public class StatsDBRepository implements StatsCache {
 
     public Map<String, Object> stats() {
         DatasourceContext.setContext(CACHE_DB_NAME);
-
         Map<String, Object> stats = new LinkedHashMap<>();
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
         stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
-        stats.put("profiles", jdbcTemplate.queryForMap("select profile, count(key) as c from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by count(key) desc group by profile"));
+        stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            map.put("profile", rs.getString("profile"));
+            map.put("queries", rs.getInt("queries"));
+            map.put("avg_exec_time", rs.getInt("avg_exec_time"));
+
+            return map;
+        }));
 
         stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits desc limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;

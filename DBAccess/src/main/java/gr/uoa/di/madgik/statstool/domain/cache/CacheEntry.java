@@ -12,8 +12,8 @@ public class CacheEntry {
     private Result shadowResult;
     private Date created = new Date();
     private Date updated = new Date();
-    private int totalHits = 0;
-    private int sessionHits = 0;
+    private int totalHits = 1;
+    private int sessionHits = 1;
     private boolean pinned = false;
 
     private String profile;
