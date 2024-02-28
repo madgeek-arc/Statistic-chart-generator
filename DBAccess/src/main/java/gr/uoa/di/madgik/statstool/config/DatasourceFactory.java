@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.config;
 
 import gr.uoa.di.madgik.statstool.repositories.datasource.StatsRoutingDatasource;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,23 +16,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Configuration
+@EnableConfigurationProperties(DataSourceProperties.class)
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = { "gr.uoa.di.madgik.statstool" })
+@EnableJpaRepositories(basePackages = {"gr.uoa.di.madgik.statstool"})
 public class DatasourceFactory {
 
     @Bean(name = "dataSources")
     @Primary
     public Map<Object, Object> getDataSources(DataSourceProperties dataSourceProperties) {
-        return dataSourceProperties.getDataSources().stream().map(dataSourceProperty -> {
-            DataSource dataSource = DataSourceBuilder.create()
-                    .url(dataSourceProperty.getUrl())
-                    .username(dataSourceProperty.getUsername())
-                    .password(dataSourceProperty.getPassword())
-                    .driverClassName(dataSourceProperty.getDriverClassName())
-                    .build();
-
-            return new IdDataSource(dataSourceProperty.getId(), dataSource);
-        }).collect(Collectors.toMap(IdDataSource::getId, IdDataSource::getDataSource));
+        return dataSourceProperties.getDataSources()
+                .stream()
+                .map(this::createDataSource)
+                .collect(Collectors.toMap(IdDataSource::getId, IdDataSource::getDataSource));
     }
 
     @Bean(name = "routingDataSource")
@@ -45,7 +41,18 @@ public class DatasourceFactory {
         return routingDataSource;
     }
 
-    private class IdDataSource {
+    private IdDataSource createDataSource(DataSourceProperty dataSourceProperty) {
+        DataSource dataSource = DataSourceBuilder.create()
+                .url(dataSourceProperty.getUrl())
+                .username(dataSourceProperty.getUsername())
+                .password(dataSourceProperty.getPassword())
+                .driverClassName(dataSourceProperty.getDriverClassName())
+                .build();
+
+        return new IdDataSource(dataSourceProperty.getId(), dataSource);
+    }
+
+    private static class IdDataSource {
         private Object id;
         private Object dataSource;
 
