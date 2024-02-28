@@ -328,7 +328,7 @@ public class EChartsDataFormatter extends DataFormatter{
 
                     HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
 
-                    Float pieSliceSum = new Float(0);
+                    float pieSliceSum = 0;
                     ArrayList<EChartsDataObject> drillDownSliceValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_categories.keySet()) {
