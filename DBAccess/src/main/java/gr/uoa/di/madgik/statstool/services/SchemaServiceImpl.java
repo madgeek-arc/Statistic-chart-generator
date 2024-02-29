@@ -74,9 +74,9 @@ public class SchemaServiceImpl implements SchemaService{
             Result result = results.get(0);
 
             List<String> values = new ArrayList<>();
-            for(List<String> val : result.getRows()) {
-                if(val.get(0) != null && (like.equals("") || val.get(0).toLowerCase().contains(like.toLowerCase()))) {
-                    values.add(val.get(0));
+            for(List<?> val : result.getRows()) {
+                if("".equals(like) || String.valueOf(val.get(0)).toLowerCase().contains(like.toLowerCase())) {
+                    values.add(String.valueOf(val.get(0)));
                 }
             }
 

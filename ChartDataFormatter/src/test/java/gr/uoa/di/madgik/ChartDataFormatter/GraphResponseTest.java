@@ -30,14 +30,13 @@ public class GraphResponseTest {
     public void setUp() {
         this.demoResult = new Result();
 
-        List<List<String>> rows = new ArrayList<List<String>>();
-        rows.add(new ArrayList<String>(Arrays.asList("FI", "69270", "BD", "3")));
-        rows.add(new ArrayList<String>(Arrays.asList("EG","175","NZ","1")));
-        rows.add(new ArrayList<String>(Arrays.asList("NZ","262","FI","14")));
-        rows.add(new ArrayList<String>(Arrays.asList("LT","810","MY","3")));
-        rows.add(new ArrayList<String>(Arrays.asList("NG","57","TG","1")));
-        rows.add(new ArrayList<String>(Arrays.asList("CH","64922","GL","2")));
-
+        List<List<?>> rows = new ArrayList<>();
+        rows.add(new ArrayList<>(Arrays.asList("FI", "69270", "BD", "3")));
+        rows.add(new ArrayList<>(Arrays.asList("EG","175","NZ","1")));
+        rows.add(new ArrayList<>(Arrays.asList("NZ","262","FI","14")));
+        rows.add(new ArrayList<>(Arrays.asList("LT","810","MY","3")));
+        rows.add(new ArrayList<>(Arrays.asList("NG","57","TG","1")));
+        rows.add(new ArrayList<>(Arrays.asList("CH","64922","GL","2")));
 
         this.demoResult.setRows(rows);
     }
@@ -62,7 +61,7 @@ public class GraphResponseTest {
         // Initialize the data array
         ArrayList<Object[]> data = new ArrayList<>(result.getRows().size());
 
-        for (List<String> row : result.getRows()) {
+        for (List<?> row : result.getRows()) {
             
             // Ignore the 'from' node weight
             if(ignoreNodeWeight)

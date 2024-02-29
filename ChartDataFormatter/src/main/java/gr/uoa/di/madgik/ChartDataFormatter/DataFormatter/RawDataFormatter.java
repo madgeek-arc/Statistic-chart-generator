@@ -11,15 +11,13 @@ public class RawDataFormatter extends DataFormatter {
     @Override
     public RawDataJsonResponse toJsonResponse(List<Result> dbAccessResults, Object... args) throws DataFormationException {
 
-        List<List<List<String>>> res = new ArrayList<>();
+        List<List<List<?>>> res = new ArrayList<>();
 
         for (int i = 0; i < dbAccessResults.size(); i++) {
             Result result = dbAccessResults.get(i);
 
             res.add(result.getRows());
         }
-
-
 
         return new RawDataJsonResponse(res);
     }

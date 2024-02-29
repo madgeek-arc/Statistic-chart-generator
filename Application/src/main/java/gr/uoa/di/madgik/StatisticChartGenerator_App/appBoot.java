@@ -11,7 +11,6 @@ import gr.uoa.di.madgik.ChartDataFormatter.Utility.YamlPropertySourceFactory;
 
 import java.util.Properties;
 
-@ComponentScan(basePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})
 @SpringBootApplication(scanBasePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})
 @PropertySource(value="classpath:application.yml", factory = YamlPropertySourceFactory.class)
 public class appBoot extends SpringBootServletInitializer {

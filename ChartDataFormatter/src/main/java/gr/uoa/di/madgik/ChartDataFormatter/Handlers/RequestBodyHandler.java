@@ -164,7 +164,7 @@ public class RequestBodyHandler {
                     serie.setQuery(requestInfo.getQueries().get(i));
                     serie.setRows(new ArrayList<>());
 
-                    for (List<String> row:result.getRows()) {
+                    for (List<?> row:result.getRows()) {
                         serie.getRows().add(new VerboseRawDataRow(row));
                     }
 

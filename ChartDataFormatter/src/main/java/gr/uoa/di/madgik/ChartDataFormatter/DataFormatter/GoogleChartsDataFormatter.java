@@ -2,14 +2,20 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.GoogleChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+
+import static gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils.parseValue;
 
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
  * to a format convenient for GoogleCharts library.
+ *
  * @see DataFormatter
  */
 public class GoogleChartsDataFormatter extends DataFormatter {
@@ -32,7 +38,7 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         List<SupportedChartTypes> chartTypes = (List<SupportedChartTypes>) args[0];
         List<String> chartNames = (List<String>) args[1];
 
-        if(dbAccessResults.size() == 1 && chartNames.size() == 1)
+        if (dbAccessResults.size() == 1 && chartNames.size() == 1)
             return singleToGoogleChartsJsonResponse(dbAccessResults.get(0), chartNames.get(0), chartTypes.get(0));
 
         List<List<Object>> formattedDataTable = new ArrayList<>();
@@ -44,30 +50,30 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         HashMap<String, SupportedChartTypes> namesToTypes = new HashMap<>();
 
 
-        for( int i=0; i < dbAccessResults.size(); i++ ){
+        for (int i = 0; i < dbAccessResults.size(); i++) {
             Result result = dbAccessResults.get(i);
 
             if (result.getRows().isEmpty())
                 continue;
 
-            if( result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
+            if (result.getRows().get(0).size() != 2 && result.getRows().get(0).size() != 3)
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
 
 
             HashMap<String, String> XtoYMapping = null;
-            if(result.getRows().get(0).size() == 2) {
+            if (result.getRows().get(0).size() == 2) {
 
                 XtoYMapping = new HashMap<>();
-                String chartName = chartNames.get(i) == null ? "Series " + (i+1) : chartNames.get(i);
+                String chartName = chartNames.get(i) == null ? "Series " + (i + 1) : chartNames.get(i);
                 namesToDataSeries.put(chartName, XtoYMapping);
                 namesToTypes.put(chartName, chartTypes.get(i));
             }
 
-            for (List<String> row : result.getRows()) {
+            for (List<?> row : result.getRows()) {
 
-                if(row.size() == 3){
+                if (row.size() == 3) {
                     // The value of the 2nd Group BY
-                    String xValueB = row.get(2);
+                    String xValueB = String.valueOf(row.get(2));
                     if (!namesToDataSeries.containsKey(xValueB)) {
                         namesToDataSeries.put(xValueB, new HashMap<>());
                         namesToTypes.put(xValueB, chartTypes.get(i));
@@ -77,10 +83,10 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 }
 
                 // Get the first groupBy of the result row
-                String yValue = row.get(0);
-                String xValue = row.get(1);
+                String yValue = String.valueOf(row.get(0));
+                String xValue = String.valueOf(row.get(1));
 
-                if(XtoYMapping != null)
+                if (XtoYMapping != null)
                     XtoYMapping.put(xValue, yValue);
                 else
                     throw new DataFormationException("XtoYMapping HashMap is NULL");
@@ -102,10 +108,10 @@ public class GoogleChartsDataFormatter extends DataFormatter {
             ArrayList<Object> rowValuesArray = new ArrayList<>();
             rowValuesArray.add(xValue);
 
-            for (String dataSeriesName: dataSeriesNames) {
+            for (String dataSeriesName : dataSeriesNames) {
                 HashMap<String, String> XtoYMapping = namesToDataSeries.get(dataSeriesName);
 
-                if(dataSeriesTypes.size() < dataSeriesNames.size()) {
+                if (dataSeriesTypes.size() < dataSeriesNames.size()) {
                     SupportedChartTypes chartType = namesToTypes.get(dataSeriesName);
 
                     switch (chartType) {
@@ -128,12 +134,8 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 if (XtoYMapping.containsKey(xValue)) {
 
                     String yValue = XtoYMapping.get(xValue);
-                    if(yValue == null)
-                        rowValuesArray.add(null);
-                    else if (yValue.contains("."))
-                        rowValuesArray.add(Float.parseFloat(yValue));
-                    else
-                        rowValuesArray.add(Integer.parseInt(yValue));
+                    rowValuesArray.add(parseValue(yValue));
+
                 } else
                     rowValuesArray.add(null);
             }
@@ -151,37 +153,32 @@ public class GoogleChartsDataFormatter extends DataFormatter {
     private GoogleChartsJsonResponse singleToGoogleChartsJsonResponse(Result result, String chartName, SupportedChartTypes chartType) throws DataFormationException {
 
         //There are no Results
-        if(result.getRows().isEmpty())
+        if (result.getRows().isEmpty())
             return singleGCSingleGroupBy(result, chartName);
 
-        if(result.getRows().get(0).size() == 2)
+        if (result.getRows().get(0).size() == 2)
             return singleGCSingleGroupBy(result, chartName);
-        else if(result.getRows().get(0).size() == 3)
+        else if (result.getRows().get(0).size() == 3)
             return singleHCDoubleGroupBy(result, chartType);
         else
             throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
     }
 
-    private GoogleChartsJsonResponse singleGCSingleGroupBy(Result result, String chartName){
+    private GoogleChartsJsonResponse singleGCSingleGroupBy(Result result, String chartName) {
         List<List<Object>> formattedDataTable = new ArrayList<>();
 
         ArrayList<String> headerValuesArray = new ArrayList<>();
         headerValuesArray.add(null);
         headerValuesArray.add(chartName);
 
-        for (List<String> row : result.getRows()) {
+        for (List<?> row : result.getRows()) {
             ArrayList<Object> valuesArray = new ArrayList<>();
 
-            String yValue = row.get(0);
-            String xValue = row.get(1);
+            String yValue = String.valueOf(row.get(0));
+            String xValue = String.valueOf(row.get(1));
 
             valuesArray.add(xValue);
-            if(yValue == null)
-                valuesArray.add(null);
-            else if( yValue.contains("."))
-                valuesArray.add(Float.parseFloat(yValue));
-            else
-                valuesArray.add(Integer.parseInt(yValue));
+            valuesArray.add(parseValue(yValue));
 
             formattedDataTable.add(valuesArray);
         }
@@ -189,17 +186,17 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         return new GoogleChartsJsonResponse(formattedDataTable, headerValuesArray, null);
     }
 
-    private GoogleChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType){
+    private GoogleChartsJsonResponse singleHCDoubleGroupBy(Result result, SupportedChartTypes chartType) {
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
 
-        for (List<String> row : result.getRows()) {
+        for (List<?> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
-            String groupByValue = row.get(2);
-            String xValueA = row.get(1);
+            String groupByValue = String.valueOf(row.get(2));
+            String xValueA = String.valueOf(row.get(1));
             // I assume that always the first value of the row is for the Y value
-            String yValue = row.get(0);
+            String yValue = String.valueOf(row.get(0));
 
             if (!groupByMap.containsKey(groupByValue))
                 groupByMap.put(groupByValue, new HashMap<>());
@@ -225,15 +222,9 @@ public class GoogleChartsDataFormatter extends DataFormatter {
                 if (XValueToYValueMapping.containsKey(xValue)) {
 
                     String yValue = XValueToYValueMapping.get(xValue);
+                    valuesArray.add(parseValue(yValue));
 
-                    if (yValue == null)
-                        valuesArray.add(null);
-                    else if (yValue.contains("."))
-                        valuesArray.add(Float.parseFloat(yValue));
-                    else
-                        valuesArray.add(Integer.parseInt(yValue));
-                }
-                else
+                } else
                     valuesArray.add(null);
 
             }

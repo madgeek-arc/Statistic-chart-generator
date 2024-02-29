@@ -4,20 +4,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Result {
-    private List<List<String>> rows = new ArrayList<>();
+    private List<List<?>> rows = new ArrayList<>();
 
     public Result() {
     }
 
-    public List<List<String>> getRows() {
+    public List<List<?>> getRows() {
         return rows;
     }
 
-    public void setRows(List<List<String>> rows) {
+    public void setRows(List<List<?>> rows) {
         this.rows = rows;
     }
 
-    public void addRow(List<String> row) {
+    public void addRow(List<?> row) {
         rows.add(row);
     }
 

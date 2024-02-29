@@ -3,18 +3,21 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+
+import static gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils.parseValue;
 
 
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
  * to a format convenient for HighCharts library.
+ *
  * @see DataFormatter
  */
-public class HighChartsDataFormatter extends DataFormatter{
+public class HighChartsDataFormatter extends DataFormatter {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
@@ -59,22 +62,21 @@ public class HighChartsDataFormatter extends DataFormatter{
                                                                   String chartName) throws DataFormationException {
 
         //There are no Results
-        if(result.getRows().isEmpty())
+        if (result.getRows().isEmpty())
             return HCSingleGroupBy(result, chartType, chartName);
-        
+
         //If there are results handle them by row size
-        switch(result.getRows().get(0).size())
-        {
+        switch (result.getRows().get(0).size()) {
             case 2:
                 return HCSingleGroupBy(result, chartType, chartName);
             case 3:
 
-                if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
+                if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, false, chartType, chartName);
 
                 return HCDoubleGroupBy(result, chartType);
             case 4:
-                if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
+                if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, true, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
@@ -82,9 +84,9 @@ public class HighChartsDataFormatter extends DataFormatter{
 
     }
 
-    private HighChartsJsonResponse HCSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
+    private HighChartsJsonResponse HCSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName) {
 
-        LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
         switch (chartType) {
@@ -94,42 +96,33 @@ public class HighChartsDataFormatter extends DataFormatter{
             case line:
             case treemap:
                 ArrayList<Number> yValuesArray = new ArrayList<>();
-                for (List<String> row : result.getRows()) {
+                for (List<?> row : result.getRows()) {
 
-                    String xValue = row.get(1);
+                    String xValue = String.valueOf(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = row.get(0);
-                    if(yValue == null)
-                        yValuesArray.add(null);
-                    else if (yValue.contains("."))
-                        yValuesArray.add(Float.parseFloat(yValue));
-                    else
-                        yValuesArray.add(Integer.parseInt(yValue));
+                    String yValue = String.valueOf(row.get(0));
+                    yValuesArray.add(parseValue(yValue));
+
                 }
                 dataSeries.add(new ArrayOfValues(yValuesArray));
                 break;
 
             case pie:
                 ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
-                for (List<String> row : result.getRows()) {
+                for (List<?> row : result.getRows()) {
 
-                    String xValue = row.get(1);
+                    String xValue = String.valueOf(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = row.get(0);
-                    if(yValue == null)
-                        yObjectValuesArray.add(new DataObject(xValue , null));
-                    else if (yValue.contains("."))
-                        yObjectValuesArray.add(new DataObject(xValue , Float.parseFloat(yValue)));
-                    else
-                        yObjectValuesArray.add(new DataObject(xValue ,Integer.parseInt(yValue)));
+                    String yValue = String.valueOf(row.get(0));
+                    yObjectValuesArray.add(new DataObject(xValue, parseValue(yValue)));
                 }
                 dataSeries.add(new ArrayOfDataObjects(yObjectValuesArray));
                 break;
@@ -143,23 +136,23 @@ public class HighChartsDataFormatter extends DataFormatter{
         ArrayList<String> chartTypes = new ArrayList<>();
         chartTypes.add(chartType.name());
 
-        return new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
+        return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
-    private HighChartsJsonResponse HCDoubleGroupBy(Result result, SupportedChartTypes chartType){
+    private HighChartsJsonResponse HCDoubleGroupBy(Result result, SupportedChartTypes chartType) {
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
-        for (List<String> row : result.getRows()) {
+        for (List<?> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
-            String groupByValue = row.get(2);
-            String xValueA = row.get(1);
+            String groupByValue = String.valueOf(row.get(2));
+            String xValueA = String.valueOf(row.get(1));
             // I assume that always the first value of the row is for the Y value
-            String yValue = row.get(0);
+            String yValue = String.valueOf(row.get(0));
 
             if (!groupByMap.containsKey(groupByValue))
                 groupByMap.put(groupByValue, new HashMap<>());
@@ -186,15 +179,9 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (XValueToYValueMapping.containsKey(xValue)) {
 
                             String yValue = XValueToYValueMapping.get(xValue);
+                            yValuesArray.add(parseValue(yValue));
 
-                            if (yValue == null)
-                                yValuesArray.add(null);
-                            else if (yValue.contains("."))
-                                yValuesArray.add(Float.parseFloat(yValue));
-                            else
-                                yValuesArray.add(Integer.parseInt(yValue));
-                        }
-                        else
+                        } else
                             yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
@@ -213,25 +200,18 @@ public class HighChartsDataFormatter extends DataFormatter{
 
                     HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
 
-                    Float pieSliceSum = new Float(0);
+                    float pieSliceSum = 0;
                     ArrayList<DataObject> drillDownSliceValuesArray = new ArrayList<>();
 
                     for (String xValue : xAxis_categories.keySet()) {
 
                         String yValue = XValueToYValueMapping.get(xValue);
+                        Number value = parseValue(yValue);
+                        drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                        if (value != null) {
+                            pieSliceSum += value.floatValue();
+                        }
 
-                        if (yValue == null)
-                            drillDownSliceValuesArray.add(new DataObject(xValue, null));
-                        else if (yValue.contains(".")) {
-                            Float value = Float.parseFloat(yValue);
-                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
-                            pieSliceSum += value;
-                        }
-                        else {
-                            Integer value = Integer.parseInt(yValue);
-                            drillDownSliceValuesArray.add(new DataObject(xValue, value));
-                            pieSliceSum += value;
-                        }
                     }
                     drillDownArray.add(new ArrayOfDataObjects(drillDownSliceValuesArray));
 
@@ -245,7 +225,7 @@ public class HighChartsDataFormatter extends DataFormatter{
                 dataSeriesTypes.add(chartType.name());
                 log.debug("Added " + chartType.name());
 
-                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
+                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
                         null, dataSeriesTypes);
                 ret.setDrilldown(drillDownArray);
                 return ret;
@@ -257,7 +237,7 @@ public class HighChartsDataFormatter extends DataFormatter{
     }
 
     private HighChartsJsonResponse multiToHighChartsJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType, List<String> chartNames) throws DataFormationException {
-        
+
         // A sorted List with all the possible x values occurring from the Queries.
         List<String> xAxis_Categories = this.getXAxisCategories(dbAccessResults);
 
@@ -280,11 +260,11 @@ public class HighChartsDataFormatter extends DataFormatter{
                 namesToTypes.put(chartName, chartsType.get(i));
             }
 
-            for (List<String> row : result.getRows()) {
+            for (List<?> row : result.getRows()) {
 
                 if (row.size() == 3) {
                     // The value of the 2nd Group BY
-                    String xValueB = row.get(2);
+                    String xValueB = String.valueOf(row.get(2));
                     if (!namesToDataSeries.containsKey(xValueB)) {
                         namesToDataSeries.put(xValueB, new HashMap<>());
                         namesToTypes.put(xValueB, chartsType.get(i));
@@ -294,8 +274,8 @@ public class HighChartsDataFormatter extends DataFormatter{
                 }
 
                 // Get the first groupBy of the result row
-                String yValue = row.get(0);
-                String xValue = row.get(1);
+                String yValue = String.valueOf(row.get(0));
+                String xValue = String.valueOf(row.get(1));
 
                 if (XtoYMapping != null)
                     XtoYMapping.put(xValue, yValue);
@@ -328,12 +308,8 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (XtoYMapping.containsKey(xValue)) {
 
                             String yValue = XtoYMapping.get(xValue);
-                            if (yValue == null)
-                                yValuesArray.add(null);
-                            else if (yValue.contains("."))
-                                yValuesArray.add(Float.parseFloat(yValue));
-                            else
-                                yValuesArray.add(Integer.parseInt(yValue));
+                            yValuesArray.add(parseValue(yValue));
+
                         } else
                             yValuesArray.add(null);
                     }
@@ -348,12 +324,8 @@ public class HighChartsDataFormatter extends DataFormatter{
                         if (XtoYMapping.containsKey(xValue)) {
 
                             String yValue = XtoYMapping.get(xValue);
-                            if (yValue == null)
-                                yObjectValuesArray.add(new DataObject(xValue, null));
-                            else if (yValue.contains("."))
-                                yObjectValuesArray.add(new DataObject(xValue, Float.parseFloat(yValue)));
-                            else
-                                yObjectValuesArray.add(new DataObject(xValue, Integer.parseInt(yValue)));
+                            yObjectValuesArray.add(new DataObject(xValue, parseValue(yValue)));
+
                         } else
                             yObjectValuesArray.add(new DataObject(xValue, null));
                     }
@@ -368,46 +340,42 @@ public class HighChartsDataFormatter extends DataFormatter{
             }
         }
 
-        return new HighChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
+        return new HighChartsJsonResponse(dataSeries, xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
     /**
      * Highcharts Dependency Wheel and Sankey data are :
      * <p> | from node (string) | to node (string) | from-to edge weight (int) |
      * <p>In this method, we aim to create the above data representation into GraphData
-     * 
      */
-    private HighChartsJsonResponse HCGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
+    private HighChartsJsonResponse HCGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName) {
         // For the purpose of making this as scalable as possible, we will consider the following assumption:
         // The named query for the dependency wheel responds with the following rows :
         //  4 rows result: | from node | from node value | to node | from-to edge weight |
         //  3 rows result: | from node | to node | from-to edge weight |
-        
+
         // Initialize the keys array
         List<String> keys = Arrays.asList("from", "to", "weight");
 
         // Initialize the data array
         ArrayList<Object[]> data = new ArrayList<>(result.getRows().size());
 
-        for (List<String> row : result.getRows()) {
-            
+        for (List<?> row : result.getRows()) {
+
             // Initialize each data row with exactly the size of the keys
             ArrayList<Object> dataRow = new ArrayList<>();
-            
+
             dataRow.add(row.get(0));
 
             // Ignore the 'from' node weight
-            if(ignoreNodeWeight)
-            {  
+            if (ignoreNodeWeight) {
                 dataRow.add(row.get(2));
                 // We assume the node and edge values are Integers
-                dataRow.add(Integer.parseInt(row.get(3)));
-            }
-            else
-            {
+                dataRow.add(Integer.parseInt(String.valueOf(row.get(3))));
+            } else {
                 dataRow.add(row.get(1));
                 // We assume the node and edge values are Integers
-                dataRow.add(Integer.parseInt(row.get(2)));
+                dataRow.add(Integer.parseInt(String.valueOf(row.get(2))));
             }
             // Push the row into the data list
             data.add(dataRow.stream().toArray());
