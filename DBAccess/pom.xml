@@ -119,9 +119,9 @@
 
     <repositories>
         <repository>
-            <id>omtd</id>
-            <name>openminted releases</name>
-            <url>https://repo.openminted.eu/content/repositories/releases/</url>
+            <id>madgik-releases</id>
+            <name>Madgik Releases</name>
+            <url>https://repo.madgik.di.uoa.gr/content/repositories/releases/</url>
         </repository>
         <repository>
             <id>icm</id>
