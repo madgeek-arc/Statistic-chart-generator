@@ -465,6 +465,8 @@ function convertToValidHighchartJson(responseData, originJson){
 
         if(seriesInstance.type == "treemap")
         {
+            // Add the squarified layout algorithm as a default in treemaps
+            seriesInstance.layoutAlgorithm = 'squarified';
             seriesInstance.data = [];
             for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
 
@@ -474,7 +476,7 @@ function convertToValidHighchartJson(responseData, originJson){
                 seriesInstance.data.push({ name: dataName, value: dataValue, colorValue: dataValue });
             }
         }
-        if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
+        else if(seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey")
         {
             seriesInstance.data = responseData.series[index].data;
             seriesInstance.keys = responseData.series[index].keys;
