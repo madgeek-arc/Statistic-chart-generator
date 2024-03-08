@@ -1,7 +1,5 @@
 package gr.uoa.di.madgik.statstool.mapping.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.util.List;
 
 public class MappingProfile {
@@ -14,7 +12,8 @@ public class MappingProfile {
     private boolean hidden;
     private String file;
 
-    MappingProfile() {}
+    MappingProfile() {
+    }
 
     public String getName() {
         return name;

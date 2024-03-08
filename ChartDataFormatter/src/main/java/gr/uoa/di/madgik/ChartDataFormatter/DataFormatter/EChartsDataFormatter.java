@@ -4,13 +4,19 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataReprese
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsDataObject;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsGraphData;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.EChartsDataRepresentation.EChartsGraphLink;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.ArrayOfDataObjects;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.ArrayOfValues;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.DataObject;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 import static gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils.parseValue;
 
@@ -18,9 +24,10 @@ import static gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils.parseValue
 /**
  * Extends DataFormatter handling the formation of data returned from DBAccess
  * to a format convenient for HighCharts library.
+ *
  * @see DataFormatter
  */
-public class EChartsDataFormatter extends DataFormatter{
+public class EChartsDataFormatter extends DataFormatter {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
@@ -132,7 +139,7 @@ public class EChartsDataFormatter extends DataFormatter{
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
                     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
-                    if(chartType.name().equals("column")) {
+                    if (chartType.name().equals("column")) {
                         dataSeriesTypes.add("bar");
                         log.debug("Added " + "bar");
                     } else {
@@ -164,7 +171,7 @@ public class EChartsDataFormatter extends DataFormatter{
             }
         }
 
-        return new EChartsJsonResponse(dataSeries,xAxis_Categories, dataSeriesNames, dataSeriesTypes);
+        return new EChartsJsonResponse(dataSeries, xAxis_Categories, dataSeriesNames, dataSeriesTypes);
     }
 
     private List<String> getXAxisCategories(List<Result> dbAccessResults) {
@@ -177,31 +184,30 @@ public class EChartsDataFormatter extends DataFormatter{
                                                             String chartName) throws DataFormationException {
 
         //There are no Results
-        if(result.getRows().isEmpty())
+        if (result.getRows().isEmpty())
             return ECSingleGroupBy(result, chartType, chartName);
-        
-            //If there are results handle them by row size
-        switch(result.getRows().get(0).size())
-        {
+
+        //If there are results handle them by row size
+        switch (result.getRows().get(0).size()) {
             case 2:
                 return ECSingleGroupBy(result, chartType, chartName);
             case 3:
 
-            if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
+                if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return ECGraph(result, true, chartType, chartName);
 
                 return ECDoubleGroupBy(result, chartType);
             case 4:
-            if(chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
+                if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return ECGraph(result, false, chartType, chartName);
             default:
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
         }
     }
 
-    private EChartsJsonResponse ECSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName){
+    private EChartsJsonResponse ECSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName) {
 
-        LinkedHashMap<String,Integer> xAxis_categories = new LinkedHashMap<>();
+        LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         ArrayList<AbsData> dataSeries = new ArrayList<>();
 
         switch (chartType) {
@@ -251,15 +257,15 @@ public class EChartsDataFormatter extends DataFormatter{
         chartNames.add(chartName);
         ArrayList<String> chartTypes = new ArrayList<>();
         // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
-        if(chartType.name().equals("column"))
+        if (chartType.name().equals("column"))
             chartTypes.add("bar");
         else
             chartTypes.add(chartType.name());
 
-        return new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
+        return new EChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
-    private EChartsJsonResponse ECDoubleGroupBy(Result result, SupportedChartTypes chartType){
+    private EChartsJsonResponse ECDoubleGroupBy(Result result, SupportedChartTypes chartType) {
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
@@ -301,13 +307,12 @@ public class EChartsDataFormatter extends DataFormatter{
                             String yValue = XValueToYValueMapping.get(xValue);
                             yValuesArray.add(parseValue(yValue));
 
-                        }
-                        else
+                        } else
                             yValuesArray.add(null);
                     }
                     dataSeries.add(new ArrayOfValues(yValuesArray));
                     // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
-                    if(chartType.name().equals("column")) {
+                    if (chartType.name().equals("column")) {
                         dataSeriesTypes.add("bar");
                         log.debug("Added " + "bar");
                     } else {
@@ -352,7 +357,7 @@ public class EChartsDataFormatter extends DataFormatter{
                 dataSeries.add(new ArrayOfDataObjects(mainSlicesValuesArray));
 
                 // in eCharts a column chart is a bar chart and a bar chart is a bar chart with the categories on yAxis
-                if(chartType.name().equals("column")) {
+                if (chartType.name().equals("column")) {
                     dataSeriesTypes.add("bar");
                     log.debug("Added " + "bar");
                 } else {
@@ -360,7 +365,7 @@ public class EChartsDataFormatter extends DataFormatter{
                     log.debug("Added " + chartType.name());
                 }
 
-                EChartsJsonResponse ret = new EChartsJsonResponse(dataSeries,new ArrayList<>(xAxis_categories.keySet()),
+                EChartsJsonResponse ret = new EChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
                         null, dataSeriesTypes);
                 ret.setDrilldown(drillDownArray);
                 return ret;
@@ -371,7 +376,7 @@ public class EChartsDataFormatter extends DataFormatter{
         }
     }
 
-    private EChartsJsonResponse ECGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName){
+    private EChartsJsonResponse ECGraph(Result result, boolean ignoreNodeWeight, SupportedChartTypes chartType, String chartName) {
         // For the purpose of making this as scalable as possible, we will consider the following assumption:
         // The query for the dependency wheel responds with the following rows :
         //  4 rows result: | from node | from node value | to node | from-to edge weight |
@@ -380,28 +385,27 @@ public class EChartsDataFormatter extends DataFormatter{
         // ECharts Dependency Wheel and Sankey data are :
         // links : [{source, target , value(optional)}]
         // data : [{name, value}]
-        
+
         List<EChartsGraphLink> links = new ArrayList<>();
         List<EChartsDataObject> data = new ArrayList<>();
 
         // At this point we know that the result has 3 or 4 rows
-        if(ignoreNodeWeight)
-        {   
+        if (ignoreNodeWeight) {
             // The HashMap will help us find the fromNode value
             HashMap<String, Number> nodeToValueMap = new HashMap<>();
             for (List<?> row : result.getRows()) {
-                
+
                 // We assume the node and edge values are Integers
 
                 String fromNode = String.valueOf(row.get(0));
                 String toNode = String.valueOf(row.get(1));
                 Number edgeWeight = Integer.parseInt(String.valueOf(row.get(2)));
-                
+
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
 
                 // Add the edgeWeight in the HashMap with the fromNode as a key
                 Number tempNodeValue = nodeToValueMap.putIfAbsent(fromNode, edgeWeight);
-                if(tempNodeValue != null)
+                if (tempNodeValue != null)
                     nodeToValueMap.put(fromNode, tempNodeValue.intValue() + edgeWeight.intValue());
             }
 
@@ -410,23 +414,21 @@ public class EChartsDataFormatter extends DataFormatter{
                 data.add(new EChartsDataObject(fromNode, fromNodeValue));
             });
 
-        }
-        else
-        {   
+        } else {
             // The HashMap will help us find the fromNode value
             HashMap<String, Number> nodeToValueMap = new HashMap<>();
-            
+
             for (List<?> row : result.getRows()) {
-                
+
                 // We assume the node and edge values are Integers
 
                 String fromNode = String.valueOf(row.get(0));
                 Number fromNodeValue = Integer.parseInt(String.valueOf(row.get(1)));
                 String toNode = String.valueOf(row.get(2));
                 Number edgeWeight = Integer.parseInt(String.valueOf(row.get(3)));
-                
+
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
-                
+
                 // Add the edgeWeight in the HashMap with the fromNode as a key
                 nodeToValueMap.putIfAbsent(fromNode, fromNodeValue);
             }

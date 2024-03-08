@@ -1,71 +1,82 @@
 {
-    "library" : "HighCharts",
-
-    "chartDescription": 
-    {
-        "chart": {
-            "type": "line"
-        },
-        "title": {
-            "text": "Publications per Year"
-        },        
-        "yAxis": {
-            "title": {
-            "text": "# of Publications"
+  "library": "HighCharts",
+  "chartDescription": {
+    "chart": {
+      "type": "line"
+    },
+    "title": {
+      "text": "Publications per Year"
+    },
+    "yAxis": {
+      "title": {
+        "text": "# of Publications"
+      }
+    },
+    "queries": [
+      {
+        "color": "#00ff00",
+        "query": {
+          "filters": [
+            {
+              "field": "project.publication.year",
+              "type": "between",
+              "values": [
+                "2010",
+                "2015"
+              ]
+            },
+            {
+              "field": "project.funding level 0",
+              "type": "=",
+              "values": [
+                "H2020"
+              ]
             }
-        },
-        "queries": [{
-            "color": "#00ff00",
-            "query": {
-                "filters": [
-                    {
-                        "field": "project.publication.year",
-                        "type": "between",
-                        "values": ["2010", "2015"]
-                    },
-                    {	"field": "project.funding level 0",
-                        "type": "=",
-                        "values": ["H2020"]
-                    }
-                ],
-                "select": [
-                    {
-                        "aggregate": "count",
-                        "field": "project"
-                    },
-                    {
-                        "field": "project.publication.year"
-                    }
-                ],
-                "entity": "project"
+          ],
+          "select": [
+            {
+              "aggregate": "count",
+              "field": "project"
+            },
+            {
+              "field": "project.publication.year"
             }
-
-        },
-        {   
-            "color": "#FFD700",
-            "query":{
-            "filters": [
-                {
-                    "field": "project.publication.year",
-                    "type": "between",
-                    "values": ["2010", "2015"]
-                },
-                {	"field": "project.funding level 0",
-                    "type": "=",
-                    "values": ["FP7"]
-                }
-            ],
-            "select": [
-                {
-                    "aggregate": "count",
-                    "field": "project"
-                },
-                {
-                    "field": "project.publication.year"
-                }
-            ],
-            "entity": "project"
+          ],
+          "entity": "project"
+        }
+      },
+      {
+        "color": "#FFD700",
+        "query": {
+          "filters": [
+            {
+              "field": "project.publication.year",
+              "type": "between",
+              "values": [
+                "2010",
+                "2015"
+              ]
+            },
+            {
+              "field": "project.funding level 0",
+              "type": "=",
+              "values": [
+                "FP7"
+              ]
             }
-        }]        
-    }
+          ],
+          "select": [
+            {
+              "aggregate": "count",
+              "field": "project"
+            },
+            {
+              "field": "project.publication.year"
+            }
+          ],
+          "entity": "project"
+        }
+      }
+    ]
+  }
 }

@@ -1,17 +1,15 @@
 package gr.uoa.di.madgik.ChartDataFormatter.RestControllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedChartTypes;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.Service.SupportedDiagramsService;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ShortenUrlInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
-
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +31,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/chart")
-@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
+@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST}, origins = "*")
 public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
@@ -47,7 +45,7 @@ public class ChartDataFormatterRestController {
     }
 
     @GetMapping
-    public ModelAndView content(Model model){
+    public ModelAndView content(Model model) {
 
         return new ModelAndView("chart");
     }
@@ -59,9 +57,9 @@ public class ChartDataFormatterRestController {
      * @return A {@link ResponseEntity} with a {@link JsonResponse} as its body with the requested data properly formatted for the supported library.
      */
     @PostMapping(consumes = "application/json; charset=UTF-8",
-                produces = "application/json; charset=UTF-8")
+            produces = "application/json; charset=UTF-8")
     public @ResponseBody ResponseEntity<JsonResponse>
-    postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
+    postFullChartRepresentation(@RequestBody RequestInfo requestJson) {
 
         JsonResponse responseData;
 
@@ -83,44 +81,45 @@ public class ChartDataFormatterRestController {
 
     @GetMapping(path = "/libraries",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<String[]> getSupportedLibraries(){
+    public @ResponseBody ResponseEntity<String[]> getSupportedLibraries() {
 
         String[] supportedLibraries = getNames(SupportedLibraries.class);
         return new ResponseEntity<>(supportedLibraries, HttpStatus.OK);
     }
 
-    @GetMapping( path = "/types",
+    @GetMapping(path = "/types",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart>> getSupportedChartTypes(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart>> getSupportedChartTypes() {
 
         List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart> supportedTypes = this.supportedDiagramsService.getSupportedCharts();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
-    @GetMapping( path = "/polar/types",
-    produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar>> getSupportedPolarTypes(){
+
+    @GetMapping(path = "/polar/types",
+            produces = "application/json; charset=UTF-8")
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar>> getSupportedPolarTypes() {
 
         List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar> supportedTypes = this.supportedDiagramsService.getSupportedPolars();
         return new ResponseEntity<>(supportedTypes, HttpStatus.OK);
     }
 
-    @GetMapping( path = "/maps",
+    @GetMapping(path = "/maps",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap>> getSupportedMaps(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap>> getSupportedMaps() {
 
         List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap> supportedMaps = this.supportedDiagramsService.getSupportedMaps();
         return new ResponseEntity<>(supportedMaps, HttpStatus.OK);
     }
 
-    @GetMapping( path = "/special",
+    @GetMapping(path = "/special",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram>> getSupportedSpecialisedChartTypes(){
+    public @ResponseBody ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram>> getSupportedSpecialisedChartTypes() {
 
         List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram> supportedSpecialCharts = this.supportedDiagramsService.getSupportedSpecialDiagrams();
         return new ResponseEntity<>(supportedSpecialCharts, HttpStatus.OK);
     }
 
-    @GetMapping( path = "/misc",
+    @GetMapping(path = "/misc",
             produces = "application/json; charset=UTF-8")
     public ResponseEntity<List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc>> getSupportedMiscTypes() {
         List<gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc> supportedMiscs = this.supportedDiagramsService.getSupportedMiscs();
@@ -128,20 +127,20 @@ public class ChartDataFormatterRestController {
         return new ResponseEntity<>(supportedMiscs, HttpStatus.OK);
     }
 
-    @PostMapping( path = "/shorten",
-                consumes = "application/json; charset=UTF-8",
-                produces = "application/json; charset=UTF-8")
+    @PostMapping(path = "/shorten",
+            consumes = "application/json; charset=UTF-8",
+            produces = "application/json; charset=UTF-8")
     public @ResponseBody ResponseEntity<JSONObject> shortenChartUrl(@RequestBody ShortenUrlInfo request) {
 
         String url = request.getUrlToShorten();
-        String getUrl = "https://tinyurl.com/api-create.php?url="+url;
+        String getUrl = "https://tinyurl.com/api-create.php?url=" + url;
 
         RestTemplate rt = new RestTemplate();
         String shortenedUrl = null;
         JSONObject response = new JSONObject();
         try {
             URI getUri = new URI(getUrl);
-            ResponseEntity<String> responseEntity =  rt.getForEntity(getUri,String.class);
+            ResponseEntity<String> responseEntity = rt.getForEntity(getUri, String.class);
             shortenedUrl = responseEntity.getBody().toString();
             log.debug(shortenedUrl);
 
@@ -155,9 +154,9 @@ public class ChartDataFormatterRestController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping( path = "/json",
+    @GetMapping(path = "/json",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name="json") String json){
+    public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name = "json") String json) {
 
         JsonResponse responseData;
         ObjectMapper mapper = new ObjectMapper();

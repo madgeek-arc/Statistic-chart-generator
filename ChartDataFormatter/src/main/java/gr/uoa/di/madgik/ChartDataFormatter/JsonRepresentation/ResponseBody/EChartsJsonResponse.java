@@ -2,11 +2,9 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class EChartsJsonResponse extends JsonResponse {
@@ -26,7 +24,8 @@ public class EChartsJsonResponse extends JsonResponse {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public EChartsJsonResponse() {}
+    public EChartsJsonResponse() {
+    }
 
     public EChartsJsonResponse(List<AbsData> dataSeries, List<String> xAxis_categories) {
         this.dataSeries = dataSeries;
@@ -71,15 +70,27 @@ public class EChartsJsonResponse extends JsonResponse {
         this.xAxis_categories = xAxis_categories;
     }
 
-    public List<String> getDataSeriesNames() { return dataSeriesNames; }
+    public List<String> getDataSeriesNames() {
+        return dataSeriesNames;
+    }
 
-    public void setDataSeriesNames(List<String> dataSeriesNames) { this.dataSeriesNames = dataSeriesNames; }
+    public void setDataSeriesNames(List<String> dataSeriesNames) {
+        this.dataSeriesNames = dataSeriesNames;
+    }
 
-    public List<String> getDataSeriesTypes() { return dataSeriesTypes; }
+    public List<String> getDataSeriesTypes() {
+        return dataSeriesTypes;
+    }
 
-    public void setDataSeriesTypes(List<String> dataSeriesType) { this.dataSeriesTypes = dataSeriesType; }
+    public void setDataSeriesTypes(List<String> dataSeriesType) {
+        this.dataSeriesTypes = dataSeriesType;
+    }
 
-    public List<AbsData> getDrilldown() { return drilldown; }
+    public List<AbsData> getDrilldown() {
+        return drilldown;
+    }
 
-    public void setDrilldown(List<AbsData> drilldown) { this.drilldown = drilldown; }
+    public void setDrilldown(List<AbsData> drilldown) {
+        this.drilldown = drilldown;
+    }
 }

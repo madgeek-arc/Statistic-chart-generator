@@ -5,20 +5,19 @@
 
     <groupId>gr.uoa.di.madgik</groupId>
     <artifactId>Statistic-chart-generator-ChartDataFormatter</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>2.3.1.RELEASE</version>
-        <relativePath/>
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>1.8</java.version>
-        <tomcat.version>7.0.68</tomcat.version>
+        <java.version>11</java.version>
     </properties>
 
     <dependencies>

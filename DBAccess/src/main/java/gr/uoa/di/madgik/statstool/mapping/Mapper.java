@@ -1,28 +1,18 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.mapping.domain.*;
-
-import org.apache.logging.log4j.Logger;
+import gr.uoa.di.madgik.statstool.mapping.entities.*;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
-import gr.uoa.di.madgik.statstool.mapping.entities.*;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import gr.uoa.di.madgik.statstool.domain.Filter;
-import gr.uoa.di.madgik.statstool.domain.Query;
-
-import javax.annotation.PostConstruct;
+import java.util.*;
 
 @Component
 public class Mapper {
@@ -35,29 +25,29 @@ public class Mapper {
     private ResourceLoader resourceLoader;
 
     @Autowired
-    public Mapper(@Value("${statstool.mappings.file.path}")String mappingsJson, ResourceLoader resourceLoader) {
+    public Mapper(@Value("${statstool.mappings.file.path}") String mappingsJson, ResourceLoader resourceLoader) {
         this.resourceLoader = resourceLoader;
         try {
             ObjectMapper mapper = new ObjectMapper();
             MappingProfile[] mappings = mapper.readValue(resourceLoader.getResource(mappingsJson).getURL(), MappingProfile[].class);
-            for(MappingProfile mappingProfile : mappings) {
-                if(!mappingProfile.isHidden()) {
+            for (MappingProfile mappingProfile : mappings) {
+                if (!mappingProfile.isHidden()) {
                     profiles.add(new Profile(mappingProfile.getName(), mappingProfile.getDescription(), mappingProfile.getUsage(), mappingProfile.getShareholders(), mappingProfile.getComplexity()));
                 }
                 ProfileConfiguration profileConfiguration = new ProfileConfiguration();
                 buildConfiguration(mappingProfile.getFile(), profileConfiguration);
 
-                if(mappingProfile.isPrimary()) {
+                if (mappingProfile.isPrimary()) {
                     primaryProfile = mappingProfile.getName();
                 }
 
                 Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingProfile.getFile()).getURL(), Mapping.class);
-                for(MappingEntity entity : mapping.getEntities()) {
+                for (MappingEntity entity : mapping.getEntities()) {
                     Entity schemaEntity = new Entity(entity.getName());
-                    for(MappingField field : entity.getFields()) {
+                    for (MappingField field : entity.getFields()) {
                         schemaEntity.addField(new EntityField(field.getName(), field.getDatatype()));
                     }
-                    for(String relation : entity.getRelations()) {
+                    for (String relation : entity.getRelations()) {
                         schemaEntity.addRelation(relation);
                     }
                     profileConfiguration.entities.put(entity.getName(), schemaEntity);
@@ -73,8 +63,8 @@ public class Mapper {
         try {
             ObjectMapper mapper = new ObjectMapper();
             Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingFile).getURL(), Mapping.class);
-            for(MappingEntity entity : mapping.getEntities()) {
-                if(entity.getFilters() != null) {
+            for (MappingEntity entity : mapping.getEntities()) {
+                if (entity.getFilters() != null) {
                     List<Filter> filters = new ArrayList<>();
                     for (MappingFilter filter : entity.getFilters()) {
                         filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
@@ -84,8 +74,8 @@ public class Mapper {
                     profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
                 }
 
-                for(MappingField field : entity.getFields()) {
-                    if(field.getSqlTable() != null) {
+                for (MappingField field : entity.getFields()) {
+                    if (field.getSqlTable() != null) {
                         profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
                     } else {
                         profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
@@ -93,9 +83,9 @@ public class Mapper {
                 }
             }
 
-            for(MappingRelation relation : mapping.getRelations()) {
+            for (MappingRelation relation : mapping.getRelations()) {
                 HashMap<String, List<Join>> joinsMap = new HashMap<>();
-                if(relation.getFrom().equals(relation.getTo())) {
+                if (relation.getFrom().equals(relation.getTo())) {
                     for (MappingJoin join : relation.getJoins()) {
                         List<Join> joins = joinsMap.computeIfAbsent(join.getFrom(), k -> new ArrayList<>());
                         joins.add(new Join(join.getFrom(), join.getFromField(), join.getTo(), join.getToField()));
@@ -194,7 +184,7 @@ public class Mapper {
     }
 
     public HashMap<String, Field> getFields(String profile) {
-        if(profile != null) {
+        if (profile != null) {
             return profileConfigurations.get(profile).fields;
         } else {
             return profileConfigurations.get(primaryProfile).fields;
@@ -202,7 +192,7 @@ public class Mapper {
     }
 
     public HashMap<String, Entity> getEntities(String profile) {
-        if(profile != null) {
+        if (profile != null) {
             return profileConfigurations.get(profile).entities;
         } else {
             return profileConfigurations.get(primaryProfile).entities;

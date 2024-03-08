@@ -7,11 +7,18 @@ public class ShortenUrlInfo {
     @JsonProperty(value = "url")
     private String urlToShorten;
 
-    public ShortenUrlInfo() {}
+    public ShortenUrlInfo() {
+    }
 
-    public ShortenUrlInfo(String urlToShorten) { this.urlToShorten = urlToShorten; }
+    public ShortenUrlInfo(String urlToShorten) {
+        this.urlToShorten = urlToShorten;
+    }
 
-    public String getUrlToShorten() { return urlToShorten; }
+    public String getUrlToShorten() {
+        return urlToShorten;
+    }
 
-    public void setUrlToShorten(String urlToShorten) { this.urlToShorten = urlToShorten; }
+    public void setUrlToShorten(String urlToShorten) {
+        this.urlToShorten = urlToShorten;
+    }
 }

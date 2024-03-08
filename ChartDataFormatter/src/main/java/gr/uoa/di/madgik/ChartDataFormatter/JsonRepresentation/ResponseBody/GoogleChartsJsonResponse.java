@@ -1,12 +1,11 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public class GoogleChartsJsonResponse extends JsonResponse{
+public class GoogleChartsJsonResponse extends JsonResponse {
 
     private List<List<Object>> dataTable;
     private List<String> columns;
@@ -14,7 +13,8 @@ public class GoogleChartsJsonResponse extends JsonResponse{
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public GoogleChartsJsonResponse() { }
+    public GoogleChartsJsonResponse() {
+    }
 
     public GoogleChartsJsonResponse(List<List<Object>> dataTable, List<String> columns, List<String> columnsType) {
         this.dataTable = dataTable;
@@ -31,15 +31,27 @@ public class GoogleChartsJsonResponse extends JsonResponse{
                 '}';
     }
 
-    public List<List<Object>> getDataTable() { return dataTable; }
+    public List<List<Object>> getDataTable() {
+        return dataTable;
+    }
 
-    public void setDataTable(List<List<Object>> dataTable) { this.dataTable = dataTable; }
+    public void setDataTable(List<List<Object>> dataTable) {
+        this.dataTable = dataTable;
+    }
 
-    public List<String> getColumns() { return columns; }
+    public List<String> getColumns() {
+        return columns;
+    }
 
-    public void setColumns(List<String> columns) { this.columns = columns; }
+    public void setColumns(List<String> columns) {
+        this.columns = columns;
+    }
 
-    public List<String> getColumnsType() { return columnsType; }
+    public List<String> getColumnsType() {
+        return columnsType;
+    }
 
-    public void setColumnsType(List<String> columnsType) { this.columnsType = columnsType; }
+    public void setColumnsType(List<String> columnsType) {
+        this.columnsType = columnsType;
+    }
 }

@@ -5,13 +5,16 @@ import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
@@ -40,7 +43,7 @@ public class CacheServiceImpl implements CacheService {
                 updating = true;
                 new Thread(() -> {
                     doUpdateCache();
-                    this.updating=false;
+                    this.updating = false;
                 }).start();
             } else
                 throw new IllegalStateException("Cache is already being updated. Please, come back later");
@@ -73,7 +76,7 @@ public class CacheServiceImpl implements CacheService {
         entries.parallelStream().forEach(entry -> {
             try {
 
-                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
+                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit * 1000) {
                     i.getAndIncrement();
                     log.debug(i.get() + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
 
@@ -91,7 +94,7 @@ public class CacheServiceImpl implements CacheService {
 
                 statsCache.storeEntry(entry);
             } catch (JsonProcessingException e) {
-                log.error("Error storing cache entry" ,e);
+                log.error("Error storing cache entry", e);
             } catch (Exception e) {
                 log.error("Error updating entry " + entry, e);
                 statsCache.deleteEntry(entry.getKey());
@@ -136,10 +139,10 @@ class EntriesComparator implements Comparator<CacheEntry> {
             return 1;
 
         if (o1.getSessionHits() != o2.getSessionHits())
-            return o1.getSessionHits() > o2.getSessionHits()?-1:1;
+            return o1.getSessionHits() > o2.getSessionHits() ? -1 : 1;
 
         if (o1.getTotalHits() != o2.getTotalHits())
-            return o1.getTotalHits() > o2.getTotalHits()?-1:1;
+            return o1.getTotalHits() > o2.getTotalHits() ? -1 : 1;
 
         return 0;
     }

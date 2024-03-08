@@ -1,10 +1,8 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import gr.uoa.di.madgik.statstool.domain.Query;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 

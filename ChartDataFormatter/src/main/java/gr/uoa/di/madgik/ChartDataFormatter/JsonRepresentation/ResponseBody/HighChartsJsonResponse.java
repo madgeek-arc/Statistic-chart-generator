@@ -1,7 +1,8 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
+
 import java.util.List;
 
 public class HighChartsJsonResponse extends JsonResponse {
@@ -19,7 +20,8 @@ public class HighChartsJsonResponse extends JsonResponse {
 
     private List<AbsData> drilldown;
 
-    public HighChartsJsonResponse() {}
+    public HighChartsJsonResponse() {
+    }
 
     public HighChartsJsonResponse(List<AbsData> dataSeries, List<String> xAxis_categories) {
         this.dataSeries = dataSeries;
@@ -48,23 +50,43 @@ public class HighChartsJsonResponse extends JsonResponse {
                 '}';
     }
 
-    public List<AbsData> getDataSeries() { return dataSeries; }
+    public List<AbsData> getDataSeries() {
+        return dataSeries;
+    }
 
-    public void setDataSeries(List<AbsData> dataSeries) { this.dataSeries = dataSeries; }
+    public void setDataSeries(List<AbsData> dataSeries) {
+        this.dataSeries = dataSeries;
+    }
 
-    public List<String> getxAxis_categories() { return xAxis_categories; }
+    public List<String> getxAxis_categories() {
+        return xAxis_categories;
+    }
 
-    public void setxAxis_categories(List<String> xAxis_categories) { this.xAxis_categories = xAxis_categories; }
+    public void setxAxis_categories(List<String> xAxis_categories) {
+        this.xAxis_categories = xAxis_categories;
+    }
 
-    public List<String> getDataSeriesNames() { return dataSeriesNames; }
+    public List<String> getDataSeriesNames() {
+        return dataSeriesNames;
+    }
 
-    public void setDataSeriesNames(List<String> dataSeriesNames) { this.dataSeriesNames = dataSeriesNames; }
+    public void setDataSeriesNames(List<String> dataSeriesNames) {
+        this.dataSeriesNames = dataSeriesNames;
+    }
 
-    public List<String> getDataSeriesTypes() { return dataSeriesTypes; }
+    public List<String> getDataSeriesTypes() {
+        return dataSeriesTypes;
+    }
 
-    public void setDataSeriesTypes(List<String> dataSeriesType) { this.dataSeriesTypes = dataSeriesType; }
+    public void setDataSeriesTypes(List<String> dataSeriesType) {
+        this.dataSeriesTypes = dataSeriesType;
+    }
 
-    public List<AbsData> getDrilldown() { return drilldown; }
+    public List<AbsData> getDrilldown() {
+        return drilldown;
+    }
 
-    public void setDrilldown(List<AbsData> drilldown) { this.drilldown = drilldown; }
+    public void setDrilldown(List<AbsData> drilldown) {
+        this.drilldown = drilldown;
+    }
 }

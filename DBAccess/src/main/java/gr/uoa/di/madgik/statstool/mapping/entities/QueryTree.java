@@ -1,15 +1,9 @@
 package gr.uoa.di.madgik.statstool.mapping.entities;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
-
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.Select;
+
+import java.util.*;
 
 public class QueryTree {
     private final Node root;
@@ -71,17 +65,17 @@ public class QueryTree {
     public void addFilter(Filter filter) {
         Node parent = this.root;
         List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
-        for(int i = 0; i < fldPath.size() - 2; i++) {
-            if(i == 0) {
-                if(fldPath.size() > 3) {
+        for (int i = 0; i < fldPath.size() - 2; i++) {
+            if (i == 0) {
+                if (fldPath.size() > 3) {
                     parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
                 } else {
                     parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1));
                 }
-            } else if (i != fldPath.size() - 3){
-                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+            } else if (i != fldPath.size() - 3) {
+                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
             } else {
-                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
+                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i + 1));
             }
         }
         String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
@@ -92,17 +86,17 @@ public class QueryTree {
     public void addSelect(Select select) {
         Node parent = this.root;
         List<String> fldPath = new ArrayList<>(Arrays.asList(select.getField().split("\\.")));
-        for(int i = 0; i < fldPath.size() - 2; i++) {
-            if(i == 0) {
-                if(fldPath.size() > 3) {
+        for (int i = 0; i < fldPath.size() - 2; i++) {
+            if (i == 0) {
+                if (fldPath.size() > 3) {
                     parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
                 } else {
                     parent = addEdge(parent, fldPath.get(i), fldPath.get(i + 1));
                 }
-            } else if (i != fldPath.size() - 3){
-                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1).substring(0, fldPath.get(i+1).lastIndexOf("(")));
+            } else if (i != fldPath.size() - 3) {
+                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("(")));
             } else {
-                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i+1));
+                parent = addEdge(parent, fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1), fldPath.get(i + 1));
             }
         }
         String table = fldPath.get(fldPath.size() - 2).substring(fldPath.get(fldPath.size() - 2).indexOf(")") + 1);
@@ -130,7 +124,7 @@ public class QueryTree {
                         selects.add(new OrderedSelect(select.getOrder(), select.getField()));
                         group.add(select.getField());
                     } else {
-                        if(select.getAggregate().equals("count")) {
+                        if (select.getAggregate().equals("count")) {
                             selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(DISTINCT " + select.getField() + ")"));
                         } else {
                             selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
@@ -219,16 +213,16 @@ public class QueryTree {
                 query += " AND ";
             }
             boolean first_filter = true;
-            for(String filter : multipleFilters) {
-                if(first_filter && multipleFilters.size() > 1) {
+            for (String filter : multipleFilters) {
+                if (first_filter && multipleFilters.size() > 1) {
                     query += "(";
                     first_filter = false;
-                } else if(multipleFilters.size() > 1) {
+                } else if (multipleFilters.size() > 1) {
                     query += " or ";
                 }
                 query += filter;
             }
-            if(multipleFilters.size() > 1) {
+            if (multipleFilters.size() > 1) {
                 query += ")";
             }
         }
@@ -261,34 +255,34 @@ public class QueryTree {
         List<List<String>> mappedFilters = new ArrayList<>();
         for (Filter filter : filters) {
             List<String> multipleFilters = new ArrayList<>();
-            if(filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
-                for(String value: filter.getValues()) {
+            if (filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
+                for (String value : filter.getValues()) {
                     multipleFilters.add(filter.getField() + filter.getType() + "?");
                     parameters.add(mapType(value, filter.getDatatype()));
                 }
             } else if (filter.getType().equals("between")) {
-                for(int i = 0; i < filter.getValues().size(); i+=2) {
+                for (int i = 0; i < filter.getValues().size(); i += 2) {
                     multipleFilters.add(filter.getField() + " BETWEEN ? AND ?");
                     parameters.add(mapType(filter.getValues().get(i), filter.getDatatype()));
-                    parameters.add(mapType(filter.getValues().get(i+1), filter.getDatatype()));
+                    parameters.add(mapType(filter.getValues().get(i + 1), filter.getDatatype()));
                 }
-            } else if(filter.getType().equals("contains")) {
-                for(String value: filter.getValues()) {
+            } else if (filter.getType().equals("contains")) {
+                for (String value : filter.getValues()) {
                     multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ? || \'%\'");
                     parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                 }
-            } else if(filter.getType().equals("starts_with")) {
-                for(String value: filter.getValues()) {
+            } else if (filter.getType().equals("starts_with")) {
+                for (String value : filter.getValues()) {
                     multipleFilters.add("lower(" + filter.getField() + ") LIKE ? || \'%\'");
                     parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                 }
-            } else if(filter.getType().equals("ends_with")) {
+            } else if (filter.getType().equals("ends_with")) {
                 for (String value : filter.getValues()) {
                     multipleFilters.add("lower(" + filter.getField() + ") LIKE \'%\' || ?");
                     parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
                 }
             }
-            if(!multipleFilters.isEmpty()) {
+            if (!multipleFilters.isEmpty()) {
                 mappedFilters.add(multipleFilters);
             }
         }

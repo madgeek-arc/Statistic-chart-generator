@@ -1,25 +1,55 @@
 {
-    "library":"GoogleCharts",
-
-    "chartDescription":
-    {   
-        "chartType":"ComboChart",
-        "columns": ["Month", "Bolivia", "Ecuador", "Madagascar", "Papua New Guinea", "Rwanda", "Average"],
-        "queries":[
-            {"query": "..."},
-            {"query": "..."},
-            {"query": "..."},
-            {"query": "..."},
-            {"query": "..."},
-            {"query": "..."}
-        ],
-        "options":{
-            "title" : "Monthly Coffee Production by Country",
-            "vAxis": {"title": "Cups"},
-            "hAxis": {"title": "Month"},
-            "seriesType": "bars",
-            "series": [{},{},{},{},{},{"type": "line"}]
-      
+  "library": "GoogleCharts",
+  "chartDescription": {
+    "chartType": "ComboChart",
+    "columns": [
+      "Month",
+      "Bolivia",
+      "Ecuador",
+      "Madagascar",
+      "Papua New Guinea",
+      "Rwanda",
+      "Average"
+    ],
+    "queries": [
+      {
+        "query": "..."
+      },
+      {
+        "query": "..."
+      },
+      {
+        "query": "..."
+      },
+      {
+        "query": "..."
+      },
+      {
+        "query": "..."
+      },
+      {
+        "query": "..."
+      }
+    ],
+    "options": {
+      "title": "Monthly Coffee Production by Country",
+      "vAxis": {
+        "title": "Cups"
+      },
+      "hAxis": {
+        "title": "Month"
+      },
+      "seriesType": "bars",
+      "series": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "type": "line"
         }
+      ]
     }
+  }
 }

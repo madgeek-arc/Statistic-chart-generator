@@ -1,15 +1,11 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.Service;
 
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedChart;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedDiagrams;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMap;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedMisc;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedPolar;
-import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.SupportedSpecialDiagram;
-import org.apache.logging.log4j.Logger;
+import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.POJOs.*;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Service
@@ -36,12 +32,29 @@ public class SupportedDiagramsService {
 
     // }
 
-    public SupportedDiagrams getSupportedDiagrams() { return this.supportedDiagrams; }
-    public List<SupportedChart> getSupportedCharts() { return this.supportedDiagrams.getCharts(); }
-    public List<SupportedPolar> getSupportedPolars() { return this.supportedDiagrams.getPolars(); }
-    public List<SupportedMap> getSupportedMaps() { return this.supportedDiagrams.getMaps(); }
-    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() { return this.supportedDiagrams.getSpecials(); }
-    public List<SupportedMisc> getSupportedMiscs() { return this.supportedDiagrams.getMiscs(); }
+    public SupportedDiagrams getSupportedDiagrams() {
+        return this.supportedDiagrams;
+    }
+
+    public List<SupportedChart> getSupportedCharts() {
+        return this.supportedDiagrams.getCharts();
+    }
+
+    public List<SupportedPolar> getSupportedPolars() {
+        return this.supportedDiagrams.getPolars();
+    }
+
+    public List<SupportedMap> getSupportedMaps() {
+        return this.supportedDiagrams.getMaps();
+    }
+
+    public List<SupportedSpecialDiagram> getSupportedSpecialDiagrams() {
+        return this.supportedDiagrams.getSpecials();
+    }
+
+    public List<SupportedMisc> getSupportedMiscs() {
+        return this.supportedDiagrams.getMiscs();
+    }
 
 
     // Backup Initialization
@@ -59,28 +72,28 @@ public class SupportedDiagramsService {
     // private ArrayList<SupportedSpecialDiagram> initSupportedSpecialDiagrams() {
 
     //     ArrayList<SupportedSpecialDiagram> supportedSpecialDiagrams = new ArrayList<>();
-        
+
     //     List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
-        
+
     //     supportedSpecialDiagrams.add(new SupportedSpecialDiagram("combo", chartLibs));
 
     //     return supportedSpecialDiagrams;
     // }
 
     // private ArrayList<SupportedChart> initSupportedCharts() {
-        
+
     //     ArrayList<SupportedChart> supportedCharts = new ArrayList<>();
     //     List<SupportedLibraries> chartLibs = Arrays.asList(HighCharts, GoogleCharts, eCharts);
 
     //     for (SupportedChartTypes chartType : SupportedChartTypes.values())
     //         supportedCharts.add(new SupportedChart(chartType,chartLibs));
-        
+
     //     return supportedCharts;
     // }
 
     // private ArrayList<SupportedPolar> initSupportedPolars() {
     //     ArrayList<SupportedPolar> supportedPolars = new ArrayList<>();
-        
+
     //     List<SupportedLibraries> chartLibs = Arrays.asList((HighCharts));
 
     //     for (SupportedPolarTypes polarType : SupportedPolarTypes.values())

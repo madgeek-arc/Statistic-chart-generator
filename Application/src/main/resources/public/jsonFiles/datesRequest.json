@@ -1,8 +1,6 @@
 {
-  "library" : "HighCharts",
-
-  "chartDescription":
-  {
+  "library": "HighCharts",
+  "chartDescription": {
     "chart": {
       "type": "line"
     },
@@ -14,59 +12,71 @@
         "text": "# of Publications"
       }
     },
-    "queries": [{
-      "type": "column",
-      "query": {
-        "filters": [
-          {
-            "field": "project.publication.date",
-            "type": "between",
-            "values": ["2017-01-01", "2017-02-01"]
-          },
-          {	"field": "project.funding level 0",
-            "type": "=",
-            "values": ["FP7"]
-          }
-        ],
-        "select": [
-          {
-            "aggregate": "count",
-            "field": "project"
-          },
-          {
-            "field": "project.publication.date"
-          }
-        ],
-        "entity": "project"
+    "queries": [
+      {
+        "type": "column",
+        "query": {
+          "filters": [
+            {
+              "field": "project.publication.date",
+              "type": "between",
+              "values": [
+                "2017-01-01",
+                "2017-02-01"
+              ]
+            },
+            {
+              "field": "project.funding level 0",
+              "type": "=",
+              "values": [
+                "FP7"
+              ]
+            }
+          ],
+          "select": [
+            {
+              "aggregate": "count",
+              "field": "project"
+            },
+            {
+              "field": "project.publication.date"
+            }
+          ],
+          "entity": "project"
+        }
+      },
+      {
+        "type": "area",
+        "query": {
+          "filters": [
+            {
+              "field": "project.publication.date",
+              "type": "between",
+              "values": [
+                "2017-01-01",
+                "2017-01-15"
+              ]
+            },
+            {
+              "field": "project.funding level 0",
+              "type": "=",
+              "values": [
+                "FP7"
+              ]
+            }
+          ],
+          "select": [
+            {
+              "aggregate": "count",
+              "field": "project"
+            },
+            {
+              "field": "project.publication.date"
+            }
+          ],
+          "entity": "project"
+        }
       }
-
-    },
-    {
-      "type": "area",
-      "query": {
-        "filters": [
-          {
-            "field": "project.publication.date",
-            "type": "between",
-            "values": ["2017-01-01", "2017-01-15" ]
-          },
-          {	"field": "project.funding level 0",
-            "type": "=",
-            "values": ["FP7"]
-          }
-        ],
-        "select": [
-          {
-            "aggregate": "count",
-            "field": "project"
-          },
-          {
-            "field": "project.publication.date"
-          }
-        ],
-        "entity": "project"
-      }
-
-    }]
+    ]
   }
 }

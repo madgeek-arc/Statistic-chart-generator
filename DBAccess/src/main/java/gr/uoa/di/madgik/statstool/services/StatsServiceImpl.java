@@ -1,9 +1,14 @@
 package gr.uoa.di.madgik.statstool.services;
 
+import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
+import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
+import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -11,13 +16,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
-
-import gr.uoa.di.madgik.statstool.domain.Query;
-import gr.uoa.di.madgik.statstool.domain.Result;
-import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 
 @Service
 public class StatsServiceImpl implements StatsService {
@@ -99,6 +97,6 @@ public class StatsServiceImpl implements StatsService {
     }
 
     private String getNamedQuery(String queryName) throws IOException {
-            return namedQueryRepository.getQuery(queryName);
+        return namedQueryRepository.getQuery(queryName);
     }
 }

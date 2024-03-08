@@ -6,13 +6,15 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.AbsData;
 
 import java.util.ArrayList;
-@JsonDeserialize(using= JsonDeserializer.None.class)
+
+@JsonDeserialize(using = JsonDeserializer.None.class)
 public class ArrayOfEChartDataObjects implements AbsData {
 
     @JsonProperty
     private ArrayList<EChartsDataObject> data;
 
-    public ArrayOfEChartDataObjects() {}
+    public ArrayOfEChartDataObjects() {
+    }
 
     public ArrayOfEChartDataObjects(ArrayList<EChartsDataObject> data) {
         this.data = data;

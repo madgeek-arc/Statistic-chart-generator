@@ -8,7 +8,8 @@ public class MappingFilter {
     private List<String> values;
     private String datatype;
 
-    MappingFilter() {}
+    MappingFilter() {
+    }
 
     public String getColumn() {
         return column;

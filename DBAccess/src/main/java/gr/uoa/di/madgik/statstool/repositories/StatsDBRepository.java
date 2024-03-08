@@ -43,17 +43,17 @@ public class StatsDBRepository implements StatsCache {
 
         log.debug("Creating cache table");
         jdbcTemplate.execute("create table if not exists cache_entry (" +
-                        "key varchar(10000) not null," +
-                        "result longvarchar not null, " +
-                        "shadow longvarchar, " +
-                        "query varchar(10000) not null," +
-                        "created timestamp default now() not null, " +
-                        "updated timestamp default now() not null, " +
-                        "total_hits int default 0 not null," +
-                        "session_hits int default 0 not null," +
-                        "pinned boolean default false not null," +
-                        "exectime int default 0 not null," +
-                        "profile varchar(100) not null)");
+                "key varchar(10000) not null," +
+                "result longvarchar not null, " +
+                "shadow longvarchar, " +
+                "query varchar(10000) not null," +
+                "created timestamp default now() not null, " +
+                "updated timestamp default now() not null, " +
+                "total_hits int default 0 not null," +
+                "session_hits int default 0 not null," +
+                "pinned boolean default false not null," +
+                "exectime int default 0 not null," +
+                "profile varchar(100) not null)");
 
         jdbcTemplate.execute("create index key_idx on cache_entry(key)");
     }
@@ -69,7 +69,7 @@ public class StatsDBRepository implements StatsCache {
 
         log.debug("Checking if entry with key " + key + " exists");
 
-        return jdbcTemplate.queryForObject("select count(*) from cache_entry where key=?",new Object[] {key}, Integer.class) == 1;
+        return jdbcTemplate.queryForObject("select count(*) from cache_entry where key=?", new Object[]{key}, Integer.class) == 1;
     }
 
     @Override
@@ -125,7 +125,7 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
+        String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
 
         log.debug("Storing entry " + entry);
 
@@ -202,8 +202,8 @@ public class StatsDBRepository implements StatsCache {
         DatasourceContext.setContext(CACHE_DB_NAME);
         Map<String, Object> stats = new LinkedHashMap<>();
 
-        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
-        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
+        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry", new Object[]{}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''", new Object[]{}, Integer.class));
         stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
             Map<String, Object> map = new LinkedHashMap<>();
 

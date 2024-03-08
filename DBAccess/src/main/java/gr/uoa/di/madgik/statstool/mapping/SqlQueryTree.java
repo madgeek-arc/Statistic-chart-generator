@@ -22,7 +22,7 @@ public class SqlQueryTree {
         for (Select select : query.getSelect()) {
             addSelect(select);
         }
-        for (FilterGroup filterGroup: query.getFilters()) {
+        for (FilterGroup filterGroup : query.getFilters()) {
             List<Filter> filters = new ArrayList<>();
             for (Filter filter : filterGroup.getGroupFilters()) {
                 filters.add(addFilter(filter));
@@ -185,7 +185,7 @@ public class SqlQueryTree {
         query += " FROM " + joins;
         List<String> op = new ArrayList<>();
         List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
-        if(allTheFilters != null && !allTheFilters.isEmpty()) {
+        if (allTheFilters != null && !allTheFilters.isEmpty()) {
             query += "WHERE ";
             first = true;
             int group_id = 0;
@@ -211,7 +211,7 @@ public class SqlQueryTree {
                 group_id++;
             }
         }
-        if(!group.isEmpty()) {
+        if (!group.isEmpty()) {
             query += " GROUP BY ";
             first = true;
             for (String gp : group) {
@@ -240,7 +240,7 @@ public class SqlQueryTree {
             }
         }
 
-        if(limit != 0) {
+        if (limit != 0) {
             query += " LIMIT " + limit;
         }
         query += ";";

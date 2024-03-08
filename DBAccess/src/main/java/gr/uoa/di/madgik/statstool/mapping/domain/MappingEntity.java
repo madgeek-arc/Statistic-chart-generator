@@ -10,7 +10,8 @@ public class MappingEntity {
     private List<MappingField> fields;
     private List<String> relations;
 
-    MappingEntity() {}
+    MappingEntity() {
+    }
 
     public String getName() {
         return name;

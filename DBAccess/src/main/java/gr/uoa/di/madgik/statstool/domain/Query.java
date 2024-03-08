@@ -14,7 +14,8 @@ public class Query {
 
     boolean useCache = true;
 
-    public Query() {}
+    public Query() {
+    }
 
     public Query(String name, List<Object> parameters, List<FilterGroup> filters, List<Select> select, String entity, String profile, int limit, String orderBy, boolean useCache) {
         this.name = name;

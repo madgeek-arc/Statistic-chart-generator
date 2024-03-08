@@ -1,9 +1,5 @@
 package gr.uoa.di.madgik.statstool.mapping;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.Query;
@@ -12,6 +8,10 @@ import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 import gr.uoa.di.madgik.statstool.mapping.entities.Field;
 import gr.uoa.di.madgik.statstool.mapping.entities.Join;
 import gr.uoa.di.madgik.statstool.mapping.entities.Table;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class SqlQueryBuilder {
 

@@ -7,7 +7,8 @@ public class MappingRelation {
     private String to;
     private List<MappingJoin> joins;
 
-    MappingRelation() {}
+    MappingRelation() {
+    }
 
     public String getFrom() {
         return from;

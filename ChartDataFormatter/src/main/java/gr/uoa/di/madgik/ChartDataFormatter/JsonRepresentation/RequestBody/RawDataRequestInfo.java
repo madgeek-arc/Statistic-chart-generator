@@ -2,12 +2,9 @@ package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.Query;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class RawDataRequestInfo {
@@ -32,7 +29,7 @@ public class RawDataRequestInfo {
     }
 
     @JsonIgnore
-    public List<Query> getQueries(){
+    public List<Query> getQueries() {
         ArrayList<Query> retList = new ArrayList<>();
 
         for (RawDataSeriesInfo seriesInfo : series)

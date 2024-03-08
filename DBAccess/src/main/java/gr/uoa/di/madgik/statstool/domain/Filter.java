@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.domain;
 
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 
 public class Filter {
     private String field;
@@ -8,7 +9,8 @@ public class Filter {
     private List<String> values;
     private String datatype;
 
-    public Filter() {}
+    public Filter() {
+    }
 
     public Filter(String field, String type, List<String> values, String datatype) {
         this.field = field;

@@ -1,11 +1,12 @@
 package gr.uoa.di.madgik.statstool.controllers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import gr.uoa.di.madgik.statstool.domain.Query;
+import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.services.StatsService;
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -13,10 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import gr.uoa.di.madgik.statstool.domain.Query;
-import gr.uoa.di.madgik.statstool.domain.Result;
-import gr.uoa.di.madgik.statstool.services.StatsService;
 
 @RestController
 public class QueryController {

@@ -7,8 +7,8 @@
     <script type="text/javascript" src="js/CDF_chart_handler.js"></script>
     <title>Chart Generator</title>
     <script th:inline="javascript">
-    /*<![CDATA[*/
-        $( document ).ready(function(){
+        /*<![CDATA[*/
+        $(document).ready(function () {
             $("#container").height(window.innerHeight);
             $("#container").width(window.innerWidth);
 
@@ -16,13 +16,12 @@
             let jsonParam = params.get("json");
             let errorElement = document.getElementById("errorSpan");
             let loadingElement = document.getElementById("loader");
-            
-            if(!jsonParam){
+
+            if (!jsonParam) {
                 loadingElement.style.display = "none";
                 errorElement.style.display = "inline-block";
                 errorElement.style.verticalAlign = "middle";
-            }
-            else{
+            } else {
                 errorElement.style.display = "none";
                 loadingElement.style.display = "inline-block";
                 loadingElement.style.verticalAlign = "middle";
@@ -30,12 +29,12 @@
                     let decodedJsonParam = decodeURI(jsonParam)
                     console.log(decodedJsonParam);
                     handleAdminSideData(JSON.parse(decodedJsonParam));
-                } catch(e) {
-                  console.error(e);
+                } catch (e) {
+                    console.error(e);
                 }
             }
-        });    
-    /*]]>*/
+        });
+        /*]]>*/
     </script>
 </head>
 

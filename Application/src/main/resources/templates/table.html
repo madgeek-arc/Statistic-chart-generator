@@ -8,9 +8,9 @@
     <script type="text/javascript" src="js/CDF_table_handler.js"></script>
     <title>Table Generator</title>
     <script th:inline="javascript">
-    /*<![CDATA[*/
+        /*<![CDATA[*/
 
-        $( document ).ready(function(){
+        $(document).ready(function () {
             //Setting container's height & width
             $("#container").height(window.innerHeight);
             $("#container").width(window.innerWidth);
@@ -20,29 +20,28 @@
             let errorElement = document.getElementById("errorSpan");
             let loadingElement = document.getElementById("loader");
 
-            if(!jsonParam){
+            if (!jsonParam) {
                 loadingElement.style.display = "none";
                 errorElement.style.display = "inline-block";
                 errorElement.style.verticalAlign = "middle";
-            }
-            else{
+            } else {
                 errorElement.style.display = "none";
                 loadingElement.style.display = "inline-block";
                 loadingElement.style.verticalAlign = "middle";
                 try {
                     let decodedJsonParam = decodeURI(jsonParam)
                     console.log(decodedJsonParam);
-                    
+
                     drawTable(JSON.parse(decodedJsonParam));
 
-                // catches a malformed URI
-                } catch(e) {
-                  console.error(e);
+                    // catches a malformed URI
+                } catch (e) {
+                    console.error(e);
                 }
             }
 
         });
-    /*]]>*/
+        /*]]>*/
     </script>
 </head>
 
@@ -56,6 +55,6 @@
     </div>
     <span id="errorSpan" style="display: none; font-family: 'Lato', sans-serif;"></span>
 </div>
-    
+
 </body>
 </html>

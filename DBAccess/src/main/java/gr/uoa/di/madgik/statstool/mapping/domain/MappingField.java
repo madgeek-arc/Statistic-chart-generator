@@ -6,7 +6,8 @@ public class MappingField {
     private String datatype;
     private String sqlTable;
 
-    MappingField() {}
+    MappingField() {
+    }
 
     public String getColumn() {
         return column;

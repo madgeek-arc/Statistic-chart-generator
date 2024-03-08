@@ -5,8 +5,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataRequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import java.io.IOException;
 
 @RestController
 @RequestMapping("/raw")
-@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
+@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST}, origins = "*")
 public class RawDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
@@ -26,7 +26,7 @@ public class RawDataFormatterRestController {
     }
 
     @GetMapping
-    public @ResponseBody ResponseEntity<JsonResponse> getRawData(@RequestParam(name="json") String json) throws IOException {
+    public @ResponseBody ResponseEntity<JsonResponse> getRawData(@RequestParam(name = "json") String json) throws IOException {
         RawDataRequestInfo requestInfo = new ObjectMapper().readValue(json, RawDataRequestInfo.class);
 
         JsonResponse responseData;

@@ -12,14 +12,27 @@ public class EChartsDataObject {
     @JsonProperty
     private Number value;
 
-    public EChartsDataObject(String name,Number value){
+    public EChartsDataObject(String name, Number value) {
         this.name = name;
         this.value = value;
     }
 
-    public EChartsDataObject() {}
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public Number getValue() { return value; }
-    public void setValue(Number value) { this.value = value; }
+    public EChartsDataObject() {
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Number getValue() {
+        return value;
+    }
+
+    public void setValue(Number value) {
+        this.value = value;
+    }
 }

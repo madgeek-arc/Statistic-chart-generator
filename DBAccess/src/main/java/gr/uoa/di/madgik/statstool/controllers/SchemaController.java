@@ -1,20 +1,13 @@
 package gr.uoa.di.madgik.statstool.controllers;
 
 import gr.uoa.di.madgik.statstool.domain.FieldValues;
-import gr.uoa.di.madgik.statstool.mapping.domain.MappingProfile;
 import gr.uoa.di.madgik.statstool.mapping.domain.Profile;
-import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
 import gr.uoa.di.madgik.statstool.services.SchemaService;
-
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 

@@ -30,7 +30,7 @@ public class DataObject {
     @JsonProperty
     private Number y;
 
-    public DataObject(Number x,Number y){
+    public DataObject(Number x, Number y) {
         this.className = null;
         this.color = null;
         this.colorIndex = null;
@@ -43,7 +43,8 @@ public class DataObject {
         this.x = x;
         this.y = y;
     }
-    public DataObject(String name,Number y){
+
+    public DataObject(String name, Number y) {
         this.className = null;
         this.color = null;
         this.colorIndex = null;
@@ -56,6 +57,7 @@ public class DataObject {
         this.x = null;
         this.y = y;
     }
+
     public DataObject(String className, String color,
                       Number colorIndex, String description,
                       String drilldown, String id,
@@ -74,7 +76,8 @@ public class DataObject {
         this.y = y;
     }
 
-    public DataObject() {}
+    public DataObject() {
+    }
 
     public String getClassName() {
         return className;

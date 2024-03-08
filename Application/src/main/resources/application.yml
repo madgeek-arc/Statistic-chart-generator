@@ -1,18 +1,18 @@
 server:
-    port: 8080
-    max-http-header-size: 65536
+  port: 8888
+  max-http-header-size: 65536
 
 # Disable favicon
 spring:
-    mvc:
-        favicon:
-            enabled: false
+  mvc:
+    favicon:
+      enabled: false
 
 management:
-        endpoints:
-                web:
-                        exposure:
-                                include: health,info,prometheus
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
 
 # mappings filepath
 #mappings:
@@ -20,185 +20,173 @@ management:
 #        path: classpath:mappings.json
 #        path: file:/etc/sth/
 statstool:
-    supported-diagrams:
-        charts:
-            -
-                name: "column"
-                type: "column"
-                diagram-id: 0
-                description: "Column Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "area"
-                type: "area"
-                diagram-id: 1
-                description: "Area Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "bar"
-                type: "bar"
-                diagram-id: 2
-                description: "Bar Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "line"
-                type: "line"
-                diagram-id: 3
-                description: "Line Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "pie"
-                type: "pie"
-                diagram-id: 4
-                description: "Pie Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "treemap"
-                type: "treemap"
-                diagram-id: 5
-                description: "Treemap Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "dependencywheel"
-                type: "dependencywheel"
-                diagram-id: 6
-                description: "Dependency Wheel Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: true
-                supported-libraries:
-                    - "HighCharts"
-                    - "eCharts"
-            -
-                name: "sankey"
-                type: "sankey"
-                diagram-id: 7
-                description: "Sankey Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: true
-                supported-libraries:
-                    - "HighCharts"
-                    - "eCharts"
-        polars:
-            -
-                name: "area"
-                type: "area"
-                diagram-id: 8
-                description: "Polar Area Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: true
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "bar"
-                type: "bar"
-                diagram-id: 9
-                description: "Polar Bar Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: true
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "column"
-                type: "column"
-                diagram-id: 10
-                description: "Polar Column Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: true
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-            -
-                name: "line"
-                type: "line"
-                diagram-id: 11
-                description: "Line Column Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: true
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-        maps:
-            -
-                type: "world"
-                name: "custom/world-robinson-highres"
-                diagram-id: 12
-                description: "World Map"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighMaps"
-        specials:
-            -
-                type: "combo"
-                name: "combo"
-                diagram-id: 13
-                description: "Combination Diagram"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
-        miscs:
-            -
-                type: "numbers"
-                name: "numbers"
-                diagram-id: 14
-                description: "Numbers"
-                image-url: "images/imagePlaceholder.svg"
-                is-polar: false
-                is-hidden: false
-                supported-libraries:
-                    - "HighCharts"
-                    - "GoogleCharts"
-                    - "eCharts"
+  mappings:
+    file:
+      path: classpath:mappings.json
+  supported-diagrams:
+    charts:
+      - name: "column"
+        type: "column"
+        diagram-id: 0
+        description: "Column Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "area"
+        type: "area"
+        diagram-id: 1
+        description: "Area Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "bar"
+        type: "bar"
+        diagram-id: 2
+        description: "Bar Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "line"
+        type: "line"
+        diagram-id: 3
+        description: "Line Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "pie"
+        type: "pie"
+        diagram-id: 4
+        description: "Pie Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "treemap"
+        type: "treemap"
+        diagram-id: 5
+        description: "Treemap Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "dependencywheel"
+        type: "dependencywheel"
+        diagram-id: 6
+        description: "Dependency Wheel Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: true
+        supported-libraries:
+          - "HighCharts"
+          - "eCharts"
+      - name: "sankey"
+        type: "sankey"
+        diagram-id: 7
+        description: "Sankey Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: true
+        supported-libraries:
+          - "HighCharts"
+          - "eCharts"
+    polars:
+      - name: "area"
+        type: "area"
+        diagram-id: 8
+        description: "Polar Area Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: true
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "bar"
+        type: "bar"
+        diagram-id: 9
+        description: "Polar Bar Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: true
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "column"
+        type: "column"
+        diagram-id: 10
+        description: "Polar Column Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: true
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+      - name: "line"
+        type: "line"
+        diagram-id: 11
+        description: "Line Column Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: true
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+    maps:
+      - type: "world"
+        name: "custom/world-robinson-highres"
+        diagram-id: 12
+        description: "World Map"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighMaps"
+    specials:
+      - type: "combo"
+        name: "combo"
+        diagram-id: 13
+        description: "Combination Diagram"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"
+    miscs:
+      - type: "numbers"
+        name: "numbers"
+        diagram-id: 14
+        description: "Numbers"
+        image-url: "images/imagePlaceholder.svg"
+        is-polar: false
+        is-hidden: false
+        supported-libraries:
+          - "HighCharts"
+          - "GoogleCharts"
+          - "eCharts"

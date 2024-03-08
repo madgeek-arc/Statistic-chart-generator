@@ -2,13 +2,13 @@ package gr.uoa.di.madgik.ChartDataFormatter.Handlers;
 
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataRequestInfo;
-import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.*;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -52,11 +52,11 @@ public class RequestBodyHandler {
                         highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(statsServiceResults,
                                 requestJson.getChartTypes(), requestJson.getChartNames());
 
-                    }catch (DataFormatter.DataFormationException e){
-                        throw new RequestBodyException(e.getMessage(),e,HttpStatus.UNPROCESSABLE_ENTITY);
+                    } catch (DataFormatter.DataFormationException e) {
+                        throw new RequestBodyException(e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-                    if(highChartsJsonResponse == null)
-                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+                    if (highChartsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation", HttpStatus.UNPROCESSABLE_ENTITY);
 
                     jsonResponse = highChartsJsonResponse;
                     break;
@@ -65,15 +65,15 @@ public class RequestBodyHandler {
                     this.logChartInfo(requestJson, statsServiceResults);
 
                     GoogleChartsJsonResponse googleChartsJsonResponse;
-                    try{
+                    try {
                         googleChartsJsonResponse = new GoogleChartsDataFormatter().toJsonResponse(statsServiceResults,
                                 requestJson.getChartTypes(), requestJson.getChartNames());
 
                     } catch (DataFormatter.DataFormationException e) {
-                        throw new RequestBodyException(e.getMessage(),e, HttpStatus.UNPROCESSABLE_ENTITY);
+                        throw new RequestBodyException(e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-                    if(googleChartsJsonResponse == null)
-                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+                    if (googleChartsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation", HttpStatus.UNPROCESSABLE_ENTITY);
 
                     jsonResponse = googleChartsJsonResponse;
                     break;
@@ -87,11 +87,11 @@ public class RequestBodyHandler {
                         eChartsJsonResponse = new EChartsDataFormatter().toJsonResponse(statsServiceResults,
                                 requestJson.getChartTypes(), requestJson.getChartNames());
 
-                    }catch (DataFormatter.DataFormationException e){
-                        throw new RequestBodyException(e.getMessage(),e,HttpStatus.UNPROCESSABLE_ENTITY);
+                    } catch (DataFormatter.DataFormationException e) {
+                        throw new RequestBodyException(e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-                    if(eChartsJsonResponse == null)
-                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+                    if (eChartsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation", HttpStatus.UNPROCESSABLE_ENTITY);
 
                     jsonResponse = eChartsJsonResponse;
                     break;
@@ -100,7 +100,7 @@ public class RequestBodyHandler {
                     this.logChartInfo(requestJson, statsServiceResults);
 
                     GoogleChartsJsonResponse tempHighMapsJsonResponse;
-                    try{
+                    try {
                         List<SupportedChartTypes> tempTypeList = new ArrayList<>();
                         for (String chartName : requestJson.getChartNames())
                             tempTypeList.add(SupportedChartTypes.area);
@@ -109,15 +109,15 @@ public class RequestBodyHandler {
                                 tempTypeList, requestJson.getChartNames());
 
                     } catch (DataFormatter.DataFormationException e) {
-                        throw new RequestBodyException(e.getMessage(),e, HttpStatus.UNPROCESSABLE_ENTITY);
+                        throw new RequestBodyException(e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
                     }
-                    if(tempHighMapsJsonResponse == null)
-                        throw new RequestBodyException("Error on data formation",HttpStatus.UNPROCESSABLE_ENTITY);
+                    if (tempHighMapsJsonResponse == null)
+                        throw new RequestBodyException("Error on data formation", HttpStatus.UNPROCESSABLE_ENTITY);
 
                     jsonResponse = tempHighMapsJsonResponse;
                     break;
                 default:
-                    throw new RequestBodyException("Chart Library not supported yet",HttpStatus.UNPROCESSABLE_ENTITY);
+                    throw new RequestBodyException("Chart Library not supported yet", HttpStatus.UNPROCESSABLE_ENTITY);
             }
 
             log.debug("response: " + jsonResponse);
@@ -126,7 +126,7 @@ public class RequestBodyHandler {
         } catch (RequestBodyException e) {
             throw e;
         } catch (Exception e) {
-            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -134,8 +134,8 @@ public class RequestBodyHandler {
 
         List<Result> statsServiceResults;
 
-        for (Query q:requestInfo.getQueries())
-            log.debug("Query:" + q.getName() );
+        for (Query q : requestInfo.getQueries())
+            log.debug("Query:" + q.getName());
 
         try {
             statsServiceResults = this.statsService.query(requestInfo.getQueries(), requestInfo.getOrderBy());
@@ -164,7 +164,7 @@ public class RequestBodyHandler {
                     serie.setQuery(requestInfo.getQueries().get(i));
                     serie.setRows(new ArrayList<>());
 
-                    for (List<?> row:result.getRows()) {
+                    for (List<?> row : result.getRows()) {
                         serie.getRows().add(new VerboseRawDataRow(row));
                     }
 
@@ -177,12 +177,12 @@ public class RequestBodyHandler {
             }
 
         } catch (Exception e) {
-              throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
-          }
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
+        }
     }
 
     private void logChartInfo(RequestInfo requestJson, List<Result> statsServiceResults) {
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
             log.debug("Chart Types: " + requestJson.getChartTypes());
             log.debug("Chart Names: " + requestJson.getChartNames());
 
@@ -194,7 +194,7 @@ public class RequestBodyHandler {
     }
 
     private void logChartInfo(RawDataRequestInfo requestJson, List<Result> statsServiceResults) {
-        if(log.isInfoEnabled()) {
+        if (log.isInfoEnabled()) {
 
             for (int i = 0; i < statsServiceResults.size(); i++) {
                 Result res = statsServiceResults.get(i);

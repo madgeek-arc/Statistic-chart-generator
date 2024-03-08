@@ -13,7 +13,8 @@ public class DataSeries {
     @JsonProperty(value = "series")
     private ArrayList<AbsData> dataSeries;
 
-    public DataSeries() {}
+    public DataSeries() {
+    }
 
     public DataSeries(ArrayList<AbsData> data) {
 

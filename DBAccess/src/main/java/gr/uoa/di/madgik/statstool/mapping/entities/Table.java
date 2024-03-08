@@ -1,8 +1,8 @@
 package gr.uoa.di.madgik.statstool.mapping.entities;
 
-import java.util.List;
-
 import gr.uoa.di.madgik.statstool.domain.Filter;
+
+import java.util.List;
 
 public class Table {
     private final String table;

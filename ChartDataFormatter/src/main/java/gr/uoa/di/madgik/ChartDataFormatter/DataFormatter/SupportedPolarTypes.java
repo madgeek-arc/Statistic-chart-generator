@@ -5,5 +5,5 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
  * This enumeration should be expanded with each new Polar type.
  */
 public enum SupportedPolarTypes {
-    area,bar,column,line
+    area, bar, column, line
 }

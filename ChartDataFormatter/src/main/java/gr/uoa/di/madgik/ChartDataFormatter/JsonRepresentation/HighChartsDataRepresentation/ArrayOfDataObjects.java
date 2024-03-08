@@ -5,13 +5,15 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
-@JsonDeserialize(using= JsonDeserializer.None.class)
+
+@JsonDeserialize(using = JsonDeserializer.None.class)
 public class ArrayOfDataObjects implements AbsData {
 
     @JsonProperty
     private ArrayList<DataObject> data;
 
-    public ArrayOfDataObjects() {}
+    public ArrayOfDataObjects() {
+    }
 
     public ArrayOfDataObjects(ArrayList<DataObject> data) {
         this.data = data;

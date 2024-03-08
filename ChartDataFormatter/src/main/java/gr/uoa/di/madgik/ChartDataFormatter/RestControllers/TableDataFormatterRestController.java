@@ -4,8 +4,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyException;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
@@ -19,7 +19,7 @@ import org.springframework.web.servlet.ModelAndView;
  */
 @RestController
 @RequestMapping("/table")
-@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
+@CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST}, origins = "*")
 public class TableDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
@@ -42,10 +42,10 @@ public class TableDataFormatterRestController {
      * @return A {@link ResponseEntity} with a {@link JsonResponse} as its body with the requested data properly formatted for the supported library.
      */
     @PostMapping(consumes = "application/json; charset=UTF-8",
-                produces = "application/json; charset=UTF-8")
+            produces = "application/json; charset=UTF-8")
     public @ResponseBody
     ResponseEntity<JsonResponse>
-    postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
+    postFullChartRepresentation(@RequestBody RequestInfo requestJson) {
 
         JsonResponse responseData;
 

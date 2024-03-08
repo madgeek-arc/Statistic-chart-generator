@@ -5,7 +5,8 @@ public class Select {
     private String aggregate;
     private int order;
 
-    public Select() {}
+    public Select() {
+    }
 
     public Select(String field, String aggregate, int order) {
         this.field = field;

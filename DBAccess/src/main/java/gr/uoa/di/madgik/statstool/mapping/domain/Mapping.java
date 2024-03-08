@@ -6,7 +6,8 @@ public class Mapping {
     private List<MappingEntity> entities;
     private List<MappingRelation> relations;
 
-    Mapping() {}
+    Mapping() {
+    }
 
     public List<MappingEntity> getEntities() {
         return entities;

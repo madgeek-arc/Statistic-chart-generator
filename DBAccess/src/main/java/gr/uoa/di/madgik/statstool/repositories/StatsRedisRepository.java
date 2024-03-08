@@ -4,10 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
-
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
-import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.data.redis.core.HashOperations;
@@ -108,7 +107,7 @@ public class StatsRedisRepository implements StatsCache {
         if (jedis.get(key, "pinned") != null)
             entry.setPinned(Boolean.parseBoolean(jedis.get(key, Objects.requireNonNull(jedis.get(key, "pinned")))));
         if (jedis.get(key, "shadow") != null)
-            entry.setShadowResult( new ObjectMapper().readValue(jedis.get(key, "shadow"), Result.class));
+            entry.setShadowResult(new ObjectMapper().readValue(jedis.get(key, "shadow"), Result.class));
 
         return entry;
     }

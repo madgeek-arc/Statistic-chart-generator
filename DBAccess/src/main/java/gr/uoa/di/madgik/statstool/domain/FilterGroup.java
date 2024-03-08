@@ -6,7 +6,8 @@ public class FilterGroup {
     private List<Filter> groupFilters;
     private String op;
 
-    public FilterGroup() {}
+    public FilterGroup() {
+    }
 
     public FilterGroup(List<Filter> groupFilters, String op) {
         this.groupFilters = groupFilters;

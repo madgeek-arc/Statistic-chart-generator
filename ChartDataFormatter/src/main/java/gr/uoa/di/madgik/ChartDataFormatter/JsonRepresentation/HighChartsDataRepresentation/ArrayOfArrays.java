@@ -6,15 +6,16 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.ArrayList;
 
-@JsonDeserialize(using=JsonDeserializer.None.class)
+@JsonDeserialize(using = JsonDeserializer.None.class)
 public class ArrayOfArrays implements AbsData {
 
     @JsonProperty
     private ArrayList<Number[]> data;
 
-    public ArrayOfArrays() {}
+    public ArrayOfArrays() {
+    }
 
-    public ArrayOfArrays( ArrayList<Number[]> data) {
+    public ArrayOfArrays(ArrayList<Number[]> data) {
         this.data = data;
     }
 
@@ -23,7 +24,7 @@ public class ArrayOfArrays implements AbsData {
         return data;
     }
 
-    public void setData( ArrayList<Number[]> data) {
+    public void setData(ArrayList<Number[]> data) {
         this.data = data;
     }
 
