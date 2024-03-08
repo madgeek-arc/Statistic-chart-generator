@@ -90,7 +90,7 @@ function handleAdminSideData(dataJSONobj)
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
             RequestInfoObj.orderBy = dataJSONobj.orderBy;
-            
+
             //Create ChartInfo Object Array
             RequestInfoObj.chartsInfo = [];
 
@@ -102,7 +102,7 @@ function handleAdminSideData(dataJSONobj)
                 var ChartInfoObj = new Object();
 
                 if(element.type === undefined)
-                    ChartInfoObj.type = dataJSONobj.chartDescription.series[index].type;
+                    ChartInfoObj.type = dataJSONobj.chartDescription.series[0].type;
                 else
                     ChartInfoObj.type = element.type;
 
@@ -260,9 +260,8 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
 }
 
 function handleChartDataFormatterResponse(responseData, originalDataJSONobj, ChartDataFormatterReadyJSONobj)
-{   
+{
     if(DEBUGMODE) console.log("Got from CDF: ", responseData);
-    
     
     //Hide children elements of container
     $("#container").children().remove();
@@ -532,6 +531,21 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         if(responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
+        // Propagate if this data series will be stacking
+        //fixme stack is only passed on the first series of the originJson so we get it from there
+        if(convertedJson.series[index] != null && convertedJson.series[0].stack != null)
+            seriesInstance.stack = convertedJson.series[0].stack;
+
+        // Pass the data series type to the response data object
+        if(responseData.dataSeriesTypes !== null)
+            seriesInstance.type = responseData.dataSeriesTypes[index];
+
+        // // Pass the data series color to the response data object
+        // if(seriesLength === Object.keys(originJson.chartDescription.queries).length) {
+        //     if (originJson.chartDescription.queries[index].color)
+        //         seriesInstance.color = originJson.chartDescription.queries[index].color;
+        // }
+
         // Series Data alignment
         if(seriesInstance.type == "treemap")
         {
@@ -555,12 +569,12 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 seriesInstance.links = responseData.series[index].links;
                 
                 // Dependency wheel is a circular graph in eCharts
-                seriesInstance.type = "graph"
-                seriesInstance.layout = "circular",
+                seriesInstance.type = "graph";
+                seriesInstance.layout = "circular";
                 seriesInstance.circular = {rotateLabel: true};
                 seriesInstance.roam = true;
-                seriesInstance.label = { position: 'right', formatter: '{b}' }
-                seriesInstance.lineStyle = { curveness: 0.3 }
+                seriesInstance.label = { position: 'right', formatter: '{b}' };
+                seriesInstance.lineStyle = { curveness: 0.3 };
 
                 // Making the label show on a data node with symbolSize > 30
                 responseData.series[index].data.forEach(function (node) {
@@ -579,7 +593,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             case "sankey":  
                 // Connecting the graph links
                 seriesInstance.links = responseData.series[index].links;
-                seriesInstance.layout = "none",
+                seriesInstance.layout = "none";
                 seriesInstance.emphasis = {focus: "adjacency"};
 
                 // Dont show axes
@@ -593,6 +607,11 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             case "bar":
                 // in eCharts a bar chart is a bar chart with the categories on yAxis  
                 convertedJson.yAxis = {data: responseData.xAxis_categories};
+                break;
+            case "area":
+                seriesInstance.type = "line";
+                seriesInstance.areaStyle = {};
+                convertedJson.xAxis = {data: responseData.xAxis_categories};
                 break;
             case "pie":
             case "treemap":
