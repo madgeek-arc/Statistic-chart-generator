@@ -8,13 +8,12 @@ import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.Profile;
 import gr.uoa.di.madgik.statstool.mapping.entities.Entity;
 import gr.uoa.di.madgik.statstool.mapping.entities.SchemaEntity;
+import info.debatty.java.stringsimilarity.Cosine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class SchemaServiceImpl implements SchemaService {
@@ -79,19 +78,37 @@ public class SchemaServiceImpl implements SchemaService {
             Result result = results.get(0);
 
             List<String> values = new ArrayList<>();
+            like = like.trim().toLowerCase();
             for (List<?> val : result.getRows()) {
-                if ("".equals(like) || String.valueOf(val.get(0)).toLowerCase().contains(like.toLowerCase())) {
-                    values.add(String.valueOf(val.get(0)));
-                }
+                values.add(String.valueOf(val.get(0)));
             }
+            values = sortByRelevance(values, like);
 
             if (values.size() <= RESULT_LIMIT) {
                 return new FieldValues(values.size(), values);
             } else {
-                return new FieldValues(values.size(), null);
+                return new FieldValues(RESULT_LIMIT, values.subList(0, RESULT_LIMIT));
             }
         } else {
             return new FieldValues(0, null);
         }
+    }
+
+    public static List<String> sortByRelevance(List<String> items, String keyword) {
+        Map<Double, String> sorted = new TreeMap<>();
+        Cosine l = new Cosine();
+
+        for (String obj : items) {
+            String value = obj.toLowerCase();
+            if (!StringUtils.hasText(value)) {
+                continue;
+            }
+
+            double score = new Random().nextDouble() / 1_000_000; // init as a small random to avoid distance conflicts
+            score += l.distance(value, keyword);
+            sorted.put(score, obj);
+        }
+
+        return new ArrayList<>(sorted.values());
     }
 }
