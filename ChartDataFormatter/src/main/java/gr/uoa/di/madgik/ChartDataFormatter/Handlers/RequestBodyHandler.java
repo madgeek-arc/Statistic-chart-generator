@@ -50,7 +50,7 @@ public class RequestBodyHandler {
                     HighChartsJsonResponse highChartsJsonResponse;
                     try {
                         highChartsJsonResponse = new HighChartsDataFormatter().toJsonResponse(statsServiceResults,
-                                requestJson.getChartTypes(), requestJson.getChartNames());
+                                requestJson.getChartTypes(), requestJson.getChartNames(), requestJson.isDrilldown());
 
                     }catch (DataFormatter.DataFormationException e){
                         throw new RequestBodyException(e.getMessage(),e,HttpStatus.UNPROCESSABLE_ENTITY);

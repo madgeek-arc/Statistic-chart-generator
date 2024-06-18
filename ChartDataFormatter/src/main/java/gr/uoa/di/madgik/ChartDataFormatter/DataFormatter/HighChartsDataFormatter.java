@@ -42,8 +42,12 @@ public class HighChartsDataFormatter extends DataFormatter {
         List<SupportedChartTypes> chartsType = (List<SupportedChartTypes>) args[0];
         List<String> chartNames = (List<String>) args[1];
 
+        //read isDrilldown field
+        boolean isDrilldown = (boolean) args[2];
+
+        //pass isDrilldown to singleToHighChartsJsonResponse
         if (dbAccessResults.size() == 1 && chartsType.size() == 1)
-            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0));
+            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0), isDrilldown);
 
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");
@@ -59,7 +63,7 @@ public class HighChartsDataFormatter extends DataFormatter {
 
     private HighChartsJsonResponse singleToHighChartsJsonResponse(Result result,
                                                                   SupportedChartTypes chartType,
-                                                                  String chartName) throws DataFormationException {
+                                                                  String chartName, boolean isDrilldown) throws DataFormationException {
 
         //There are no Results
         if (result.getRows().isEmpty())
@@ -74,7 +78,8 @@ public class HighChartsDataFormatter extends DataFormatter {
                 if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, false, chartType, chartName);
 
-                return HCDoubleGroupBy(result, chartType);
+                //handling isDrilldown in DoubleGroupBy
+                return HCDoubleGroupBy(result, chartType, isDrilldown);
             case 4:
                 if (chartType == SupportedChartTypes.dependencywheel || chartType == SupportedChartTypes.sankey)
                     return HCGraph(result, true, chartType, chartName);
@@ -139,7 +144,9 @@ public class HighChartsDataFormatter extends DataFormatter {
         return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()), chartNames, chartTypes);
     }
 
-    private HighChartsJsonResponse HCDoubleGroupBy(Result result, SupportedChartTypes chartType) {
+    private HighChartsJsonResponse HCDoubleGroupBy(Result result, SupportedChartTypes chartType, boolean isDrilldown) {
+
+        System.out.println("Result: " + result);
 
         LinkedHashMap<String, Integer> xAxis_categories = new LinkedHashMap<>();
         LinkedHashMap<String, HashMap<String, String>> groupByMap = new LinkedHashMap<>();
@@ -147,10 +154,21 @@ public class HighChartsDataFormatter extends DataFormatter {
         ArrayList<String> dataSeriesTypes = new ArrayList<>();
 
         for (List<?> row : result.getRows()) {
+            String groupByValue;
+            String xValueA;
 
-            // Create a map with the unique values for the group by
-            String groupByValue = String.valueOf(row.get(2));
-            String xValueA = String.valueOf(row.get(1));
+            if (chartType.equals(SupportedChartTypes.pie)) {
+                groupByValue = String.valueOf(row.get(1));
+                xValueA = String.valueOf(row.get(2));
+            } else {
+                if (!isDrilldown) {
+                    groupByValue = String.valueOf(row.get(2));
+                    xValueA = String.valueOf(row.get(1));
+                } else {
+                    groupByValue = String.valueOf(row.get(1));
+                    xValueA = String.valueOf(row.get(2));
+                }
+            }
             // I assume that always the first value of the row is for the Y value
             String yValue = String.valueOf(row.get(0));
 
@@ -166,74 +184,81 @@ public class HighChartsDataFormatter extends DataFormatter {
 
         switch (chartType) {
             case area:
-            case bar:
-            case column:
             case line:
             case treemap:
-
-                for (HashMap<String, String> XValueToYValueMapping : groupByMap.values()) {
-
-                    ArrayList<Number> yValuesArray = new ArrayList<>();
-                    for (String xValue : xAxis_categories.keySet()) {
-
-                        if (XValueToYValueMapping.containsKey(xValue)) {
-
-                            String yValue = XValueToYValueMapping.get(xValue);
-                            yValuesArray.add(parseValue(yValue));
-
-                        } else
-                            yValuesArray.add(null);
-                    }
-                    dataSeries.add(new ArrayOfValues(yValuesArray));
-                    dataSeriesTypes.add(chartType.name());
-                }
-
-                return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
-                        new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
-
+                return HCDoubleGroupByNoDrilldown(chartType, xAxis_categories, groupByMap, dataSeries, dataSeriesTypes);
+            case bar:
+            case column:
+                if (isDrilldown)
+                    return HCDoubleGroupByDrilldown(chartType, xAxis_categories, groupByMap, dataSeries, dataSeriesTypes);
+                else
+                    return HCDoubleGroupByNoDrilldown(chartType, xAxis_categories, groupByMap, dataSeries, dataSeriesTypes);
             case pie:
-
-                ArrayList<DataObject> mainSlicesValuesArray = new ArrayList<>();
-                ArrayList<AbsData> drillDownArray = new ArrayList<>();
-
-                for (String groupByX : groupByMap.keySet()) {
-
-                    HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
-
-                    float pieSliceSum = 0;
-                    ArrayList<DataObject> drillDownSliceValuesArray = new ArrayList<>();
-
-                    for (String xValue : xAxis_categories.keySet()) {
-
-                        String yValue = XValueToYValueMapping.get(xValue);
-                        Number value = parseValue(yValue);
-                        drillDownSliceValuesArray.add(new DataObject(xValue, value));
-                        if (value != null) {
-                            pieSliceSum += value.floatValue();
-                        }
-
-                    }
-                    drillDownArray.add(new ArrayOfDataObjects(drillDownSliceValuesArray));
-
-                    DataObject pieSlice = new DataObject(groupByX, pieSliceSum);
-                    pieSlice.setDrilldown(groupByX);
-
-                    mainSlicesValuesArray.add(pieSlice);
-                }
-
-                dataSeries.add(new ArrayOfDataObjects(mainSlicesValuesArray));
-                dataSeriesTypes.add(chartType.name());
-                log.debug("Added " + chartType.name());
-
-                HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
-                        null, dataSeriesTypes);
-                ret.setDrilldown(drillDownArray);
-                return ret;
-
-
+                return HCDoubleGroupByDrilldown(chartType, xAxis_categories, groupByMap, dataSeries, dataSeriesTypes);
             default:
                 return null;
         }
+    }
+
+    private HighChartsJsonResponse HCDoubleGroupByDrilldown(SupportedChartTypes chartType, LinkedHashMap<String, Integer> xAxis_categories, LinkedHashMap<String, HashMap<String, String>> groupByMap, ArrayList<AbsData> dataSeries, ArrayList<String> dataSeriesTypes) {
+        ArrayList<DataObject> mainSlicesValuesArray = new ArrayList<>();
+        ArrayList<AbsData> drillDownArray = new ArrayList<>();
+
+        for (String groupByX : groupByMap.keySet()) {
+
+            HashMap<String, String> XValueToYValueMapping = groupByMap.get(groupByX);
+
+            float pieSliceSum = 0;
+            ArrayList<DataObject> drillDownSliceValuesArray = new ArrayList<>();
+
+            for (String xValue : xAxis_categories.keySet()) {
+
+                String yValue = XValueToYValueMapping.get(xValue);
+                Number value = parseValue(yValue);
+                drillDownSliceValuesArray.add(new DataObject(xValue, value));
+                if (value != null) {
+                    pieSliceSum += value.floatValue();
+                }
+
+            }
+            drillDownArray.add(new ArrayOfDataObjects(drillDownSliceValuesArray));
+
+            DataObject pieSlice = new DataObject(groupByX, pieSliceSum);
+            pieSlice.setDrilldown(groupByX);
+
+            mainSlicesValuesArray.add(pieSlice);
+        }
+
+        dataSeries.add(new ArrayOfDataObjects(mainSlicesValuesArray));
+        dataSeriesTypes.add(chartType.name());
+        log.debug("Added " + chartType.name());
+
+        //HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()), null, dataSeriesTypes);
+        HighChartsJsonResponse ret = new HighChartsJsonResponse(dataSeries, null, null, dataSeriesTypes);
+        ret.setDrilldown(drillDownArray);
+        return ret;
+    }
+
+    private HighChartsJsonResponse HCDoubleGroupByNoDrilldown(SupportedChartTypes chartType, LinkedHashMap<String, Integer> xAxis_categories, LinkedHashMap<String, HashMap<String, String>> groupByMap, ArrayList<AbsData> dataSeries, ArrayList<String> dataSeriesTypes) {
+        for (HashMap<String, String> XValueToYValueMapping : groupByMap.values()) {
+
+            ArrayList<Number> yValuesArray = new ArrayList<>();
+            for (String xValue : xAxis_categories.keySet()) {
+
+                if (XValueToYValueMapping.containsKey(xValue)) {
+
+                    String yValue = XValueToYValueMapping.get(xValue);
+                    yValuesArray.add(parseValue(yValue));
+
+                } else
+                    yValuesArray.add(null);
+            }
+            dataSeries.add(new ArrayOfValues(yValuesArray));
+            dataSeriesTypes.add(chartType.name());
+        }
+
+        return new HighChartsJsonResponse(dataSeries, new ArrayList<>(xAxis_categories.keySet()),
+                new ArrayList<>(groupByMap.keySet()), dataSeriesTypes);
     }
 
     private HighChartsJsonResponse multiToHighChartsJsonResponse(List<Result> dbAccessResults, List<SupportedChartTypes> chartsType, List<String> chartNames) throws DataFormationException {

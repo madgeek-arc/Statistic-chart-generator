@@ -7,6 +7,8 @@ spring:
     mvc:
         favicon:
             enabled: false
+    jackson:
+        default-property-inclusion: non_null
 
 management:
         endpoints:

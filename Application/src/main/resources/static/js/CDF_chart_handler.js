@@ -144,6 +144,7 @@ function handleAdminSideData(dataJSONobj)
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
             RequestInfoObj.orderBy = dataJSONobj.orderBy;
+            RequestInfoObj.drilldown = dataJSONobj.drilldown;
             //Pass the Chart type to ChartDataFormatter
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array
@@ -449,7 +450,9 @@ function convertToValidHighchartJson(responseData, originJson){
             seriesInstance.stacking = convertedJson.series[index].stacking;
 
         // Pass the data series name to the response data object
-        if(responseData.dataSeriesNames !== null)
+        //TODO check that this one did not break anything else!!!!!
+        // if(responseData.dataSeriesNames != null)
+        if(responseData.dataSeriesNames!== undefined && responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
         
         // Pass the data series type to the response data object
@@ -487,12 +490,16 @@ function convertToValidHighchartJson(responseData, originJson){
             if(convertedJson.xAxis === undefined)
                 convertedJson.xAxis = {};    
             convertedJson.xAxis.categories = responseData.xAxis_categories;
+
+            //TODO check that we do not need to use the default 'linear' type of xAxis
+            if (responseData.xAxis_categories === undefined && (seriesInstance.type === "column" || seriesInstance.type === "bar"))
+                convertedJson.xAxis.type = "category";
         }
 
         convertedJson.series[index] = seriesInstance;       
     }
 
-    if(responseData.drilldown !== null){
+    if(responseData.drilldown !== undefined && responseData.drilldown !== null){
         convertedJson.drilldown = new Object();
         convertedJson.drilldown.series = new Array( Object.keys(responseData.drilldown).length );
 
@@ -504,7 +511,8 @@ function convertToValidHighchartJson(responseData, originJson){
             convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
             // ! Hardcoded Selection that a drilldown is always a pie !
             // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
-            convertedJson.drilldown.series[index].type = "pie";
+            // convertedJson.drilldown.series[index].type = "pie";
+            convertedJson.drilldown.series[index].type = seriesInstance.type;
         }
     }
 

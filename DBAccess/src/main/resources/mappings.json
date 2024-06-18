@@ -10,14 +10,14 @@
     "file": "classpath:mapping.json"
   },
   {
-    "name": "OpenAIRE original",
+    "name": "monitor",
     "description": "Contains all the OpenAIRE information space but its entities correspond to the original OpenAIRE schema",
     "usage": "Best used to navigate the whole information space",
     "shareholders": ["Admins", "Moderators"],
     "complexity": 0,
     "primary": false,
     "hidden": false,
-    "file": "classpath:openaire_db.json"
+    "file": "classpath:monitor.json"
   },
   {
     "name": "Stats db",

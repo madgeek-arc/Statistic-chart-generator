@@ -1,41 +1,27 @@
 spring:
   datasources:
-    - id: openaire.public
-      username:
-      password:
-      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats;UseNativeQuery=1
-      driver-class-name: com.cloudera.impala.jdbc41.Driver
-    - id: openaire.shadow
-      username:
-      password:
-      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_shadow;UseNativeQuery=1
-      driver-class-name: com.cloudera.impala.jdbc41.Driver
     - id: monitor.public
-      username:
-      password:
-      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_monitor;UseNativeQuery=1
-      driver-class-name: com.cloudera.impala.jdbc41.Driver
-    - id: monitor.public
-      username:
-      password:
-      url: jdbc:impala://iis-cdh5-test-gw.ocean.icm.edu.pl:21050/openaire_prod_stats_monitor_shadow;UseNativeQuery=1
-      driver-class-name: com.cloudera.impala.jdbc41.Driver
+      url: jdbc:postgresql://esperos.di.uoa.gr:5432/monitor
+      driver-class-name: org.postgresql.Driver
+      username: dnet
+      password: dnetPwd
     - id: cache
       username: sa
       password:
       url: jdbc:hsqldb:file:/tmp/cache
       driver-class-name: org.hsqldb.jdbcDriver
   redis:
-    host: localhost
+    host: vereniki.athenarc.gr
     port: 6379
+    password: redisPassword
   # Disable feature detection by this undocumented parameter. Check the org.hibernate.engine.jdbc.internal.JdbcServiceImpl.configure method for more details.
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     properties:
       hibernate:
         temp:
           use_jdbc_metadata_defaults: false
-  # Because detection is disabled you have to set correct dialect by hand.
-    database-platform: org.hibernate.dialect.PostgreSQL9Dialect
+    database: postgresql
   datasource:
     hikari:
       connectionTimeout: 20000
@@ -45,10 +31,13 @@ spring:
 statstool:
   result_limit: 70
   cache:
-    enabled: true
+    enabled: false
     storage: redis
     update:
       entries: 5000
       time: 10800
   namedqueries:
     path: ...
+  mappings:
+    file:
+      path: classpath:mappings.json

@@ -19,13 +19,16 @@ public class RequestInfo {
     private List<ChartInfo> chartsInfo;
     @JsonProperty
     private String orderBy;
+    @JsonProperty
+    private boolean drilldown;
 
     public RequestInfo() {}
 
-    public RequestInfo(String library, List<ChartInfo> chartsInfo, String orderBy) {
+    public RequestInfo(String library, List<ChartInfo> chartsInfo, String orderBy, boolean drilldown) {
         this.library = library;
         this.chartsInfo = chartsInfo;
         this.orderBy = orderBy;
+        this.drilldown = drilldown;
     }
 
     public String getLibrary() {
@@ -46,6 +49,14 @@ public class RequestInfo {
 
     public void setOrderBy(String orderBy) {
         this.orderBy = orderBy;
+    }
+
+    public boolean isDrilldown() {
+        return drilldown;
+    }
+
+    public void setDrilldown(boolean drilldown) {
+        this.drilldown = drilldown;
     }
 
     public List<SupportedChartTypes> getChartTypes(){
