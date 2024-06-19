@@ -215,7 +215,9 @@ public class HighChartsDataFormatter extends DataFormatter {
 
                 String yValue = XValueToYValueMapping.get(xValue);
                 Number value = parseValue(yValue);
-                drillDownSliceValuesArray.add(new DataObject(xValue, value));
+
+                if (yValue != null)
+                    drillDownSliceValuesArray.add(new DataObject(xValue, value));
                 if (value != null) {
                     pieSliceSum += value.floatValue();
                 }
@@ -248,6 +250,7 @@ public class HighChartsDataFormatter extends DataFormatter {
                 if (XValueToYValueMapping.containsKey(xValue)) {
 
                     String yValue = XValueToYValueMapping.get(xValue);
+
                     yValuesArray.add(parseValue(yValue));
 
                 } else
