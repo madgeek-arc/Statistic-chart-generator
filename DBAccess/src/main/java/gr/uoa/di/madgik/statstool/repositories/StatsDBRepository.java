@@ -134,9 +134,9 @@ public class StatsDBRepository implements StatsCache {
         }
         jdbcTemplate.update(query,
                 entry.getKey(),
-                new ObjectMapper().writeValueAsString(entry.getResult()),
-                new ObjectMapper().writeValueAsString(entry.getShadowResult()),
-                new ObjectMapper().writeValueAsString(entry.getQuery()),
+                entry.getResult() == null?null:new ObjectMapper().writeValueAsString(entry.getResult()),
+                entry.getShadowResult() == null?null:new ObjectMapper().writeValueAsString(entry.getShadowResult()),
+                entry.getQuery() == null?null:new ObjectMapper().writeValueAsString(entry.getQuery()),
                 Timestamp.from(entry.getCreated().toInstant()),
                 Timestamp.from(entry.getUpdated().toInstant()),
                 entry.getTotalHits(),
@@ -163,7 +163,10 @@ public class StatsDBRepository implements StatsCache {
             try {
                 QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
                 String key = rs.getString("key");
-                Result result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
+                Result result = null;
+
+                if (rs.getString("result") != null)
+                    result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
 
                 entry = new CacheEntry(key, query, result);
 
@@ -203,7 +206,7 @@ public class StatsDBRepository implements StatsCache {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
-        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow != ''",new Object[] {}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow is not null",new Object[] {}, Integer.class));
         stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
             Map<String, Object> map = new LinkedHashMap<>();
 
