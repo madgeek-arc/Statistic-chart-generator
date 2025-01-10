@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.math.BigDecimal;
+
 @Configuration
 public class JacksonConfig {
 
@@ -21,6 +23,7 @@ public class JacksonConfig {
         SimpleModule module = new SimpleModule();
         module.addSerializer(Double.class, new ToStringSerializer());
         module.addSerializer(Float.class, new ToStringSerializer());
+        module.addSerializer(BigDecimal.class, new ToStringSerializer());
         mapper.registerModule(module);
 
         return mapper;
