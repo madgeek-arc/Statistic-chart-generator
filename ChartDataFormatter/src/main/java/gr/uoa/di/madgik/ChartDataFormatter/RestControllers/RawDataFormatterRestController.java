@@ -19,15 +19,18 @@ import java.io.IOException;
 public class RawDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
+
+    private ObjectMapper objectMapper;
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public RawDataFormatterRestController(RequestBodyHandler requestBodyHandler) {
+    public RawDataFormatterRestController(RequestBodyHandler requestBodyHandler, ObjectMapper objectMapper) {
         this.requestBodyHandler = requestBodyHandler;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
     public @ResponseBody ResponseEntity<JsonResponse> getRawData(@RequestParam(name="json") String json) throws IOException {
-        RawDataRequestInfo requestInfo = new ObjectMapper().readValue(json, RawDataRequestInfo.class);
+        RawDataRequestInfo requestInfo = objectMapper.readValue(json, RawDataRequestInfo.class);
 
         JsonResponse responseData;
 

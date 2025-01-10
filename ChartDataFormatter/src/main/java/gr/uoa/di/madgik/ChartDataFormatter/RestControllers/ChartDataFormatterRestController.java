@@ -39,11 +39,14 @@ public class ChartDataFormatterRestController {
     private RequestBodyHandler requestBodyHandler;
     private SupportedDiagramsService supportedDiagramsService;
 
+    private ObjectMapper objectMapper;
+
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService, ObjectMapper objectMapper) {
         this.requestBodyHandler = requestBodyHandler;
         this.supportedDiagramsService = supportedDiagramsService;
+        this.objectMapper = objectMapper;
     }
 
     @GetMapping
@@ -160,10 +163,9 @@ public class ChartDataFormatterRestController {
     public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name="json") String json){
 
         JsonResponse responseData;
-        ObjectMapper mapper = new ObjectMapper();
 
         try {
-            RequestInfo requestJson = mapper.readValue(json, RequestInfo.class);
+            RequestInfo requestJson = objectMapper.readValue(json, RequestInfo.class);
 
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyException e) {
