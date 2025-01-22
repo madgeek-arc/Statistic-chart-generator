@@ -55,7 +55,10 @@ public class StatsDBRepository implements StatsCache {
                         "exectime int default 0 not null," +
                         "profile varchar(100) not null)");
 
-        jdbcTemplate.execute("create index key_idx on cache_entry(key)");
+        boolean indexExists = jdbcTemplate.queryForObject("select count(*) from INFORMATION_SCHEMA.SYSTEM_INDEXINFO where table_name='cache_entry' and index_name='key_idx'", Integer.class) == 1;
+
+        if (!indexExists)
+            jdbcTemplate.execute("create index key_idx on cache_entry(key)");
     }
 
     @Override
