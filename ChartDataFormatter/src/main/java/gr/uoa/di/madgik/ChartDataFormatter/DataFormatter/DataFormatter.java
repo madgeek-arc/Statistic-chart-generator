@@ -3,7 +3,10 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.statstool.domain.Result;
 
-import java.util.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 /**
  * An abstract class that should be extended by each Chart Library Formatter.
@@ -31,7 +34,7 @@ public abstract class DataFormatter {
 
             for (List<?> row : result.getRows()) {
                 // Get the first groupBy of the result row
-                String xValue = String.valueOf(row.get(1));
+                String xValue = valueToString(row.get(1));
 
                 //Find a xAxis value and register it in the xAxis_categories
                 if (!xAxis_categories.contains(xValue))
@@ -47,6 +50,22 @@ public abstract class DataFormatter {
             xAxis_Categories.sort(String::compareToIgnoreCase);
 
         return xAxis_Categories;
+    }
+
+    /**
+     * Translates values to plain String avoiding scientific formatting.
+     *
+     * @param obj the {@link Object} holding the value
+     * @return the value in plain string format
+     */
+    public String valueToString(Object obj) {
+        if (obj instanceof Double) {
+            return BigDecimal.valueOf((double) obj).toPlainString();
+        } else if (obj instanceof Float) {
+            return BigDecimal.valueOf((float) obj).toPlainString();
+        } else {
+            return String.valueOf(obj);
+        }
     }
 
     /**

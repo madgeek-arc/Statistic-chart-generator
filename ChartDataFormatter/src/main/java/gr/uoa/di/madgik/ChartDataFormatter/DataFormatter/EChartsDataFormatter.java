@@ -81,7 +81,7 @@ public class EChartsDataFormatter extends DataFormatter{
 
                 if (row.size() == 3) {
                     // The value of the 2nd Group BY
-                    String xValueB = String.valueOf(row.get(2));
+                    String xValueB = valueToString(row.get(2));
                     if (!namesToDataSeries.containsKey(xValueB)) {
                         namesToDataSeries.put(xValueB, new HashMap<>());
                         namesToTypes.put(xValueB, chartsType.get(i));
@@ -91,8 +91,8 @@ public class EChartsDataFormatter extends DataFormatter{
                 }
 
                 // Get the first groupBy of the result row
-                String yValue = String.valueOf(row.get(0));
-                String xValue = String.valueOf(row.get(1));
+                String yValue = valueToString(row.get(0));
+                String xValue = valueToString(row.get(1));
 
                 if (XtoYMapping != null)
                     XtoYMapping.put(xValue, yValue);
@@ -213,13 +213,13 @@ public class EChartsDataFormatter extends DataFormatter{
                 ArrayList<Number> yValuesArray = new ArrayList<>();
                 for (List<?> row : result.getRows()) {
 
-                    String xValue = String.valueOf(row.get(1));
+                    String xValue = valueToString(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = String.valueOf(row.get(0));
+                    String yValue = valueToString(row.get(0));
                     yValuesArray.add(parseValue(yValue));
 
                 }
@@ -230,13 +230,13 @@ public class EChartsDataFormatter extends DataFormatter{
                 ArrayList<EChartsDataObject> yObjectValuesArray = new ArrayList<>();
                 for (List<?> row : result.getRows()) {
 
-                    String xValue = String.valueOf(row.get(1));
+                    String xValue = valueToString(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = String.valueOf(row.get(0));
+                    String yValue = valueToString(row.get(0));
                     yObjectValuesArray.add(new EChartsDataObject(xValue, parseValue(yValue)));
 
                 }
@@ -269,10 +269,10 @@ public class EChartsDataFormatter extends DataFormatter{
         for (List<?> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
-            String groupByValue = String.valueOf(row.get(2));
-            String xValueA = String.valueOf(row.get(1));
+            String groupByValue = valueToString(row.get(2));
+            String xValueA = valueToString(row.get(1));
             // I assume that always the first value of the row is for the Y value
-            String yValue = String.valueOf(row.get(0));
+            String yValue = valueToString(row.get(0));
 
             if (!groupByMap.containsKey(groupByValue))
                 groupByMap.put(groupByValue, new HashMap<>());
@@ -393,8 +393,8 @@ public class EChartsDataFormatter extends DataFormatter{
                 
                 // We assume the node and edge values are Integers
 
-                String fromNode = String.valueOf(row.get(0));
-                String toNode = String.valueOf(row.get(1));
+                String fromNode = valueToString(row.get(0));
+                String toNode = valueToString(row.get(1));
                 Number edgeWeight = Integer.parseInt(String.valueOf(row.get(2)));
                 
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
@@ -420,9 +420,9 @@ public class EChartsDataFormatter extends DataFormatter{
                 
                 // We assume the node and edge values are Integers
 
-                String fromNode = String.valueOf(row.get(0));
+                String fromNode = valueToString(row.get(0));
                 Number fromNodeValue = Integer.parseInt(String.valueOf(row.get(1)));
-                String toNode = String.valueOf(row.get(2));
+                String toNode = valueToString(row.get(2));
                 Number edgeWeight = Integer.parseInt(String.valueOf(row.get(3)));
                 
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
