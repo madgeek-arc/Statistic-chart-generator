@@ -98,13 +98,13 @@ public class HighChartsDataFormatter extends DataFormatter {
                 ArrayList<Number> yValuesArray = new ArrayList<>();
                 for (List<?> row : result.getRows()) {
 
-                    String xValue = String.valueOf(row.get(1));
+                    String xValue = valueToString(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = String.valueOf(row.get(0));
+                    String yValue = valueToString(row.get(0));
                     yValuesArray.add(parseValue(yValue));
 
                 }
@@ -115,13 +115,13 @@ public class HighChartsDataFormatter extends DataFormatter {
                 ArrayList<DataObject> yObjectValuesArray = new ArrayList<>();
                 for (List<?> row : result.getRows()) {
 
-                    String xValue = String.valueOf(row.get(1));
+                    String xValue = valueToString(row.get(1));
 
                     if (!xAxis_categories.containsKey(xValue))
                         xAxis_categories.put(xValue, xAxis_categories.size());
 
                     // I assume that always the first value of the row is for the Y value
-                    String yValue = String.valueOf(row.get(0));
+                    String yValue = valueToString(row.get(0));
                     yObjectValuesArray.add(new DataObject(xValue, parseValue(yValue)));
                 }
                 dataSeries.add(new ArrayOfDataObjects(yObjectValuesArray));
@@ -149,10 +149,10 @@ public class HighChartsDataFormatter extends DataFormatter {
         for (List<?> row : result.getRows()) {
 
             // Create a map with the unique values for the group by
-            String groupByValue = String.valueOf(row.get(2));
-            String xValueA = String.valueOf(row.get(1));
+            String groupByValue = valueToString(row.get(2));
+            String xValueA = valueToString(row.get(1));
             // I assume that always the first value of the row is for the Y value
-            String yValue = String.valueOf(row.get(0));
+            String yValue = valueToString(row.get(0));
 
             if (!groupByMap.containsKey(groupByValue))
                 groupByMap.put(groupByValue, new HashMap<>());
@@ -264,7 +264,7 @@ public class HighChartsDataFormatter extends DataFormatter {
 
                 if (row.size() == 3) {
                     // The value of the 2nd Group BY
-                    String xValueB = String.valueOf(row.get(2));
+                    String xValueB = valueToString(row.get(2));
                     if (!namesToDataSeries.containsKey(xValueB)) {
                         namesToDataSeries.put(xValueB, new HashMap<>());
                         namesToTypes.put(xValueB, chartsType.get(i));
@@ -274,8 +274,8 @@ public class HighChartsDataFormatter extends DataFormatter {
                 }
 
                 // Get the first groupBy of the result row
-                String yValue = String.valueOf(row.get(0));
-                String xValue = String.valueOf(row.get(1));
+                String yValue = valueToString(row.get(0));
+                String xValue = valueToString(row.get(1));
 
                 if (XtoYMapping != null)
                     XtoYMapping.put(xValue, yValue);
