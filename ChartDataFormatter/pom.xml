@@ -5,7 +5,11 @@
 
     <groupId>gr.uoa.di.madgik</groupId>
     <artifactId>Statistic-chart-generator-ChartDataFormatter</artifactId>
+<<<<<<< Updated upstream
     <version>0.0.1-SNAPSHOT</version>
+=======
+    <version>1.0.1-SNAPSHOT</version>
+>>>>>>> Stashed changes
     <packaging>jar</packaging>
 
     <parent>

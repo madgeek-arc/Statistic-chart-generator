@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils;
 import gr.uoa.di.madgik.statstool.domain.Result;
 
 import java.math.BigDecimal;
@@ -53,19 +54,27 @@ public abstract class DataFormatter {
     }
 
     /**
-     * Translates values to plain String avoiding scientific formatting.
+     * Translates values to plain String avoiding scientific notation formatting.
      *
      * @param obj the {@link Object} holding the value
      * @return the value in plain string format
      */
     public String valueToString(Object obj) {
-        if (obj instanceof Double) {
-            return BigDecimal.valueOf((double) obj).toPlainString();
-        } else if (obj instanceof Float) {
-            return BigDecimal.valueOf((float) obj).toPlainString();
-        } else {
-            return String.valueOf(obj);
+        if (obj instanceof BigDecimal) {
+            return ((BigDecimal) obj).toPlainString();
         }
+        String valueToString = String.valueOf(obj);
+        if (valueToString.matches("^[-+]?\\d+(\\.\\d+)?([eE][-+]?\\d+)")) {
+            Number number = NumberUtils.parseValue(valueToString);
+            if (number instanceof Long) {
+                return BigDecimal.valueOf((Long) number).toPlainString();
+            } else if (number instanceof Double) {
+                return BigDecimal.valueOf((Double) number).toPlainString();
+            } else if (number instanceof Float) {
+                return BigDecimal.valueOf((Float) number).toPlainString();
+            }
+        }
+        return valueToString;
     }
 
     /**
