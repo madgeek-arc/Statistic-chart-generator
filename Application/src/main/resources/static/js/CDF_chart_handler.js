@@ -5,6 +5,7 @@ var domainName = "localhost";
 var protocol = "http";
 
 var domainLink = protocol + "://" + domainName + ":" + port;
+var userLocale = navigator.language || 'en-US';
 const DEBUGMODE = true;
 
 function fetchChart(jsonData) {
@@ -14,6 +15,17 @@ function fetchChart(jsonData) {
             console.log("Failed");
         })
         .always();
+}
+
+/**
+ * Formats numeric values given as string, otherwise returns original data.
+ *
+ * @param data
+ * @returns {*|string}
+ */
+function formatIfNumeric(data) {
+    let num = parseFloat(data);
+    return isNaN(num) ? data : new Intl.NumberFormat(userLocale).format(num);
 }
 
 //Function for loading(= appending to the head) a JS file
@@ -133,7 +145,7 @@ function handleAdminSideData(dataJSONobj) {
                                                     () => loadJS("//code.highcharts.com/modules/offline-exporting.js",
                                                         () => loadJS("//code.highcharts.com/modules/export-data.js",
 
-                                                            function () {
+                                                            function(){
                                                                 //Hold the Library state
                                                                 libraryType = dataJSONobj.library;
 
@@ -141,6 +153,7 @@ function handleAdminSideData(dataJSONobj) {
                                                                 //Pass the Chart library to ChartDataFormatter
                                                                 RequestInfoObj.library = dataJSONobj.library;
                                                                 RequestInfoObj.orderBy = dataJSONobj.orderBy;
+                                                                RequestInfoObj.drilldown = dataJSONobj.drilldown;
                                                                 //Pass the Chart type to ChartDataFormatter
                                                                 var defaultType = dataJSONobj.chartDescription.chart.type;
                                                                 //Create ChartInfo Object Array
@@ -148,15 +161,16 @@ function handleAdminSideData(dataJSONobj) {
 
                                                                 //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
                                                                 //along with the requested Chart type
-                                                                dataJSONobj.chartDescription.queries.forEach(element => {
+                                                                dataJSONobj.chartDescription.queries.
+                                                                forEach(element => {
                                                                     var ChartInfoObj = new Object();
 
-                                                                    if (element.type === undefined)
+                                                                    if(element.type === undefined)
                                                                         ChartInfoObj.type = defaultType;
                                                                     else
                                                                         ChartInfoObj.type = element.type;
 
-                                                                    if (element.name === undefined)
+                                                                    if(element.name === undefined)
                                                                         ChartInfoObj.name = null;
                                                                     else
                                                                         ChartInfoObj.name = element.name;
@@ -165,20 +179,22 @@ function handleAdminSideData(dataJSONobj) {
                                                                     RequestInfoObj.chartsInfo.push(ChartInfoObj);
                                                                 });
 
-                                                                passToChartDataFormatter(dataJSONobj, RequestInfoObj,
-                                                                    domainLink + "/chart");
+                                                                passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                                                                    domainLink+"/chart");
                                                             }
+
                                                         ))))))))))));
 
             break;
         }
-        case "HighMaps": {
+        case "HighMaps":
+        {
             loadJS("//code.highcharts.com/maps/highmaps.js",
                 () => loadJS("//code.highcharts.com/modules/exporting.js",
                     () => loadJS("//code.highcharts.com/modules/offline-exporting.js",
                         () => loadJS("//code.highcharts.com/modules/export-data.js",
                             function () {
-                                console.log("Incoming JSON", dataJSONobj);
+                                console.log("Incoming JSON",dataJSONobj);
 
                                 //Hold the Library state
                                 libraryType = dataJSONobj.library;
@@ -190,10 +206,11 @@ function handleAdminSideData(dataJSONobj) {
                                 RequestInfoObj.chartsInfo = [];
 
                                 //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
-                                dataJSONobj.mapDescription.queries.forEach(element => {
+                                dataJSONobj.mapDescription.queries.
+                                forEach(element => {
                                     var ChartInfoObj = new Object();
 
-                                    if (element.name === undefined)
+                                    if(element.name === undefined)
                                         ChartInfoObj.name = null;
                                     else
                                         ChartInfoObj.name = element.name;
@@ -201,15 +218,15 @@ function handleAdminSideData(dataJSONobj) {
                                     ChartInfoObj.query = element.query;
                                     RequestInfoObj.chartsInfo.push(ChartInfoObj);
                                 });
-                                passToChartDataFormatter(dataJSONobj, RequestInfoObj,
-                                    domainLink + "/chart");
+                                passToChartDataFormatter(dataJSONobj,RequestInfoObj,
+                                    domainLink+"/chart");
                             }))));
 
             break;
         }
         default:
-            if (DEBUGMODE)
-                console.log("Unsupported Library: " + dataJSONobj.library);
+            if(DEBUGMODE)
+                console.log("Unsupported Library: "+ dataJSONobj.library);
     }
 }
 
@@ -256,6 +273,12 @@ function passToChartDataFormatter(dataJSONobj, ChartDataFormatterReadyJSONobj, C
 function handleChartDataFormatterResponse(responseData, originalDataJSONobj, ChartDataFormatterReadyJSONobj) {
     if (DEBUGMODE) console.log("Got from CDF: ", responseData);
 
+    if (libraryType !== "GoogleCharts") { // GoogleCharts does not respond with the following transformations.
+        // If x-axis labels are numeric, format them using user locale
+        responseData.xAxis_categories = responseData.xAxis_categories.map(x => formatIfNumeric(x))
+        responseData.dataSeriesNames = responseData.dataSeriesNames.map(x => formatIfNumeric(x))
+    }
+
     //Hide children elements of container
     $("#container").children().remove();
 
@@ -265,7 +288,9 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
 
             Highcharts.setOptions({
                 lang: {
-                    drillUpText: '<< Back'
+                    drillUpText: '<< Back',
+                    decimalPoint: (1.1).toLocaleString(userLocale).charAt(1),
+                    thousandsSep: (1000).toLocaleString(userLocale).charAt(1)
                 }
             })
 
@@ -306,7 +331,12 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                         mapChart.mapZoom(mapJson.zoomTo.zoomValue);
                     }
                 });
-
+            Highcharts.setOptions({
+                lang: {
+                    decimalPoint: (1.1).toLocaleString(userLocale).charAt(1),
+                    thousandsSep: (1000).toLocaleString(userLocale).charAt(1)
+                }
+            })
 
             break;
         }
@@ -384,22 +414,23 @@ function fillGoogleChartsDataTable(responseData, originJson) {
     const chartType = originJson.chartDescription.chartType;
 
     // datacolumns has the same size of columnsType PLUS a header column
-    if (dataColumns.length > 0 && (columnsType === null || ((columnsType !== null) && (dataColumns.length === (columnsType.length + 1))))) {
+    if (dataColumns.length > 0 && (columnsType === null || ((dataColumns.length === (columnsType.length + 1))))) {
 
         if (columnsType !== null)
             originJson.chartDescription.options.series = new Array(columnsType.length);
 
         for (let index = 0; index < dataColumns.length; index++) {
+            let value = formatIfNumeric(dataColumns[index]) // format values for Google Charts
             if (index == 0) {
                 // Column for the name of the Data entry
-                data.addColumn('string', dataColumns[index]);
+                data.addColumn('string', value);
 
                 // Added a column that represents the ID of the parent node in a TreeMap.
                 if (chartType === 'TreeMap')
                     data.addColumn('string', 'Parent')
             } else {
                 // Column for the value of the Data entry
-                data.addColumn('number', dataColumns[index]);
+                data.addColumn('number', value);
                 if (columnsType !== null)
                     originJson.chartDescription.options.series[index - 1] = {type: columnsType[index - 1]};
             }
@@ -426,7 +457,7 @@ function convertToValidHighchartJson(responseData, originJson) {
     var convertedJson = originJson.chartDescription;
     var seriesLength = Object.keys(responseData.series).length;
 
-    if (convertedJson.series == null || convertedJson.series.length != seriesLength)
+    if (convertedJson.series == null || convertedJson.series.length !== seriesLength)
         convertedJson.series = new Array(seriesLength);
 
     for (let index = 0; index < seriesLength; index++) {
@@ -437,7 +468,9 @@ function convertToValidHighchartJson(responseData, originJson) {
             seriesInstance.stacking = convertedJson.series[index].stacking;
 
         // Pass the data series name to the response data object
-        if (responseData.dataSeriesNames !== null)
+        //TODO check that this one did not break anything else!!!!!
+        // if(responseData.dataSeriesNames != null)
+        if (responseData.dataSeriesNames !== undefined && responseData.dataSeriesNames !== null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
         // Pass the data series type to the response data object
@@ -450,7 +483,7 @@ function convertToValidHighchartJson(responseData, originJson) {
                 seriesInstance.color = originJson.chartDescription.queries[index].color;
         }
 
-        if (seriesInstance.type == "treemap") {
+        if (seriesInstance.type === "treemap") {
             // Add the squarified layout algorithm as a default in treemaps
             seriesInstance.layoutAlgorithm = 'squarified';
             seriesInstance.data = [];
@@ -461,7 +494,7 @@ function convertToValidHighchartJson(responseData, originJson) {
 
                 seriesInstance.data.push({name: dataName, value: dataValue, colorValue: dataValue});
             }
-        } else if (seriesInstance.type == "dependencywheel" || seriesInstance.type == "sankey") {
+        } else if (seriesInstance.type === "dependencywheel" || seriesInstance.type === "sankey") {
             seriesInstance.data = responseData.series[index].data;
             seriesInstance.keys = responseData.series[index].keys;
         } else {
@@ -475,7 +508,7 @@ function convertToValidHighchartJson(responseData, originJson) {
         convertedJson.series[index] = seriesInstance;
     }
 
-    if (responseData.drilldown !== null) {
+    if (responseData.drilldown !== undefined && responseData.drilldown !== null) {
         convertedJson.drilldown = new Object();
         convertedJson.drilldown.series = new Array(Object.keys(responseData.drilldown).length);
 
@@ -483,8 +516,14 @@ function convertToValidHighchartJson(responseData, originJson) {
 
             convertedJson.drilldown.series[index] = new Object();
             convertedJson.drilldown.series[index].data = responseData.drilldown[index].data;
+            // TODO: check if needed for drilldown
+            // convertedJson.drilldown.series[index].data = formatIfNumeric(responseData.drilldown[index].data);
+
             convertedJson.drilldown.series[index].id = responseData.series[0].data[index].drilldown;
             convertedJson.drilldown.series[index].name = responseData.series[0].data[index].drilldown;
+            // TODO: check if needed for drilldown
+            // convertedJson.drilldown.series[index].name = formatIfNumeric(responseData.series[0].data[index].drilldown);
+
             // ! Hardcoded Selection that a drilldown is always a pie !
             // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
             convertedJson.drilldown.series[index].type = "pie";
@@ -530,7 +569,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         // }
 
         // Series Data alignment
-        if (seriesInstance.type == "treemap") {
+        if (seriesInstance.type === "treemap") {
             seriesInstance.data = [];
             for (let dataIndex = 0; dataIndex < responseData.series[index].data.length; dataIndex++) {
 
@@ -563,7 +602,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                     node.label = {show: node.symbolSize > 30};
                 });
 
-                // Dont show axes
+                // Don't show axes
                 convertedJson.xAxis.show = false;
                 convertedJson.yAxis.show = false;
 
@@ -577,7 +616,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
                 seriesInstance.layout = "none";
                 seriesInstance.emphasis = {focus: "adjacency"};
 
-                // Dont show axes
+                // Don't show axes
                 convertedJson.xAxis.show = false;
                 convertedJson.yAxis.show = false;
 
@@ -619,7 +658,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
         if (seriesInstance.type === 'column')
             seriesInstance.type = 'bar';
 
-        if (Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length && !(seriesInstance.type == "graph" || seriesInstance.type == "sankey"))
+        if (Object.keys(responseData.series).length === Object.keys(originJson.chartDescription.queries).length && !(seriesInstance.type === "graph" || seriesInstance.type === "sankey"))
             //TODO if (originJson.chartDescription.queries[index].color)
             seriesInstance.color = originJson.chartDescription.queries[index].color;
 
