@@ -26,11 +26,9 @@ function fetchChart(jsonData) {
  */
 function formatIfNumeric(data) {
     let num = parseFloat(data);
-    const smallIntRegex = "[-+]?\d{1,4}$";
-    if (isNaN(num))
+    const smallIntRegex = /[-+]?\d{1,4}$/;
+    if (isNaN(num) || smallIntRegex.test(data))
         return data;
-    else if (num.match(smallIntRegex))
-        return num;
     else
         return new Intl.NumberFormat(userLocale).format(num);
 }
