@@ -6,6 +6,7 @@ var protocol = "http";
 
 var domainLink = protocol + "://" + domainName + ":" + port;
 var userLocale = navigator.language || 'en-US';
+
 const DEBUGMODE = true;
 
 function fetchChart(jsonData) {
@@ -503,6 +504,10 @@ function convertToValidHighchartJson(responseData, originJson) {
             if (convertedJson.xAxis === undefined)
                 convertedJson.xAxis = {};
             convertedJson.xAxis.categories = responseData.xAxis_categories;
+
+            //TODO check that we do not need to use the default 'linear' type of xAxis
+            if (responseData.xAxis_categories === undefined && (seriesInstance.type === "column" || seriesInstance.type === "bar"))
+                convertedJson.xAxis.type = "category";
         }
 
         convertedJson.series[index] = seriesInstance;
@@ -526,7 +531,8 @@ function convertToValidHighchartJson(responseData, originJson) {
 
             // ! Hardcoded Selection that a drilldown is always a pie !
             // As of now drilldown is ONLY used in a pie-graph of a single series with a second group by
-            convertedJson.drilldown.series[index].type = "pie";
+            // convertedJson.drilldown.series[index].type = "pie";
+            convertedJson.drilldown.series[index].type = seriesInstance.type;
         }
     }
 
