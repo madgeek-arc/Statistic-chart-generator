@@ -9,6 +9,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepr
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.ArrayOfValues;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.DataObject;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.EChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -399,7 +400,7 @@ public class EChartsDataFormatter extends DataFormatter {
 
                 String fromNode = valueToString(row.get(0));
                 String toNode = valueToString(row.get(1));
-                Number edgeWeight = Integer.parseInt(valueToString(row.get(2)));
+                Number edgeWeight = NumberUtils.parseValue(row.get(2).toString());
 
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
 
@@ -423,10 +424,9 @@ public class EChartsDataFormatter extends DataFormatter {
                 // We assume the node and edge values are Integers
 
                 String fromNode = valueToString(row.get(0));
-                Number fromNodeValue = Integer.parseInt(String.valueOf(row.get(1)));
+                Number fromNodeValue = NumberUtils.parseValue(String.valueOf(row.get(1)));
                 String toNode = valueToString(row.get(2));
-                Number edgeWeight = Integer.parseInt(String.valueOf(row.get(3)));
-
+                Number edgeWeight = NumberUtils.parseValue(String.valueOf(row.get(3)));
                 links.add(new EChartsGraphLink(fromNode, toNode, edgeWeight));
 
                 // Add the edgeWeight in the HashMap with the fromNode as a key

@@ -1,16 +1,22 @@
 package gr.uoa.di.madgik.ChartDataFormatter.Utility;
 
+import java.math.BigDecimal;
+
 public class NumberUtils {
 
-    public static Number parseValue(String yValue) {
-        if (yValue == null)
-            return null;
-        else if (yValue.matches("[0-9.,]*"))
-            return Float.parseFloat(yValue);
-        else if (yValue.matches("\\d*"))
-            return Integer.parseInt(yValue);
-        else
-            return null;
+    public static Number parseValue(String value) {
+        try {
+            if (value == null)
+                return null;
+            else if (value.matches("^[-+]?\\d+?([eE][-+]?\\d+)?"))
+                return Long.parseLong(value);
+            else if (value.matches("^[-+]?\\d+(\\.\\d+)?([eE][-+]?\\d+)?"))
+                return Double.parseDouble(value);
+            else // not a number
+                return null;
+        } catch (NumberFormatException e) {
+            return new BigDecimal(value);
+        }
     }
 
     private NumberUtils() {

@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.ChartDataFormatter.DataFormatter;
 
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.HighChartsDataRepresentation.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.HighChartsJsonResponse;
+import gr.uoa.di.madgik.ChartDataFormatter.Utility.NumberUtils;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -371,11 +372,11 @@ public class HighChartsDataFormatter extends DataFormatter {
             if (ignoreNodeWeight) {
                 dataRow.add(row.get(2));
                 // We assume the node and edge values are Integers
-                dataRow.add(Integer.parseInt(String.valueOf(row.get(3))));
+                dataRow.add(NumberUtils.parseValue(String.valueOf(row.get(3))));
             } else {
                 dataRow.add(row.get(1));
                 // We assume the node and edge values are Integers
-                dataRow.add(Integer.parseInt(String.valueOf(row.get(2))));
+                dataRow.add(NumberUtils.parseValue(String.valueOf(row.get(2))));
             }
             // Push the row into the data list
             data.add(dataRow.stream().toArray());
