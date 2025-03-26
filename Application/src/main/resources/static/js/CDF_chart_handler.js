@@ -25,12 +25,17 @@ function fetchChart(jsonData) {
  * @returns {*|string}
  */
 function formatIfNumeric(data) {
+    const isAlphanumericRegex = /[a-zA-Z]/;
+    if (isAlphanumericRegex.test(data)) {
+        return data
+    }
     let num = parseFloat(data);
     const smallIntRegex = /[-+]?\d{1,4}$/;
-    if (isNaN(num) || smallIntRegex.test(data))
+    if (Number.isNaN(num) || smallIntRegex.test(data)) {
         return data;
-    else
+    } else {
         return new Intl.NumberFormat(userLocale).format(num);
+    }
 }
 
 //Function for loading(= appending to the head) a JS file
