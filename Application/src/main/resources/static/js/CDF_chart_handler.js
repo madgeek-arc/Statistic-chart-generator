@@ -285,8 +285,8 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
 
     if (libraryType !== "GoogleCharts") { // GoogleCharts does not respond with the following transformations.
         // If x-axis labels are numeric, format them using user locale
-        responseData.xAxis_categories = responseData.xAxis_categories.map(x => formatIfNumeric(x))
-        responseData.dataSeriesNames = responseData.dataSeriesNames.map(x => formatIfNumeric(x))
+        responseData.xAxis_categories = responseData.xAxis_categories?.map(x => formatIfNumeric(x))
+        responseData.dataSeriesNames = responseData.dataSeriesNames?.map(x => formatIfNumeric(x))
     }
 
     //Hide children elements of container
