@@ -4,11 +4,11 @@ import java.util.Map;
 
 public interface CacheService {
 
-    public void updateCache();
+    void updateCache(String profile);
 
-    public void promoteCache();
+    void promoteCache(String profile);
 
-    public void dropCache() throws Exception;
+    void dropCache(String profile) throws Exception;
 
-    public Map<String, Object> getStats() throws Exception;
+    Map<String, Object> getStats() throws Exception;
 }

@@ -33,13 +33,13 @@ public class CacheServiceImpl implements CacheService {
     private Boolean updating = false;
 
     @Override
-    public void updateCache() {
+    public void updateCache(String profile) {
 
         synchronized (updating) {
             if (!updating) {
                 updating = true;
                 new Thread(() -> {
-                    doUpdateCache();
+                    doUpdateCache(profile);
                     this.updating=false;
                 }).start();
             } else
@@ -49,21 +49,21 @@ public class CacheServiceImpl implements CacheService {
     }
 
     @Override
-    public void promoteCache() {
-        this.doPromoteCache();
+    public void promoteCache(String profile) {
+        this.doPromoteCache(profile);
     }
 
-    public void dropCache() throws Exception {
-        this.statsCache.dropCache();
+    public void dropCache(String profile) throws Exception {
+        this.statsCache.dropCache(profile);
     }
 
     public Map<String, Object> getStats() throws Exception {
         return this.statsCache.stats();
     }
 
-    private void doUpdateCache() {
+    private void doUpdateCache(String profile) {
         log.info("Starting cache update");
-        List<CacheEntry> entries = statsCache.getEntries();
+        List<CacheEntry> entries = statsCache.getEntries(profile);
 
         entries.sort(new EntriesComparator());
 
@@ -101,10 +101,10 @@ public class CacheServiceImpl implements CacheService {
         log.info("Finished cache update!");
     }
 
-    private void doPromoteCache() {
+    private void doPromoteCache(String profile) {
         log.info("Promoting shadow cache values to public");
 
-        List<CacheEntry> entries = statsCache.getEntries();
+        List<CacheEntry> entries = statsCache.getEntries(profile);
 
         entries.forEach(entry -> {
             if (entry.getShadowResult() != null) {

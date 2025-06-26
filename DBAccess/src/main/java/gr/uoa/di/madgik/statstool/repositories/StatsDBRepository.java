@@ -8,7 +8,6 @@ import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -19,9 +18,6 @@ import java.sql.Timestamp;
 import java.util.*;
 
 @Repository
-@ConditionalOnProperty(
-        value = "statstool.cache.storage",
-        havingValue = "db")
 public class StatsDBRepository implements StatsCache {
 
     public static final String CACHE_DB_NAME = "cache";
@@ -95,10 +91,16 @@ public class StatsDBRepository implements StatsCache {
         });
     }
 
-    public void dropCache() throws Exception {
+    public void dropCache(String profile) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        jdbcTemplate.execute("delete from cache_entry");
+        String sql = "delete from cache_entry";
+
+        if (profile != null && !profile.isEmpty()) {
+            sql += " where profile=?";
+        }
+
+        jdbcTemplate.execute(sql);
     }
 
     @Override
@@ -148,7 +150,7 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public List<CacheEntry> getEntries() {
+    public List<CacheEntry> getEntries(String profile) {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache) {
@@ -157,7 +159,13 @@ public class StatsDBRepository implements StatsCache {
             return Collections.emptyList();
         }
 
-        return jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')", (rs, rowNum) -> {
+        String sql = "select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
+
+        if(profile != null && !profile.isEmpty()) {
+            sql += " and profile=?";
+        }
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
             CacheEntry entry = null;
 
             try {

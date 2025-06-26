@@ -17,7 +17,7 @@ public interface StatsCache {
         return MD5(query.toString());
     }
 
-    void dropCache() throws Exception;
+    void dropCache(String profile) throws Exception;
 
     boolean exists(String key) throws Exception;
 
@@ -27,7 +27,7 @@ public interface StatsCache {
 
     void storeEntry(CacheEntry entry) throws Exception;
 
-    List<CacheEntry> getEntries();
+    List<CacheEntry> getEntries(String profile);
 
     void deleteEntry(String key);
 
