@@ -10,27 +10,26 @@ import java.util.*;
 public class SqlQueryTree {
     private final Node root;
     private int count;
-    private int limit;
-    private List<FilterGroup> filterGroups = new ArrayList<>();
-    private String orderBy;
+    private final int limit;
+    private final List<FilterGroup> filterGroups = new ArrayList<>();
 
     public SqlQueryTree(Query query) {
         this.root = new Node();
         this.root.table = query.getEntity();
-        this.root.alias = query.getEntity().substring(0, 1) + Integer.toString(this.count);
+        this.root.alias = query.getEntity().charAt(0) + Integer.toString(this.count);
         this.count++;
         for (Select select : query.getSelect()) {
             addSelect(select);
         }
         for (FilterGroup filterGroup: query.getFilters()) {
             List<Filter> filters = new ArrayList<>();
+            // Do NOT mutate the join tree with filter paths; keep filters as-is for EXISTS subqueries
             for (Filter filter : filterGroup.getGroupFilters()) {
-                filters.add(addFilter(filter));
+                filters.add(filter);
             }
             filterGroups.add(new FilterGroup(filters, filterGroup.getOp()));
         }
         this.limit = query.getLimit();
-        this.orderBy = query.getOrderBy();
     }
 
     private static class Node {
@@ -73,7 +72,7 @@ public class SqlQueryTree {
         if (parent == null) {
             parent = new Node();
             parent.table = fromTable;
-            parent.alias = fromTable.substring(0, 1) + Integer.toString(this.count);
+            parent.alias = fromTable.charAt(0) + Integer.toString(this.count);
             this.count++;
         }
 
@@ -81,7 +80,7 @@ public class SqlQueryTree {
         if (toEdge == null) {
             Node toNode = new Node();
             toNode.table = toTable;
-            toNode.alias = toTable.substring(0, 1) + Integer.toString(this.count);
+            toNode.alias = toTable.charAt(0) + Integer.toString(this.count);
             this.count++;
             toEdge = new Edge(fromField, toField, toNode);
             parent.children.put(toTable, toEdge);
@@ -137,12 +136,12 @@ public class SqlQueryTree {
         Stack<Node> stack = new Stack<>();
         List<String> tables = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
-        String joins = "";
+        StringBuilder joins = new StringBuilder();
         List<String> group = new ArrayList<>();
 
         stack.push(this.root);
         //joins += "public." + this.root.table + " " + this.root.alias + " ";
-        joins += this.root.table + " " + this.root.alias + " ";
+        joins.append(this.root.table).append(" ").append(this.root.alias).append(" ");
 
         while (!stack.empty()) {
             Node nd = stack.pop();
@@ -163,89 +162,101 @@ public class SqlQueryTree {
             }
 
             for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
-                joins += "JOIN " + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
-                //joins += "JOIN public." + entry.getKey() + " " + entry.getValue().node.alias + " ON " + nd.alias + "." + entry.getValue().from + "=" + entry.getValue().node.alias + "." + entry.getValue().to + " ";
+                joins.append("JOIN ")
+                        .append(entry.getKey())
+                        .append(" ")
+                        .append(entry.getValue().node.alias)
+                        .append(" ON ")
+                        .append(nd.alias)
+                        .append(".")
+                        .append(entry.getValue().from)
+                        .append("=")
+                        .append(entry.getValue().node.alias)
+                        .append(".")
+                        .append(entry.getValue().to)
+                        .append(" ");
+
                 if (!tables.contains(entry.getValue().node.alias)) {
                     stack.push(entry.getValue().node);
                 }
             }
         }
 
-        String query = "SELECT ";
-        Boolean first = true;
+        StringBuilder query = new StringBuilder("SELECT ");
+        boolean first = true;
         selects.sort(Comparator.comparingInt(o -> o.order));
         for (OrderedSelect select : selects) {
             if (first) {
-                query += select.select;
+                query.append(select.select);
                 first = false;
             } else {
-                query += ", " + select.select;
+                query.append(", ").append(select.select);
             }
         }
-        query += " FROM " + joins;
+        query.append(" FROM ").append(joins);
         List<String> op = new ArrayList<>();
         List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
-        if(allTheFilters != null && !allTheFilters.isEmpty()) {
-            query += "WHERE ";
+        if (!allTheFilters.isEmpty()) {
+            query.append("WHERE ");
             first = true;
             int group_id = 0;
-            for (List<String> groupFilters : allTheFilters) {
+            for (List<String> filterGroup : allTheFilters) {
                 if (first) {
                     first = false;
                 } else {
-                    query += " AND ";
+                    query.append(" AND ");
                 }
                 boolean first_filter = true;
-                for (String filter : groupFilters) {
-                    if (first_filter && groupFilters.size() > 1) {
-                        query += "(";
+                for (String filter : filterGroup) {
+                    if (first_filter && filterGroup.size() > 1) {
+                        query.append("(");
                         first_filter = false;
-                    } else if (groupFilters.size() > 1) {
-                        query += " " + op.get(group_id) + " ";
+                    } else if (filterGroup.size() > 1) {
+                        query.append(" ").append(op.get(group_id)).append(" ");
                     }
-                    query += filter;
+                    query.append(filter);
                 }
-                if (groupFilters.size() > 1) {
-                    query += ")";
+                if (filterGroup.size() > 1) {
+                    query.append(")");
                 }
                 group_id++;
             }
         }
         if(!group.isEmpty()) {
-            query += " GROUP BY ";
+            query.append(" GROUP BY ");
             first = true;
             for (String gp : group) {
                 if (first) {
-                    query += gp;
+                    query.append(gp);
                     first = false;
                 } else {
-                    query += ", " + gp;
+                    query.append(", ").append(gp);
                 }
             }
 
-            query += " ORDER BY ";
+            query.append(" ORDER BY ");
 
             if (orderBy == null || orderBy.equals("xaxis")) {
                 first = true;
                 for (String gp : group) {
                     if (first) {
-                        query += gp;
+                        query.append(gp);
                         first = false;
                     } else {
-                        query += ", " + gp;
+                        query.append(", ").append(gp);
                     }
                 }
             } else {
-                query += " 1 DESC ";
+                query.append(" 1 DESC ");
             }
         }
 
         if(limit != 0) {
-            query += " LIMIT " + limit;
+            query.append(" LIMIT ").append(limit);
         }
-        query += ";";
+        query.append(";");
 
-        return query;
+        return query.toString();
     }
 
     private List<List<String>> mapFilters(List<FilterGroup> filterGroups, List<Object> parameters, List<String> op) {
@@ -253,37 +264,112 @@ public class SqlQueryTree {
         for (FilterGroup filterGroup : filterGroups) {
             List<String> groupFilters = new ArrayList<>();
             for (Filter filter : filterGroup.getGroupFilters()) {
-                if (filter.getType().equals("=") || filter.getType().equals("!=") || filter.getType().equals(">") || filter.getType().equals(">=") || filter.getType().equals("<") || filter.getType().equals("<=")) {
-                    for (String value : filter.getValues()) {
-                        groupFilters.add(filter.getField() + filter.getType() + "?");
-                        parameters.add(mapType(value, filter.getDatatype()));
-                        break;
+                // Parse the path produced by SqlQueryBuilder.mapField(), which encodes joins as: FromTable(from_col).(to_col)ToTable....target_col
+                List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
+                // Build hop list
+                class Hop { String fromTable; String fromField; String toTable; String toField; }
+                List<Hop> hops = new ArrayList<>();
+                for (int i = 0; i < fldPath.size() - 2; i++) {
+                    String from;
+                    String to;
+                    if (i == 0) {
+                        from = fldPath.get(i);
+                    } else {
+                        from = fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1);
                     }
-                } else if (filter.getType().equals("between")) {
-                    for (int i = 0; i < filter.getValues().size(); i += 2) {
-                        groupFilters.add(filter.getField() + " BETWEEN ? AND ?");
-                        parameters.add(mapType(filter.getValues().get(i), filter.getDatatype()));
-                        parameters.add(mapType(filter.getValues().get(i + 1), filter.getDatatype()));
-                        break;
+                    if (fldPath.get(i + 1).endsWith(")")) {
+                        to = fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("("));
+                    } else {
+                        to = fldPath.get(i + 1);
                     }
-                } else if (filter.getType().equals("contains")) {
-                    for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(\'%\', ?, \'%\')");
-                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                        break;
+                    Hop h = new Hop();
+                    h.fromTable = from.substring(0, from.indexOf("("));
+                    h.fromField = from.substring(from.indexOf("(") + 1, from.indexOf(")"));
+                    h.toTable = to.substring(to.indexOf(")") + 1);
+                    h.toField = to.substring(1, to.indexOf(")"));
+                    hops.add(h);
+                }
+                String targetColumn = fldPath.get(fldPath.size() - 1);
+
+                // Helper to add predicate and parameters based on operator for a qualified column name
+                java.util.function.BiFunction<String, Filter, String> buildPredicate = (qualifiedCol, f) -> {
+                    switch (f.getType()) {
+                        case "=":
+                        case "!=":
+                        case ">":
+                        case ">=":
+                        case "<":
+                        case "<=":
+                            for (String value : f.getValues()) {
+                                parameters.add(mapType(value, f.getDatatype()));
+                                return qualifiedCol + f.getType() + "?";
+                            }
+                            break;
+                        case "between":
+                            parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
+                            parameters.add(mapType(f.getValues().get(1), f.getDatatype()));
+                            return qualifiedCol + " BETWEEN ? AND ?";
+                        case "contains":
+                            for (String value : f.getValues()) {
+                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                                return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
+                            }
+                            break;
+                        case "starts_with":
+                            for (String value : f.getValues()) {
+                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                                return "lower(" + qualifiedCol + ") LIKE CONCAT(?, '%')";
+                            }
+                            break;
+                        case "ends_with":
+                            for (String value : f.getValues()) {
+                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                                return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
+                            }
+                            break;
                     }
-                } else if (filter.getType().equals("starts_with")) {
-                    for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(?, \'%\')");
-                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                        break;
+                    return null;
+                };
+
+                if (hops.isEmpty()) {
+                    // Root-level field: simple predicate on root alias
+                    String qualifiedCol = this.root.alias + "." + targetColumn;
+                    String predicate = buildPredicate.apply(qualifiedCol, filter);
+                    if (predicate != null) groupFilters.add(predicate);
+                } else {
+                    // Build EXISTS subquery with its own aliases
+                    StringBuilder exists = new StringBuilder();
+                    exists.append("EXISTS (SELECT 1 FROM ");
+                    String firstAlias = "s0";
+                    // First hop determines the starting table in subquery
+                    Hop h0 = hops.get(0);
+                    exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
+                    for (int i = 1; i < hops.size(); i++) {
+                        Hop hi = hops.get(i);
+                        String prevAlias = "s" + (i - 1);
+                        String curAlias = "s" + i;
+                        exists.append("JOIN ")
+                              .append(hi.toTable).append(" ").append(curAlias)
+                              .append(" ON ")
+                              .append(prevAlias).append(".").append(hi.fromField)
+                              .append("=")
+                              .append(curAlias).append(".").append(hi.toField)
+                              .append(" ");
                     }
-                } else if (filter.getType().equals("ends_with")) {
-                    for (String value : filter.getValues()) {
-                        groupFilters.add("lower(" + filter.getField() + ") LIKE CONCAT(\'%\', ?)");
-                        parameters.add(mapType(value.toLowerCase(), filter.getDatatype()));
-                        break;
+                    // WHERE correlation to root
+                    exists.append("WHERE ")
+                          .append(this.root.alias).append(".").append(h0.fromField)
+                          .append("=")
+                          .append(firstAlias).append(".").append(h0.toField);
+                    // Target predicate on the last alias
+                    String lastAlias = "s" + (hops.size() - 1);
+                    String qualifiedCol = lastAlias + "." + targetColumn;
+                    String pred = buildPredicate.apply(qualifiedCol, filter);
+                    if (pred != null) {
+                        exists.append(" AND ").append(pred);
                     }
+                    exists.append(")");
+                    groupFilters.add(exists.toString());
                 }
             }
             if (!groupFilters.isEmpty()) {
@@ -297,13 +383,12 @@ public class SqlQueryTree {
     private Object mapType(String value, String datatype) {
         switch (datatype) {
             case "text":
+            case "date":
                 return value;
             case "int":
                 return Integer.parseInt(value);
             case "float":
                 return Float.parseFloat(value);
-            case "date":
-                return value;
         }
         return null;
     }
