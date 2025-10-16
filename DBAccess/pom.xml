@@ -96,13 +96,6 @@
             <version>3.1.2</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- Thrift runtime required by hive-service-rpc and Cloudera JDBC -->
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-            <version>0.9.3</version>
-            <scope>runtime</scope>
-        </dependency>
     </dependencies>
 
     <repositories>
