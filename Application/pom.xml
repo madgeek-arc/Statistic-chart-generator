@@ -100,14 +100,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <requiresUnpack>
-                        <dependency>
-                            <groupId>org.apache.thrift</groupId>
-                            <artifactId>libthrift</artifactId>
-                        </dependency>
-                    </requiresUnpack>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
