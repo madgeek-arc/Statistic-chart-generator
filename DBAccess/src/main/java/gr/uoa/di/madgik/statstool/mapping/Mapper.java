@@ -22,7 +22,7 @@ import java.util.Set;
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.Query;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 @Component
 public class Mapper {

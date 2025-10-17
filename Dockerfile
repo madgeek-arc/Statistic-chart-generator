@@ -1,9 +1,7 @@
-from ubuntu:18.04
+from ubuntu:22.04
 
 run apt update
-run apt install -y maven openjdk-8-jdk git
-
-run update-java-alternatives --set java-1.8.0-openjdk-amd64
+run apt install -y maven openjdk-17-jdk git
 
 workdir /usr/local/app
 
