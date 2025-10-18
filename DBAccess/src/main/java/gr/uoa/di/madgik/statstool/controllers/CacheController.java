@@ -15,17 +15,17 @@ public class CacheController {
     private CacheService cacheService;
 
     @GetMapping("updateCache")
-    public void updateCache(@RequestParam(name = "profile") String profile) {
+    public void updateCache(@RequestParam(name = "profile", required = false) String profile) {
         cacheService.updateCache(profile);
     }
 
     @GetMapping("promoteCache")
-    public void promoteCache(@RequestParam(name = "profile") String profile) {
+    public void promoteCache(@RequestParam(name = "profile", required = false) String profile) {
         cacheService.promoteCache(profile);
     }
 
     @GetMapping("dropCache")
-    public void dropCache(@RequestParam(name = "profile") String profile) throws Exception {
+    public void dropCache(@RequestParam(name = "profile", required = false) String profile) throws Exception {
         cacheService.dropCache(profile);
     }
 

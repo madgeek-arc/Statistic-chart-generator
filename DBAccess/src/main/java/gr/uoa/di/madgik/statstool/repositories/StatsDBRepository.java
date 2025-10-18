@@ -98,9 +98,10 @@ public class StatsDBRepository implements StatsCache {
 
         if (profile != null && !profile.isEmpty()) {
             sql += " where profile=?";
+            jdbcTemplate.update(sql, profile);
+        } else {
+            jdbcTemplate.execute(sql);
         }
-
-        jdbcTemplate.execute(sql);
     }
 
     @Override
@@ -163,6 +164,37 @@ public class StatsDBRepository implements StatsCache {
 
         if(profile != null && !profile.isEmpty()) {
             sql += " and profile=?";
+            return jdbcTemplate.query(sql, new Object[]{profile}, (rs, rowNum) -> {
+                CacheEntry entry = null;
+
+                try {
+                    QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+                    String key = rs.getString("key");
+                    Result result = null;
+
+                    if (rs.getString("result") != null)
+                        result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
+
+                    entry = new CacheEntry(key, query, result);
+
+                    if (rs.getTimestamp("created") != null)
+                        entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+                    if (rs.getTimestamp("updated") != null)
+                        entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+                    if (rs.getString("shadow") != null)
+                        entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
+
+                    entry.setTotalHits(rs.getInt("total_hits"));
+                    entry.setSessionHits(rs.getInt("session_hits"));
+                    entry.setPinned(rs.getBoolean("pinned"));
+                    entry.setExecTime(rs.getInt("exectime"));
+                    entry.setProfile(rs.getString("profile"));
+                } catch (IOException e) {
+                    log.error("Error reading entry", e);
+                }
+
+                return entry;
+            });
         }
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
