@@ -76,6 +76,7 @@ public class StatsServiceImpl implements StatsService {
 
                         log.debug("Key " + cacheKey + " in cache! Returning: " + result);
                     } else {
+			log.info("Performing query " + querySql);
                         log.debug("result for key " + cacheKey + " not in cache. Querying db!");
                         long start = new Date().getTime();
                         result = statsRepository.executeQuery(querySql, parameters, profile);

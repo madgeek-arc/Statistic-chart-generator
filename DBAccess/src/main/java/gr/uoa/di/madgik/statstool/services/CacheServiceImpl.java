@@ -35,6 +35,8 @@ public class CacheServiceImpl implements CacheService {
     @Override
     public void updateCache(String profile) {
 
+	log.info("Updating cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
+
         synchronized (updating) {
             if (!updating) {
                 updating = true;
@@ -50,10 +52,13 @@ public class CacheServiceImpl implements CacheService {
 
     @Override
     public void promoteCache(String profile) {
+
+	log.info("Promoting cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
         this.doPromoteCache(profile);
     }
 
     public void dropCache(String profile) throws Exception {
+	log.info("Dropping cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
         this.statsCache.dropCache(profile);
     }
 

@@ -1,3 +1,11 @@
+logging:
+  level:
+    root: WARN
+    org.springframework: WARN
+    gr.uoa.di: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"
+
 server:
     port: 8080
     max-http-header-size: 65536
