@@ -68,6 +68,11 @@ public class StatsServiceImpl implements StatsService {
                         throw new StatsServiceException("query " + queryName + " not found!");
                 }
 
+                // Log the generated SQL and parameters for inspection
+                log.debug("Generated SQL: {}", querySql);
+                log.debug("Bound parameters (in order): {}", parameters);
+                log.debug("Target profile: {}", profile);
+
                 if (query.isUseCache()) {
                     cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
 

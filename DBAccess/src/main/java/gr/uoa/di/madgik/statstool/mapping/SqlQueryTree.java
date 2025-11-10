@@ -263,115 +263,198 @@ public class SqlQueryTree {
         List<List<String>> mappedFilters = new ArrayList<>();
         for (FilterGroup filterGroup : filterGroups) {
             List<String> groupFilters = new ArrayList<>();
-            for (Filter filter : filterGroup.getGroupFilters()) {
-                // Parse the path produced by SqlQueryBuilder.mapField(), which encodes joins as: FromTable(from_col).(to_col)ToTable....target_col
-                List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
-                // Build hop list
-                class Hop { String fromTable; String fromField; String toTable; String toField; }
-                List<Hop> hops = new ArrayList<>();
-                for (int i = 0; i < fldPath.size() - 2; i++) {
-                    String from;
-                    String to;
-                    if (i == 0) {
-                        from = fldPath.get(i);
-                    } else {
-                        from = fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1);
-                    }
-                    if (fldPath.get(i + 1).endsWith(")")) {
-                        to = fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("("));
-                    } else {
-                        to = fldPath.get(i + 1);
-                    }
-                    Hop h = new Hop();
-                    h.fromTable = from.substring(0, from.indexOf("("));
-                    h.fromField = from.substring(from.indexOf("(") + 1, from.indexOf(")"));
-                    h.toTable = to.substring(to.indexOf(")") + 1);
-                    h.toField = to.substring(1, to.indexOf(")"));
-                    hops.add(h);
+
+            // Helper to build predicate for a qualified column and bind params
+            java.util.function.BiFunction<String, Filter, String> buildPredicate = (qualifiedCol, f) -> {
+                switch (f.getType()) {
+                    case "=":
+                    case "!=":
+                    case ">":
+                    case ">=":
+                    case "<":
+                    case "<=":
+                        for (String value : f.getValues()) {
+                            parameters.add(mapType(value, f.getDatatype()));
+                            return qualifiedCol + f.getType() + "?";
+                        }
+                        break;
+                    case "between":
+                        parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
+                        parameters.add(mapType(f.getValues().get(1), f.getDatatype()));
+                        return qualifiedCol + " BETWEEN ? AND ?";
+                    case "contains":
+                        for (String value : f.getValues()) {
+                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                            return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
+                        }
+                        break;
+                    case "starts_with":
+                        for (String value : f.getValues()) {
+                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                            return "lower(" + qualifiedCol + ") LIKE CONCAT(?, '%')";
+                        }
+                        break;
+                    case "ends_with":
+                        for (String value : f.getValues()) {
+                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
+                            return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
+                        }
+                        break;
                 }
-                String targetColumn = fldPath.get(fldPath.size() - 1);
+                return null;
+            };
 
-                // Helper to add predicate and parameters based on operator for a qualified column name
-                java.util.function.BiFunction<String, Filter, String> buildPredicate = (qualifiedCol, f) -> {
-                    switch (f.getType()) {
-                        case "=":
-                        case "!=":
-                        case ">":
-                        case ">=":
-                        case "<":
-                        case "<=":
-                            for (String value : f.getValues()) {
-                                parameters.add(mapType(value, f.getDatatype()));
-                                return qualifiedCol + f.getType() + "?";
-                            }
-                            break;
-                        case "between":
-                            parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
-                            parameters.add(mapType(f.getValues().get(1), f.getDatatype()));
-                            return qualifiedCol + " BETWEEN ? AND ?";
-                        case "contains":
-                            for (String value : f.getValues()) {
-                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                                return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
-                            }
-                            break;
-                        case "starts_with":
-                            for (String value : f.getValues()) {
-                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                                return "lower(" + qualifiedCol + ") LIKE CONCAT(?, '%')";
-                            }
-                            break;
-                        case "ends_with":
-                            for (String value : f.getValues()) {
-                                parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                                return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
-                            }
-                            break;
+            if ("OR".equalsIgnoreCase(filterGroup.getOp())) {
+                // Rewrite OR of (possibly) subqueries into one EXISTS with UNION ALL of rid values
+                List<String> unionBranches = new ArrayList<>();
+                String correlationField = null; // r0.<correlationField>
+
+                for (Filter filter : filterGroup.getGroupFilters()) {
+                    // Parse the encoded path
+                    List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
+                    class Hop { String fromTable; String fromField; String toTable; String toField; }
+                    List<Hop> hops = new ArrayList<>();
+                    for (int i = 0; i < fldPath.size() - 2; i++) {
+                        String from;
+                        String to;
+                        if (i == 0) {
+                            from = fldPath.get(i);
+                        } else {
+                            from = fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1);
+                        }
+                        if (fldPath.get(i + 1).endsWith(")")) {
+                            to = fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("("));
+                        } else {
+                            to = fldPath.get(i + 1);
+                        }
+                        Hop h = new Hop();
+                        h.fromTable = from.substring(0, from.indexOf("("));
+                        h.fromField = from.substring(from.indexOf("(") + 1, from.indexOf(")"));
+                        h.toTable = to.substring(to.indexOf(")") + 1);
+                        h.toField = to.substring(1, to.indexOf(")"));
+                        hops.add(h);
                     }
-                    return null;
-                };
+                    String targetColumn = fldPath.get(fldPath.size() - 1);
 
-                if (hops.isEmpty()) {
-                    // Root-level field: simple predicate on root alias
-                    String qualifiedCol = this.root.alias + "." + targetColumn;
-                    String predicate = buildPredicate.apply(qualifiedCol, filter);
-                    if (predicate != null) groupFilters.add(predicate);
-                } else {
-                    // Build EXISTS subquery with its own aliases
-                    StringBuilder exists = new StringBuilder();
-                    exists.append("EXISTS (SELECT 1 FROM ");
-                    String firstAlias = "s0";
-                    // First hop determines the starting table in subquery
-                    Hop h0 = hops.get(0);
-                    exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
-                    for (int i = 1; i < hops.size(); i++) {
-                        Hop hi = hops.get(i);
-                        String prevAlias = "s" + (i - 1);
-                        String curAlias = "s" + i;
-                        exists.append("JOIN ")
-                              .append(hi.toTable).append(" ").append(curAlias)
-                              .append(" ON ")
-                              .append(prevAlias).append(".").append(hi.fromField)
+                    StringBuilder branch = new StringBuilder();
+                    if (hops.isEmpty()) {
+                        // Root-level: select root ids from the root table applying predicate
+                        String rootKey = "id"; // default key
+                        String alias = "t0";
+                        String qualifiedCol = alias + "." + targetColumn;
+                        String pred = buildPredicate.apply(qualifiedCol, filter);
+                        if (pred != null) {
+                            branch.append("SELECT ").append(alias).append(".").append(rootKey)
+                                  .append(" AS rid FROM ").append(this.root.table).append(" ").append(alias)
+                                  .append(" WHERE ").append(pred);
+                            unionBranches.add(branch.toString());
+                        }
+                    } else {
+                        Hop h0 = hops.get(0);
+                        if (correlationField == null) correlationField = h0.fromField;
+                        String lastAlias = "s" + (hops.size() - 1);
+                        // Build FROM/JOIN chain starting with s0 = first toTable
+                        branch.append("SELECT s0.").append(h0.toField).append(" AS rid FROM ")
+                              .append(h0.toTable).append(" s0 ");
+                        for (int i = 1; i < hops.size(); i++) {
+                            Hop hi = hops.get(i);
+                            String prevAlias = "s" + (i - 1);
+                            String curAlias = "s" + i;
+                            branch.append("JOIN ")
+                                  .append(hi.toTable).append(" ").append(curAlias)
+                                  .append(" ON ")
+                                  .append(prevAlias).append(".").append(hi.fromField)
+                                  .append("=")
+                                  .append(curAlias).append(".").append(hi.toField)
+                                  .append(" ");
+                        }
+                        String qualifiedCol = lastAlias + "." + targetColumn;
+                        String pred = buildPredicate.apply(qualifiedCol, filter);
+                        if (pred != null) {
+                            branch.append("WHERE ").append(pred);
+                            unionBranches.add(branch.toString());
+                        }
+                    }
+                }
+
+                if (!unionBranches.isEmpty()) {
+                    String corrField = (correlationField != null) ? correlationField : "id";
+                    String exists = "EXISTS (SELECT 1 FROM (" + String.join(" UNION ALL ", unionBranches) + ") u WHERE u.rid = " + this.root.alias + "." + corrField + ")";
+                    groupFilters.add(exists);
+                }
+            } else {
+                // Default behavior (mostly AND): build simple predicates or EXISTS per filter
+                for (Filter filter : filterGroup.getGroupFilters()) {
+                    // Parse the path produced by SqlQueryBuilder.mapField(), which encodes joins as: FromTable(from_col).(to_col)ToTable....target_col
+                    List<String> fldPath = new ArrayList<>(Arrays.asList(filter.getField().split("\\.")));
+                    // Build hop list
+                    class Hop { String fromTable; String fromField; String toTable; String toField; }
+                    List<Hop> hops = new ArrayList<>();
+                    for (int i = 0; i < fldPath.size() - 2; i++) {
+                        String from;
+                        String to;
+                        if (i == 0) {
+                            from = fldPath.get(i);
+                        } else {
+                            from = fldPath.get(i).substring(fldPath.get(i).indexOf(")") + 1);
+                        }
+                        if (fldPath.get(i + 1).endsWith(")")) {
+                            to = fldPath.get(i + 1).substring(0, fldPath.get(i + 1).lastIndexOf("("));
+                        } else {
+                            to = fldPath.get(i + 1);
+                        }
+                        Hop h = new Hop();
+                        h.fromTable = from.substring(0, from.indexOf("("));
+                        h.fromField = from.substring(from.indexOf("(") + 1, from.indexOf(")"));
+                        h.toTable = to.substring(to.indexOf(")") + 1);
+                        h.toField = to.substring(1, to.indexOf(")"));
+                        hops.add(h);
+                    }
+                    String targetColumn = fldPath.get(fldPath.size() - 1);
+
+                    if (hops.isEmpty()) {
+                        // Root-level field: simple predicate on root alias
+                        String qualifiedCol = this.root.alias + "." + targetColumn;
+                        String predicate = buildPredicate.apply(qualifiedCol, filter);
+                        if (predicate != null) groupFilters.add(predicate);
+                    } else {
+                        // Build EXISTS subquery with its own aliases
+                        StringBuilder exists = new StringBuilder();
+                        exists.append("EXISTS (SELECT 1 FROM ");
+                        String firstAlias = "s0";
+                        // First hop determines the starting table in subquery
+                        Hop h0 = hops.get(0);
+                        exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
+                        for (int i = 1; i < hops.size(); i++) {
+                            Hop hi = hops.get(i);
+                            String prevAlias = "s" + (i - 1);
+                            String curAlias = "s" + i;
+                            exists.append("JOIN ")
+                                  .append(hi.toTable).append(" ").append(curAlias)
+                                  .append(" ON ")
+                                  .append(prevAlias).append(".").append(hi.fromField)
+                                  .append("=")
+                                  .append(curAlias).append(".").append(hi.toField)
+                                  .append(" ");
+                        }
+                        // WHERE correlation to root
+                        exists.append("WHERE ")
+                              .append(this.root.alias).append(".").append(h0.fromField)
                               .append("=")
-                              .append(curAlias).append(".").append(hi.toField)
-                              .append(" ");
+                              .append(firstAlias).append(".").append(h0.toField);
+                        // Target predicate on the last alias
+                        String lastAlias = "s" + (hops.size() - 1);
+                        String qualifiedCol = lastAlias + "." + targetColumn;
+                        String pred = buildPredicate.apply(qualifiedCol, filter);
+                        if (pred != null) {
+                            exists.append(" AND ").append(pred);
+                        }
+                        exists.append(")");
+                        groupFilters.add(exists.toString());
                     }
-                    // WHERE correlation to root
-                    exists.append("WHERE ")
-                          .append(this.root.alias).append(".").append(h0.fromField)
-                          .append("=")
-                          .append(firstAlias).append(".").append(h0.toField);
-                    // Target predicate on the last alias
-                    String lastAlias = "s" + (hops.size() - 1);
-                    String qualifiedCol = lastAlias + "." + targetColumn;
-                    String pred = buildPredicate.apply(qualifiedCol, filter);
-                    if (pred != null) {
-                        exists.append(" AND ").append(pred);
-                    }
-                    exists.append(")");
-                    groupFilters.add(exists.toString());
                 }
             }
+
             if (!groupFilters.isEmpty()) {
                 mappedFilters.add(groupFilters);
                 op.add(filterGroup.getOp());
