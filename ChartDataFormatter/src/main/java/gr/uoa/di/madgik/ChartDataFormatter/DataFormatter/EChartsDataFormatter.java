@@ -46,8 +46,13 @@ public class EChartsDataFormatter extends DataFormatter{
         List<SupportedChartTypes> chartsType = (List<SupportedChartTypes>) args[0];
         List<String> chartNames = (List<String>) args[1];
 
-        if (dbAccessResults.size() == 1 && chartsType.size() == 1)
-            return singleToEChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0));
+        if (dbAccessResults.size() == 1) {
+            SupportedChartTypes type = chartsType != null && !chartsType.isEmpty() ? chartsType.get(0) : null;
+            String name = chartNames != null && !chartNames.isEmpty() ? chartNames.get(0) : null;
+            if (type == null)
+                throw new DataFormationException("No ChartType provided for single result.");
+            return singleToEChartsJsonResponse(dbAccessResults.get(0), type, name);
+        }
 
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");

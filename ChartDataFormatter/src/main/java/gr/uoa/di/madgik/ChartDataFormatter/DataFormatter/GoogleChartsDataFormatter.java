@@ -38,8 +38,13 @@ public class GoogleChartsDataFormatter extends DataFormatter {
         List<SupportedChartTypes> chartTypes = (List<SupportedChartTypes>) args[0];
         List<String> chartNames = (List<String>) args[1];
 
-        if (dbAccessResults.size() == 1 && chartNames.size() == 1)
-            return singleToGoogleChartsJsonResponse(dbAccessResults.get(0), chartNames.get(0), chartTypes.get(0));
+        if (dbAccessResults.size() == 1) {
+            SupportedChartTypes type = chartTypes != null && !chartTypes.isEmpty() ? chartTypes.get(0) : null;
+            String name = chartNames != null && !chartNames.isEmpty() ? chartNames.get(0) : null;
+            if (type == null)
+                throw new DataFormationException("No ChartType provided for single result.");
+            return singleToGoogleChartsJsonResponse(dbAccessResults.get(0), name, type);
+        }
 
         List<List<Object>> formattedDataTable = new ArrayList<>();
 

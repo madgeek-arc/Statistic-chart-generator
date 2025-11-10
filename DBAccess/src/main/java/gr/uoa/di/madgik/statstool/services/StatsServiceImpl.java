@@ -46,6 +46,10 @@ public class StatsServiceImpl implements StatsService {
         List<Result> results = new ArrayList<>();
 
         try {
+            boolean mergeResults = queryList != null && queryList.size() > 1;
+            Result merged = mergeResults ? new Result() : null;
+
+            int idx = 0;
             for (Query query : queryList) {
                 List<Object> parameters = new ArrayList<>();
                 String queryName = query.getName();
@@ -81,7 +85,7 @@ public class StatsServiceImpl implements StatsService {
 
                         log.debug("Key " + cacheKey + " in cache! Returning: " + result);
                     } else {
-			log.info("Performing query " + querySql);
+                        log.info("Performing query " + querySql);
                         log.debug("result for key " + cacheKey + " not in cache. Querying db!");
                         long start = new Date().getTime();
                         result = statsRepository.executeQuery(querySql, parameters, profile);
@@ -95,7 +99,36 @@ public class StatsServiceImpl implements StatsService {
                     result = statsRepository.executeQuery(querySql, parameters, profile);
                 }
 
-                results.add(result);
+                if (mergeResults) {
+                    // Build series label from query name or default
+                    String seriesLabel = (queryName != null && !queryName.isEmpty()) ? queryName : ("Series " + (idx + 1));
+                    for (List<?> row : result.getRows()) {
+                        if (row == null || row.size() == 0) continue;
+                        if (row.size() >= 3) {
+                            // Already includes a second group by / series identifier, keep as-is
+                            merged.addRow(row);
+                        } else if (row.size() == 2) {
+                            // Transform [y, x] -> [y, x, seriesLabel]
+                            List<Object> newRow = new ArrayList<>(3);
+                            newRow.add(row.get(0));
+                            newRow.add(row.get(1));
+                            newRow.add(seriesLabel);
+                            merged.addRow(newRow);
+                        } else {
+                            // Unexpected shape; skip row but log
+                            log.warn("Unexpected row size {} encountered while merging; skipping.", row.size());
+                        }
+                    }
+                } else {
+                    results.add(result);
+                }
+                idx++;
+            }
+
+            if (mergeResults) {
+                log.debug("Merged {} queries into a single Result with {} rows.", queryList.size(), merged.getRows().size());
+                results.clear();
+                results.add(merged);
             }
         } catch (Exception e) {
             throw new StatsServiceException(e);

@@ -47,8 +47,13 @@ public class HighChartsDataFormatter extends DataFormatter {
         boolean isDrilldown = (boolean) args[2];
 
         //pass isDrilldown to singleToHighChartsJsonResponse
-        if (dbAccessResults.size() == 1 && chartsType.size() == 1)
-            return singleToHighChartsJsonResponse(dbAccessResults.get(0), chartsType.get(0), chartNames.get(0), isDrilldown);
+        if (dbAccessResults.size() == 1) {
+            SupportedChartTypes type = chartsType != null && !chartsType.isEmpty() ? chartsType.get(0) : null;
+            String name = chartNames != null && !chartNames.isEmpty() ? chartNames.get(0) : null;
+            if (type == null)
+                throw new DataFormationException("No ChartType provided for single result.");
+            return singleToHighChartsJsonResponse(dbAccessResults.get(0), type, name, isDrilldown);
+        }
 
         if (dbAccessResults.size() != chartsType.size())
             throw new DataFormationException("Result list and Chart Type list are of different size.");

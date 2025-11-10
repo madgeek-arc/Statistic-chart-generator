@@ -29,38 +29,6 @@ public class QueryController {
         this.statsService = statsService;
     }
 
-    @RequestMapping(value = "/queryTest")
-    public List<Result> query() {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Query query = mapper.readValue(getClass().getClassLoader().getResource("query_test.json"), Query.class);
-
-            List<Query> queryList = new ArrayList<>();
-            queryList.add(query);
-
-            return statsService.query(queryList);
-        } catch (Exception e) {
-            log.error(e);
-            return null;
-        }
-    }
-
-    @RequestMapping(value = "/query_flat")
-    public List<Result> queryFlat() {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            Query query = mapper.readValue(getClass().getClassLoader().getResource("query_flat.json"), Query.class);
-
-            List<Query> queryList = new ArrayList<>();
-            queryList.add(query);
-
-            return statsService.query(queryList);
-        } catch (Exception e) {
-            log.error(e);
-            return null;
-        }
-    }
-
     @RequestMapping(value = "/query", method = RequestMethod.POST)
     public List<Result> query(@RequestBody List<Query> queryList) {
         try {
