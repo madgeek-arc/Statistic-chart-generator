@@ -1,25 +1,10 @@
-from ubuntu:22.04
+FROM ubuntu:22.04
 
-run apt update
-run apt install -y maven openjdk-17-jdk git
+RUN apt update && apt upgrade
+RUN apt install -y maven openjdk-17-jdk git
 
-workdir /usr/local/app
+WORKDIR /usr/local/app
 
-copy pom.xml .
-copy ./Application/pom.xml ./Application/pom.xml
-copy ./ChartDataFormatter/pom.xml ./ChartDataFormatter/pom.xml
-copy ./DBAccess/pom.xml ./DBAccess/pom.xml
+COPY ./Application/target/Statistic-chart-generator-Application*.war ./stats-api.war
 
-run mvn dependency:go-offline 
-
-copy ./Application/src ./Application/src
-copy ./ChartDataFormatter/src ./ChartDataFormatter/src
-copy ./DBAccess/src ./DBAccess/src
-
-run mvn clean package  -DskipTests
-
-run git clone -c http.sslVerify=false https://code-repo.d4science.org/antonis.lempesis/stats-tool-configuration.git
-run mkdir -p /var/lib/tomcat8/lib/statsConfig
-run cp /usr/local/app/stats-tool-configuration/dev/* /var/lib/tomcat8/lib/statsConfig
-
-ENTRYPOINT ["java","-jar","Application/target/Statistic-chart-generator-Application-0.0.1-SNAPSHOT.war","--server.port=8180","--spring.config.location=file:/var/lib/tomcat8/lib/statsConfig/", "--spring.redis.host=esperos.di.uoa.gr"]
+ENTRYPOINT ["java","-jar","/usr/local/app/stats-api.war", "--spring.config.location=file:/usr/local/app/config/"]
