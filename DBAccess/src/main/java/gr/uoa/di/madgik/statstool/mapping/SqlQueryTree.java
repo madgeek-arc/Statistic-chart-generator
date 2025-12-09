@@ -35,6 +35,10 @@ public class SqlQueryTree {
     private static class Node {
         String table;
         String alias;
+        // Parent linkage to reconstruct path for subqueries
+        Node parent;
+        String parentJoinFrom; // column in parent used in join
+        String parentJoinTo;   // column in this node used in join
         //final List<Filter> filters = new ArrayList<>();
         final List<Select> selects = new ArrayList<>();
         final HashMap<String, Edge> children = new HashMap<>();
@@ -82,6 +86,10 @@ public class SqlQueryTree {
             toNode.table = toTable;
             toNode.alias = toTable.charAt(0) + Integer.toString(this.count);
             this.count++;
+            // link parent and join columns for backtracking
+            toNode.parent = parent;
+            toNode.parentJoinFrom = fromField;
+            toNode.parentJoinTo = toField;
             toEdge = new Edge(fromField, toField, toNode);
             parent.children.put(toTable, toEdge);
         }
@@ -133,50 +141,94 @@ public class SqlQueryTree {
     }
 
     public String makeQuery(List<Object> parameters, String orderBy) {
+        // Build projected select expressions, pushing joins into correlated subqueries where needed
         Stack<Node> stack = new Stack<>();
-        List<String> tables = new ArrayList<>();
+        List<String> seen = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
-        StringBuilder joins = new StringBuilder();
         List<String> group = new ArrayList<>();
 
         stack.push(this.root);
-        //joins += "public." + this.root.table + " " + this.root.alias + " ";
-        joins.append(this.root.table).append(" ").append(this.root.alias).append(" ");
-
         while (!stack.empty()) {
             Node nd = stack.pop();
-            if (!tables.contains(nd.alias)) {
+            if (!seen.contains(nd.alias)) {
                 for (Select select : nd.selects) {
-                    if (select.getAggregate() == null) {
-                        selects.add(new OrderedSelect(select.getOrder(), select.getField()));
-                        group.add(select.getField());
+                    String expr;
+                    if (nd == this.root) {
+                        // root field
+                        expr = select.getField();
                     } else {
-                        if (select.getAggregate().equals("count")) {
-                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(DISTINCT " + select.getField() + ")"));
+                        // build correlated subquery selecting field from this node
+                        String targetCol = select.getField().substring(select.getField().indexOf(".") + 1);
+                        String agg = select.getAggregate();
+                        // default aggregate for non-aggregated scalar: MIN to ensure single value
+                        String usedAgg = (agg == null) ? "MIN" : (agg.equals("count") ? "COUNT(DISTINCT" : agg.toUpperCase());
+
+                        StringBuilder sub = new StringBuilder();
+                        sub.append("(");
+                        sub.append("SELECT ");
+                        if (agg == null) {
+                            sub.append(usedAgg).append("(").append("t").append((char)(nd.alias.charAt(0))).append(".").append(targetCol).append(")");
+                        } else if (agg.equals("count")) {
+                            sub.append("COUNT(DISTINCT ")
+                               .append("t").append((char)(nd.alias.charAt(0))).append(".").append(targetCol).append(")");
                         } else {
-                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
+                            sub.append(usedAgg).append("(")
+                               .append("t").append((char)(nd.alias.charAt(0))).append(".").append(targetCol).append(")");
+                        }
+                        // Reconstruct FROM/JOIN chain starting at this node back to root, then reverse
+                        List<Node> path = new ArrayList<>();
+                        Node cur = nd;
+                        while (cur != null && cur != this.root) {
+                            path.add(cur);
+                            cur = cur.parent;
+                        }
+                        Collections.reverse(path);
+                        // aliases in subquery
+                        if (!path.isEmpty()) {
+                            Node firstNode = path.get(0);
+                            String firstAlias = "t" + firstNode.alias.charAt(0);
+                            sub.append(" FROM ").append(firstNode.table).append(" ").append(firstAlias).append(" ");
+                            Node prevNode = firstNode;
+                            String prevAlias = firstAlias;
+                            for (int i = 1; i < path.size(); i++) {
+                                Node node = path.get(i);
+                                String curAlias = "t" + node.alias.charAt(0);
+                                sub.append("JOIN ").append(node.table).append(" ").append(curAlias).append(" ON ")
+                                   .append(prevAlias).append(".").append(node.parentJoinFrom)
+                                   .append("=")
+                                   .append(curAlias).append(".").append(node.parentJoinTo).append(" ");
+                                prevNode = node;
+                                prevAlias = curAlias;
+                            }
+                            // correlate with root on first hop
+                            Node firstHop = path.get(0);
+                            String rootAlias = this.root.alias;
+                            String corr = rootAlias + "." + firstHop.parentJoinFrom + "=" + firstAlias + "." + firstHop.parentJoinTo;
+                            sub.append(" WHERE ").append(corr);
+                        }
+                        sub.append(")");
+                        expr = sub.toString();
+                    }
+
+                    if (select.getAggregate() == null) {
+                        selects.add(new OrderedSelect(select.getOrder(), expr));
+                        group.add(expr);
+                    } else {
+                        if (select.getAggregate().equals("count") && nd == this.root) {
+                            selects.add(new OrderedSelect(select.getOrder(), "COUNT(DISTINCT " + expr + ")"));
+                        } else if (select.getAggregate().equals("count")) {
+                            selects.add(new OrderedSelect(select.getOrder(), expr));
+                        } else if (nd == this.root) {
+                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + expr + ")"));
+                        } else {
+                            selects.add(new OrderedSelect(select.getOrder(), expr));
                         }
                     }
                 }
-                tables.add(nd.alias);
+                seen.add(nd.alias);
             }
-
             for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
-                joins.append("JOIN ")
-                        .append(entry.getKey())
-                        .append(" ")
-                        .append(entry.getValue().node.alias)
-                        .append(" ON ")
-                        .append(nd.alias)
-                        .append(".")
-                        .append(entry.getValue().from)
-                        .append("=")
-                        .append(entry.getValue().node.alias)
-                        .append(".")
-                        .append(entry.getValue().to)
-                        .append(" ");
-
-                if (!tables.contains(entry.getValue().node.alias)) {
+                if (!seen.contains(entry.getValue().node.alias)) {
                     stack.push(entry.getValue().node);
                 }
             }
@@ -193,7 +245,8 @@ public class SqlQueryTree {
                 query.append(", ").append(select.select);
             }
         }
-        query.append(" FROM ").append(joins);
+        // Only keep root table in main FROM
+        query.append(" FROM ").append(this.root.table).append(" ").append(this.root.alias).append(" ");
         List<String> op = new ArrayList<>();
         List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
         if (!allTheFilters.isEmpty()) {
