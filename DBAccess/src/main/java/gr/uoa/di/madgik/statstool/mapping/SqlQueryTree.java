@@ -250,7 +250,10 @@ public class SqlQueryTree {
         // Prepare final SELECT list preserving original order
         if (!outerExprByOrder.isEmpty()) {
             for (Map.Entry<Integer, String> ent : outerExprByOrder.entrySet()) {
-                selects.add(new OrderedSelect(ent.getKey(), ent.getValue()));
+                String colRef = ent.getValue();
+                // If outer query performs GROUP BY, aggregate derived columns to satisfy SQL engines like Impala
+                String outerExpr = group.isEmpty() ? colRef : "SUM(" + colRef + ")";
+                selects.add(new OrderedSelect(ent.getKey(), outerExpr));
             }
         }
 
