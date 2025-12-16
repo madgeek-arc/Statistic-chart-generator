@@ -40,7 +40,7 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void nonRootSelect_usesCorrelatedSubquery_andNoTopLevelJoin() {
+    public void nonRootSelect_usesDerivedLeftJoin_impalaCompatible() {
         ProfileConfiguration pc = buildProfile();
         // Build Query selecting a non-root field: result.project_results.value
         Query apiQuery = new Query(null, null, new ArrayList<>(),
@@ -50,13 +50,12 @@ public class SqlQueryTreeTest {
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
-        // Expect: only root table in main FROM with alias r0
-        assertTrue(sql.contains(" FROM result r0 "), "Main query should use only root table in FROM");
-        // Expect: non-root field selected via correlated MIN subquery (allow flexible whitespace)
-        assertTrue(sql.matches("(?s).*!?SELECT\\s+MIN\\(tp\\.value\\)\\s+FROM\\s+project_results\\s+tp\\s+WHERE\\s+r0\\.id=tp\\.result_id.*"),
-                "Non-root select must be a correlated subquery with MIN to scalarize");
-        // No top-level JOINs should appear (JOINs may appear inside subqueries for multi-hop; in this 1-hop case none)
-        assertFalse(sql.matches("(?s).*( FROM result r0 .*JOIN ).*"), "No top-level JOINs expected in main query body");
+        // Expect: main FROM root and a LEFT JOIN to a derived subquery that aggregates by result_id
+        assertTrue(sql.contains(" FROM result r0 "), "Main query should start from root table");
+        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+\\w+\\.result_id\\s+AS\\s+k.*FROM\\s+project_results\\s+\\w+\\s+GROUP\\s+BY\\s+\\w+\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
+                "Non-root select must be produced by a LEFT JOIN to a derived subquery grouped by child key");
+        // Outer select should reference derived alias column c1 (column alias based on select order)
+        assertTrue(sql.matches("(?s)SELECT\\s+\\w+\\.c1\\s+FROM.*"), "Outer select should project column from derived table");
         // No parameters expected
         assertTrue(params.isEmpty(), "No bound parameters expected without filters");
     }
