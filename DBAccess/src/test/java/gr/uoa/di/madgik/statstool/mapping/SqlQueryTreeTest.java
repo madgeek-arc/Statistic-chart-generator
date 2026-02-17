@@ -30,12 +30,27 @@ public class SqlQueryTreeTest {
         pc.fields.put("result.id", new Field("result", "id", "int"));
         pc.fields.put("project_results.value", new Field("project_results", "value", "int"));
         pc.fields.put("project_results.category", new Field("project_results", "category", "string"));
+        // Additional tables for multi-hop test: result_organization and organization
+        pc.tables.put("result_organization", new Table("result_organization", "id", null));
+        pc.tables.put("organization", new Table("organization", "id", null));
+        pc.fields.put("result_organization.result_id", new Field("result_organization", "result_id", "int"));
+        pc.fields.put("result_organization.organization", new Field("result_organization", "organization", "int"));
+        pc.fields.put("organization.id", new Field("organization", "id", "int"));
+        pc.fields.put("organization.country", new Field("organization", "country", "string"));
 
         // Relations result -> project_results: result.id = project_results.result_id
         List<Join> rp = new ArrayList<>();
         rp.add(new Join("result", "id", "project_results", "result_id"));
         pc.relations.put("result.project_results", rp);
         pc.relations.put("project_results.result", Collections.singletonList(new Join("project_results", "result_id", "result", "id")));
+
+        // Relations for multi-hop: result -> result_organization -> organization
+        List<Join> rr = new ArrayList<>();
+        rr.add(new Join("result", "id", "result_organization", "result_id"));
+        pc.relations.put("result.result_organization", rr);
+        pc.relations.put("result_organization.result", Collections.singletonList(new Join("result_organization", "result_id", "result", "id")));
+        pc.relations.put("result_organization.organization", Collections.singletonList(new Join("result_organization", "organization", "organization", "id")));
+        pc.relations.put("organization.result_organization", Collections.singletonList(new Join("organization", "id", "result_organization", "organization")));
 
         return pc;
     }
@@ -180,6 +195,32 @@ public class SqlQueryTreeTest {
         // The aggregated child column must be wrapped with SUM at outer level because of grouping
         assertTrue(sql.matches("(?is)SELECT.*SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s*,\\s*SUM\\(\\w+\\.c3\\).*FROM.*"),
                 "Outer SELECT should wrap derived aggregated column with SUM when grouping");
+        assertTrue(params.isEmpty(), "No bound parameters expected");
+    }
+
+    @Test
+    public void multiHop_nonRootNonAgg_withRootAggregate_usesNumericAliases_notKeywords() {
+        ProfileConfiguration pc = buildProfile();
+        // Path: result -> result_organization -> organization.country
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "sum", 1),
+                        new Select("result.result_organization.organization.country", null, 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL multiHop_nonRootNonAgg_withRootAggregate_usesNumericAliases_notKeywords: \n" + sql);
+
+        // Should contain a derived LEFT JOIN with numeric aliases t1/t2/t3 within the subquery
+        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+t1\\.result_id\\s+AS\\s+k.*FROM\\s+result_organization\\s+t2\\s+JOIN\\s+organization\\s+t3.*GROUP\\s+BY\\s+t1\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
+                "Derived subquery should use numeric aliases t1/t2/t3 and group by child key");
+        // Ensure no reserved-word alias like 'to' appears
+        assertFalse(sql.matches("(?is).*\\s+to\\s*\\."), "No alias named 'to' should be used");
+        // GROUP BY must include derived col
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2.*"),
+                "Outer GROUP BY must include the derived non-agg column");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
 }

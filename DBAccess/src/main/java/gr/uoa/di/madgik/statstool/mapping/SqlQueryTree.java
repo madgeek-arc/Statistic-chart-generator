@@ -205,8 +205,14 @@ public class SqlQueryTree {
             if (path.isEmpty()) continue; // safety
 
             Node firstNode = path.get(0);
-            String firstAlias = "t" + firstNode.alias.charAt(0);
             String dAlias = "d" + (++derivedIdx);
+
+            // Build stable, numeric aliases per subquery path to avoid collisions and reserved words
+            Map<Node, String> subAliases = new LinkedHashMap<>();
+            for (int i = 0; i < path.size(); i++) {
+                subAliases.put(path.get(i), "t" + (i + 1));
+            }
+            String firstAlias = subAliases.get(firstNode);
 
             StringBuilder sub = new StringBuilder();
             sub.append("SELECT ");
@@ -217,7 +223,7 @@ public class SqlQueryTree {
                 String targetCol = s.getField().substring(s.getField().indexOf(".") + 1);
                 String agg = s.getAggregate();
                 String usedAgg = (agg == null) ? "MIN" : ("count".equals(agg) ? "COUNT(DISTINCT" : agg.toUpperCase());
-                String tAliasForNode = "t" + nd.alias.charAt(0);
+                String tAliasForNode = subAliases.get(nd);
                 sub.append(", ");
                 if (agg == null) {
                     sub.append(usedAgg).append("(").append(tAliasForNode).append(".").append(targetCol).append(")");
@@ -242,7 +248,7 @@ public class SqlQueryTree {
             String prevAlias = firstAlias;
             for (int i = 1; i < path.size(); i++) {
                 Node node = path.get(i);
-                String curAlias2 = "t" + node.alias.charAt(0);
+                String curAlias2 = subAliases.get(node);
                 sub.append("JOIN ").append(node.table).append(" ").append(curAlias2).append(" ON ")
                    .append(prevAlias).append(".").append(node.parentJoinFrom)
                    .append("=")
