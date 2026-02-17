@@ -39,17 +39,17 @@ public class StatsDBRepository implements StatsCache {
 
         log.debug("Creating cache table");
         jdbcTemplate.execute("create table if not exists cache_entry (" +
-                        "key varchar(10000) not null," +
+                        "key char(64) not null," +
                         "result longvarchar not null, " +
                         "shadow longvarchar, " +
-                        "query varchar(10000) not null," +
+                        "query longvarchar not null," +
                         "created timestamp default now() not null, " +
                         "updated timestamp default now() not null, " +
                         "total_hits int default 0 not null," +
                         "session_hits int default 0 not null," +
                         "pinned boolean default false not null," +
                         "exectime int default 0 not null," +
-                        "profile varchar(100) not null)");
+                        "profile varchar(255) not null)" );
 
         jdbcTemplate.execute("create index if not exists key_idx on cache_entry(key)");
     }
