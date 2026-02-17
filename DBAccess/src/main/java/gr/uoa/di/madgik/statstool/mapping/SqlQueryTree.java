@@ -35,6 +35,10 @@ public class SqlQueryTree {
     private static class Node {
         String table;
         String alias;
+        // Parent linkage to reconstruct path for subqueries
+        Node parent;
+        String parentJoinFrom; // column in parent used in join
+        String parentJoinTo;   // column in this node used in join
         //final List<Filter> filters = new ArrayList<>();
         final List<Select> selects = new ArrayList<>();
         final HashMap<String, Edge> children = new HashMap<>();
@@ -82,6 +86,10 @@ public class SqlQueryTree {
             toNode.table = toTable;
             toNode.alias = toTable.charAt(0) + Integer.toString(this.count);
             this.count++;
+            // link parent and join columns for backtracking
+            toNode.parent = parent;
+            toNode.parentJoinFrom = fromField;
+            toNode.parentJoinTo = toField;
             toEdge = new Edge(fromField, toField, toNode);
             parent.children.put(toTable, toEdge);
         }
@@ -133,51 +141,144 @@ public class SqlQueryTree {
     }
 
     public String makeQuery(List<Object> parameters, String orderBy) {
+        // Build projected select expressions, using JOINs to derived tables for non-root fields (Impala compatible)
         Stack<Node> stack = new Stack<>();
-        List<String> tables = new ArrayList<>();
+        List<String> seen = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
-        StringBuilder joins = new StringBuilder();
         List<String> group = new ArrayList<>();
+        // Collect non-root selects per node to build derived subqueries
+        Map<Node, List<Select>> nonRootSelects = new LinkedHashMap<>();
+        // Map select order -> outer expression placeholder to preserve original ordering
+        Map<Integer, String> outerExprByOrder = new HashMap<>();
 
         stack.push(this.root);
-        //joins += "public." + this.root.table + " " + this.root.alias + " ";
-        joins.append(this.root.table).append(" ").append(this.root.alias).append(" ");
-
         while (!stack.empty()) {
             Node nd = stack.pop();
-            if (!tables.contains(nd.alias)) {
+            if (!seen.contains(nd.alias)) {
                 for (Select select : nd.selects) {
-                    if (select.getAggregate() == null) {
-                        selects.add(new OrderedSelect(select.getOrder(), select.getField()));
-                        group.add(select.getField());
-                    } else {
-                        if (select.getAggregate().equals("count")) {
-                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(DISTINCT " + select.getField() + ")"));
+                    if (nd == this.root) {
+                        // root field/aggregation
+                        String expr = select.getField();
+                        if (select.getAggregate() == null) {
+                            selects.add(new OrderedSelect(select.getOrder(), expr));
+                            group.add(expr);
                         } else {
-                            selects.add(new OrderedSelect(select.getOrder(), select.getAggregate() + "(" + select.getField() + ")"));
+                            String agg = select.getAggregate();
+                            if ("count".equals(agg)) {
+                                selects.add(new OrderedSelect(select.getOrder(), "COUNT(DISTINCT " + expr + ")"));
+                            } else {
+                                selects.add(new OrderedSelect(select.getOrder(), agg + "(" + expr + ")"));
+                            }
                         }
+                    } else {
+                        // Defer non-root fields to derived subqueries
+                        nonRootSelects.computeIfAbsent(nd, k -> new ArrayList<>()).add(select);
                     }
                 }
-                tables.add(nd.alias);
+                seen.add(nd.alias);
+            }
+            for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
+                if (!seen.contains(entry.getValue().node.alias)) {
+                    stack.push(entry.getValue().node);
+                }
+            }
+        }
+
+        // Build derived subqueries and map their columns to select orders
+        StringBuilder joins = new StringBuilder();
+        int derivedIdx = 0;
+        // Track metadata for outer phase
+        Set<Integer> derivedNonAggOrders = new HashSet<>();
+        boolean anyAggregate = selects.stream().anyMatch(os -> os.select.toUpperCase(Locale.ROOT).contains("(") && !os.select.matches("\\s*\\w+\\.\\w+\\s*"));
+
+        for (Map.Entry<Node, List<Select>> e : nonRootSelects.entrySet()) {
+            Node nd = e.getKey();
+            List<Select> sels = e.getValue();
+            // Reconstruct path from this node back to root
+            List<Node> path = new ArrayList<>();
+            Node cur = nd;
+            while (cur != null && cur != this.root) {
+                path.add(cur);
+                cur = cur.parent;
+            }
+            Collections.reverse(path);
+            if (path.isEmpty()) continue; // safety
+
+            Node firstNode = path.get(0);
+            String dAlias = "d" + (++derivedIdx);
+
+            // Build stable, numeric aliases per subquery path to avoid collisions and reserved words
+            Map<Node, String> subAliases = new LinkedHashMap<>();
+            for (int i = 0; i < path.size(); i++) {
+                subAliases.put(path.get(i), "t" + (i + 1));
+            }
+            String firstAlias = subAliases.get(firstNode);
+
+            StringBuilder sub = new StringBuilder();
+            sub.append("SELECT ");
+            // key on child side
+            sub.append(firstAlias).append(".").append(firstNode.parentJoinTo).append(" AS k");
+
+            for (Select s : sels) {
+                String targetCol = s.getField().substring(s.getField().indexOf(".") + 1);
+                String agg = s.getAggregate();
+                String usedAgg = (agg == null) ? "MIN" : ("count".equals(agg) ? "COUNT(DISTINCT" : agg.toUpperCase());
+                String tAliasForNode = subAliases.get(nd);
+                sub.append(", ");
+                if (agg == null) {
+                    sub.append(usedAgg).append("(").append(tAliasForNode).append(".").append(targetCol).append(")");
+                } else if ("count".equals(agg)) {
+                    sub.append("COUNT(DISTINCT ").append(tAliasForNode).append(".").append(targetCol).append(")");
+                } else {
+                    sub.append(usedAgg).append("(").append(tAliasForNode).append(".").append(targetCol).append(")");
+                }
+                sub.append(" AS c").append(s.getOrder());
+                // map outer expression for this select order
+                String outerCol = dAlias + ".c" + s.getOrder();
+                outerExprByOrder.put(s.getOrder(), outerCol);
+                if (agg == null) {
+                    derivedNonAggOrders.add(s.getOrder());
+                } else {
+                    anyAggregate = true;
+                }
             }
 
-            for (Map.Entry<String, Edge> entry : nd.children.entrySet()) {
-                joins.append("JOIN ")
-                        .append(entry.getKey())
-                        .append(" ")
-                        .append(entry.getValue().node.alias)
-                        .append(" ON ")
-                        .append(nd.alias)
-                        .append(".")
-                        .append(entry.getValue().from)
-                        .append("=")
-                        .append(entry.getValue().node.alias)
-                        .append(".")
-                        .append(entry.getValue().to)
-                        .append(" ");
+            // FROM and JOIN chain inside subquery
+            sub.append(" FROM ").append(firstNode.table).append(" ").append(firstAlias).append(" ");
+            String prevAlias = firstAlias;
+            for (int i = 1; i < path.size(); i++) {
+                Node node = path.get(i);
+                String curAlias2 = subAliases.get(node);
+                sub.append("JOIN ").append(node.table).append(" ").append(curAlias2).append(" ON ")
+                   .append(prevAlias).append(".").append(node.parentJoinFrom)
+                   .append("=")
+                   .append(curAlias2).append(".").append(node.parentJoinTo).append(" ");
+                prevAlias = curAlias2;
+            }
+            sub.append(" GROUP BY ").append(firstAlias).append(".").append(firstNode.parentJoinTo);
 
-                if (!tables.contains(entry.getValue().node.alias)) {
-                    stack.push(entry.getValue().node);
+            // LEFT JOIN derived subquery to root
+            String rootAlias = this.root.alias;
+            String on = rootAlias + "." + firstNode.parentJoinFrom + "=" + dAlias + ".k";
+            joins.append(" LEFT JOIN (").append(sub).append(") ").append(dAlias).append(" ON ").append(on).append(" ");
+        }
+
+        // If we have aggregates and also plain non-root selections, group by those derived columns
+        boolean needGroupByDerived = anyAggregate && !derivedNonAggOrders.isEmpty();
+
+        // Prepare final SELECT list preserving original order
+        if (!outerExprByOrder.isEmpty()) {
+            for (Map.Entry<Integer, String> ent : outerExprByOrder.entrySet()) {
+                int ord = ent.getKey();
+                String colRef = ent.getValue();
+                boolean isDerivedGroupingCol = derivedNonAggOrders.contains(ord);
+                if (isDerivedGroupingCol && needGroupByDerived) {
+                    selects.add(new OrderedSelect(ord, colRef));
+                    if (!group.contains(colRef)) group.add(colRef);
+                } else {
+                    // If outer query performs GROUP BY, aggregate derived columns to satisfy SQL engines like Impala
+                    String outerExpr = group.isEmpty() && !needGroupByDerived ? colRef : "SUM(" + colRef + ")";
+                    selects.add(new OrderedSelect(ord, outerExpr));
                 }
             }
         }
@@ -193,7 +294,10 @@ public class SqlQueryTree {
                 query.append(", ").append(select.select);
             }
         }
-        query.append(" FROM ").append(joins);
+        // Main FROM on root table only, then join deriveds
+        query.append(" FROM ").append(this.root.table).append(" ").append(this.root.alias).append(" ");
+        query.append(joins);
+
         List<String> op = new ArrayList<>();
         List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
         if (!allTheFilters.isEmpty()) {
