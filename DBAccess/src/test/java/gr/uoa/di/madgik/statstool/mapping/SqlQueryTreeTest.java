@@ -29,6 +29,7 @@ public class SqlQueryTreeTest {
         // Fields
         pc.fields.put("result.id", new Field("result", "id", "int"));
         pc.fields.put("project_results.value", new Field("project_results", "value", "int"));
+        pc.fields.put("project_results.category", new Field("project_results", "category", "string"));
 
         // Relations result -> project_results: result.id = project_results.result_id
         List<Join> rp = new ArrayList<>();
@@ -96,5 +97,89 @@ public class SqlQueryTreeTest {
                 "Filter must be translated to EXISTS correlated subquery with bound parameter");
         assertEquals(1, params.size(), "One bound parameter expected");
         assertEquals(5, params.get(0), "Parameter should be integer 5");
+    }
+
+    @Test
+    public void rootAggregate_plusNonRootNonAgg_groupsByDerivedColumn() {
+        ProfileConfiguration pc = buildProfile();
+
+        // SUM on root id (just for testing) and plain non-root field
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "sum", 1),
+                        new Select("result.project_results.category", null, 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL rootAggregate_plusNonRootNonAgg_groupsByDerivedColumn: \n" + sql);
+
+        // Expect derived join present
+        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(.*FROM\\s+project_results\\s+\\w+\\s+GROUP\\s+BY\\s+\\w+\\.result_id.*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
+                "Should join a derived subquery on child key");
+        // Expect outer select contains SUM(r0.id) and plain derived column as second projection
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s+FROM.*"),
+                "Outer SELECT should be SUM(root) and plain derived column for non-agg");
+        // GROUP BY must include derived non-agg column
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2.*"),
+                "Derived non-aggregated column must be grouped when root has aggregates");
+        // ORDER BY defaults to grouped expressions when orderBy is null
+        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.c2.*"),
+                "ORDER BY should follow grouped column by default");
+        assertTrue(params.isEmpty(), "No bound parameters expected");
+    }
+
+    @Test
+    public void rootAggregate_plusNonRootAgg_onlyAggregatesDerived_whenNoGroup() {
+        ProfileConfiguration pc = buildProfile();
+        // root aggregate + non-root aggregate; since there is no non-agg select, outer query need not GROUP BY
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "sum", 1),
+                        new Select("result.project_results.value", "sum", 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, "xaxis");
+        System.out.println("[DEBUG_LOG] SQL rootAggregate_plusNonRootAgg_onlyAggregatesDerived_whenNoGroup: \n" + sql);
+
+        // Should have derived join for child aggregate
+        assertTrue(sql.contains("LEFT JOIN ("), "Expect a derived subquery for child aggregate");
+        // Since there is no GROUP BY in outer (no non-agg projections), derived col can be selected plainly
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s+FROM.*"),
+                "Derived aggregate column should appear plainly when no GROUP BY is required");
+        // No GROUP BY clause expected in this scenario at the OUTER level (subquery may have one)
+        int outerStart = sql.indexOf(" FROM result r0 ");
+        String afterFrom = outerStart >= 0 ? sql.substring(outerStart) : sql;
+        // Look for GROUP BY only after the main FROM to avoid matching the subquery's GROUP BY
+        assertFalse(afterFrom.matches("(?is).*\\)\\s*\\w+\\s+ON[^;]*GROUP\\s+BY[^;]*;.*"),
+                "No outer GROUP BY expected when all projections are aggregates");
+    }
+
+    @Test
+    public void rootAggregate_withNonRootNonAgg_andNonRootAgg_groupsOnlyNonAgg_andSumsAgg() {
+        ProfileConfiguration pc = buildProfile();
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "sum", 1),             // root aggregate
+                        new Select("result.project_results.category", null, 2), // non-root non-agg (group key)
+                        new Select("result.project_results.value", "sum", 3)   // non-root aggregate
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL rootAggregate_withNonRootNonAgg_andNonRootAgg_groupsOnlyNonAgg_andSumsAgg: \n" + sql);
+
+        // Must include GROUP BY derived non-agg col only
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2(\\s|,|$).*"),
+                "GROUP BY must include only the non-aggregated derived column");
+        // The aggregated child column must be wrapped with SUM at outer level because of grouping
+        assertTrue(sql.matches("(?is)SELECT.*SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s*,\\s*SUM\\(\\w+\\.c3\\).*FROM.*"),
+                "Outer SELECT should wrap derived aggregated column with SUM when grouping");
+        assertTrue(params.isEmpty(), "No bound parameters expected");
     }
 }

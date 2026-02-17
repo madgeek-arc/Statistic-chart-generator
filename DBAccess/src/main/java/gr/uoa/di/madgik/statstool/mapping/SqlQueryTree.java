@@ -187,6 +187,10 @@ public class SqlQueryTree {
         // Build derived subqueries and map their columns to select orders
         StringBuilder joins = new StringBuilder();
         int derivedIdx = 0;
+        // Track metadata for outer phase
+        Set<Integer> derivedNonAggOrders = new HashSet<>();
+        boolean anyAggregate = selects.stream().anyMatch(os -> os.select.toUpperCase(Locale.ROOT).contains("(") && !os.select.matches("\\s*\\w+\\.\\w+\\s*"));
+
         for (Map.Entry<Node, List<Select>> e : nonRootSelects.entrySet()) {
             Node nd = e.getKey();
             List<Select> sels = e.getValue();
@@ -224,7 +228,13 @@ public class SqlQueryTree {
                 }
                 sub.append(" AS c").append(s.getOrder());
                 // map outer expression for this select order
-                outerExprByOrder.put(s.getOrder(), dAlias + ".c" + s.getOrder());
+                String outerCol = dAlias + ".c" + s.getOrder();
+                outerExprByOrder.put(s.getOrder(), outerCol);
+                if (agg == null) {
+                    derivedNonAggOrders.add(s.getOrder());
+                } else {
+                    anyAggregate = true;
+                }
             }
 
             // FROM and JOIN chain inside subquery
@@ -247,13 +257,23 @@ public class SqlQueryTree {
             joins.append(" LEFT JOIN (").append(sub).append(") ").append(dAlias).append(" ON ").append(on).append(" ");
         }
 
+        // If we have aggregates and also plain non-root selections, group by those derived columns
+        boolean needGroupByDerived = anyAggregate && !derivedNonAggOrders.isEmpty();
+
         // Prepare final SELECT list preserving original order
         if (!outerExprByOrder.isEmpty()) {
             for (Map.Entry<Integer, String> ent : outerExprByOrder.entrySet()) {
+                int ord = ent.getKey();
                 String colRef = ent.getValue();
-                // If outer query performs GROUP BY, aggregate derived columns to satisfy SQL engines like Impala
-                String outerExpr = group.isEmpty() ? colRef : "SUM(" + colRef + ")";
-                selects.add(new OrderedSelect(ent.getKey(), outerExpr));
+                boolean isDerivedGroupingCol = derivedNonAggOrders.contains(ord);
+                if (isDerivedGroupingCol && needGroupByDerived) {
+                    selects.add(new OrderedSelect(ord, colRef));
+                    if (!group.contains(colRef)) group.add(colRef);
+                } else {
+                    // If outer query performs GROUP BY, aggregate derived columns to satisfy SQL engines like Impala
+                    String outerExpr = group.isEmpty() && !needGroupByDerived ? colRef : "SUM(" + colRef + ")";
+                    selects.add(new OrderedSelect(ord, outerExpr));
+                }
             }
         }
 
