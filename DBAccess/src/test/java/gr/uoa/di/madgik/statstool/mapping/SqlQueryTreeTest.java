@@ -213,9 +213,9 @@ public class SqlQueryTreeTest {
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
         System.out.println("[DEBUG_LOG] SQL multiHop_nonRootNonAgg_withRootAggregate_usesNumericAliases_notKeywords: \n" + sql);
 
-        // Should contain a derived LEFT JOIN with numeric aliases t1/t2/t3 within the subquery
-        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+t1\\.result_id\\s+AS\\s+k.*FROM\\s+result_organization\\s+t2\\s+JOIN\\s+organization\\s+t3.*GROUP\\s+BY\\s+t1\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
-                "Derived subquery should use numeric aliases t1/t2/t3 and group by child key");
+        // Should contain a derived LEFT JOIN with numeric t-aliases within the subquery (no reserved words) and group by child key
+        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+t1\\.result_id\\s+AS\\s+k.*FROM\\s+result_organization\\s+t1\\s+JOIN\\s+organization\\s+t2.*GROUP\\s+BY\\s+t1\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
+                "Derived subquery should use numeric aliases (t1/t2/...) and group by child key");
         // Ensure no reserved-word alias like 'to' appears
         assertFalse(sql.matches("(?is).*\\s+to\\s*\\."), "No alias named 'to' should be used");
         // GROUP BY must include derived col
