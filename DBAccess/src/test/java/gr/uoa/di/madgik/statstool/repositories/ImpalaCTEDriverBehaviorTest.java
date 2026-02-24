@@ -99,15 +99,13 @@ public class ImpalaCTEDriverBehaviorTest {
      */
     @Test
     void preparedStatement_withParams_throwsSimba11420() throws Exception {
-        try (Connection conn = connect();
-             PreparedStatement ps = conn.prepareStatement(CTE_WITH_PARAMS)) {
-            ps.setObject(1, 1);
-            ps.setObject(2, "a");
-            ps.setObject(3, 2);
-            ps.setObject(4, "b");
-
-            SQLException ex = assertThrows(SQLException.class, ps::executeQuery,
-                    "Simba should reject PreparedStatement with ? inside CTEs");
+        // NOTE: 11420 is thrown at prepareStatement() time, not at executeQuery().
+        // The driver tries to resolve parameter metadata during statement preparation
+        // and fails immediately for CTE queries that contain ? placeholders.
+        try (Connection conn = connect()) {
+            SQLException ex = assertThrows(SQLException.class,
+                    () -> conn.prepareStatement(CTE_WITH_PARAMS),
+                    "Simba should reject prepareStatement() with ? inside CTEs");
             assertTrue(ex.getMessage().contains("11420"),
                     "Expected Simba error 11420, got: " + ex.getMessage());
         }

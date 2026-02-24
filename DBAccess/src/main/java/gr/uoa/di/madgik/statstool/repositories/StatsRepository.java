@@ -133,10 +133,11 @@ public class StatsRepository {
                     }
                 } catch (SQLException e) {
                     if (e.getMessage() != null && e.getMessage().contains("11420")) {
-                        // Simba JDBC (Impala) cannot resolve parameter metadata for ? inside CTEs.
+                        // Simba JDBC (Impala) throws 11420 at prepareStatement() time (not at
+                        // executeQuery()) when the SQL contains ? placeholders inside a CTE body:
+                        // the driver tries to resolve parameter metadata during preparation and fails.
                         // Inline parameters as SQL literals (removes all ?) and re-prepare: without ?
-                        // there is no metadata lookup so 11420 cannot fire, and PreparedStatement
-                        // .executeQuery() is the path the driver handles correctly for CTEs.
+                        // there is no metadata lookup so 11420 cannot fire at prepare time.
                         String inlinedSql = inlineParameters(sql, params);
                         try (PreparedStatement pst = connection.prepareStatement(inlinedSql);
                              ResultSet rs = pst.executeQuery()) {
