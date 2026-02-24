@@ -42,7 +42,8 @@ public class StatsRepositoryBindingTest {
         when(connection.prepareStatement(anyString())).thenReturn(ps);
         when(connection.createStatement()).thenReturn(stmt);
         when(ps.executeQuery()).thenReturn(rs);
-        when(stmt.executeQuery(anyString())).thenReturn(rs);
+        when(stmt.execute(anyString())).thenReturn(true);
+        when(stmt.getResultSet()).thenReturn(rs);
         when(rs.getMetaData()).thenReturn(rsmd);
         when(rsmd.getColumnCount()).thenReturn(1);
         when(rs.next()).thenReturn(false); // no rows
@@ -153,7 +154,8 @@ public class StatsRepositoryBindingTest {
 
         // Should have fallen back to plain Statement with inlined SQL
         String expectedSql = "WITH q1(y,x) AS (SELECT COUNT(*) FROM t WHERE type='publication') SELECT y,x FROM q1";
-        verify(stmt).executeQuery(expectedSql);
+        verify(stmt).execute(expectedSql);
+        verify(stmt).getResultSet();
     }
 
     // --- inlineParameters unit tests ---
