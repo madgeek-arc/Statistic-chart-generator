@@ -98,8 +98,6 @@ public class StatsRepository {
 
         @Override
         public Result call() throws Exception {
-            Result result = new Result();
-
             DatasourceContext.setContext(query.getDbId());
 
             String sql = query.getQuery();
@@ -121,33 +119,94 @@ public class StatsRepository {
             }
 
             try (Connection connection = dataSource.getConnection()) {
-                PreparedStatement st = connection.prepareStatement(sql);
-                int index = 1;
-                if (params != null) {
-                    for (Object param : params) {
-                        st.setObject(index++, param);
+                try {
+                    try (PreparedStatement st = connection.prepareStatement(sql)) {
+                        int index = 1;
+                        if (params != null) {
+                            for (Object param : params) {
+                                st.setObject(index++, param);
+                            }
+                        }
+                        try (ResultSet rs = st.executeQuery()) {
+                            return readResult(rs);
+                        }
                     }
-                }
-
-                ResultSet rs = st.executeQuery();
-                int columnCount = rs.getMetaData().getColumnCount();
-                while (rs.next()) {
-                    ArrayList<Object> row = new ArrayList<>();
-                    for (int i = 1; i <= columnCount; i++) {
-                        String stringResult = rs.getString(i);
-                        if ("null".equals(stringResult))
-                            row.add(null);
-                        else
-                            row.add(stringResult);
+                } catch (SQLException e) {
+                    if (e.getMessage() != null && e.getMessage().contains("11420")) {
+                        // Simba JDBC (Impala) cannot resolve parameter metadata for ? inside CTEs.
+                        // Fall back to a plain Statement with parameters safely inlined as SQL literals.
+                        String inlinedSql = inlineParameters(sql, params);
+                        try (Statement st = connection.createStatement();
+                             ResultSet rs = st.executeQuery(inlinedSql)) {
+                            return readResult(rs);
+                        }
                     }
-                    result.addRow(row);
+                    throw e;
                 }
-
-                rs.close();
-                st.close();
-                connection.close();
-                return result;
             }
         }
+    }
+
+    private static Result readResult(ResultSet rs) throws SQLException {
+        Result result = new Result();
+        int columnCount = rs.getMetaData().getColumnCount();
+        while (rs.next()) {
+            ArrayList<Object> row = new ArrayList<>();
+            for (int i = 1; i <= columnCount; i++) {
+                String stringResult = rs.getString(i);
+                row.add("null".equals(stringResult) ? null : stringResult);
+            }
+            result.addRow(row);
+        }
+        return result;
+    }
+
+    /**
+     * Replaces each {@code ?} placeholder in {@code sql} with the corresponding
+     * parameter value rendered as a SQL literal.  String literals in the SQL
+     * (single- or double-quoted) are skipped so that a {@code ?} that appears
+     * inside a quoted string is never touched.
+     */
+    static String inlineParameters(String sql, List<Object> params) {
+        if (params == null || params.isEmpty()) return sql;
+        StringBuilder result = new StringBuilder();
+        int paramIdx = 0;
+        boolean inSingle = false;
+        boolean inDouble = false;
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            if (c == '\'' && !inDouble) {
+                inSingle = !inSingle;
+                result.append(c);
+                if (inSingle && i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                    result.append('\'');
+                    i++;
+                }
+                continue;
+            }
+            if (c == '"' && !inSingle) {
+                inDouble = !inDouble;
+                result.append(c);
+                continue;
+            }
+            if (!inSingle && !inDouble && c == '?') {
+                result.append(toSqlLiteral(params.get(paramIdx++)));
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * Renders a Java object as a SQL literal safe for direct embedding in a
+     * statement string.  Numbers and booleans are written verbatim; everything
+     * else is single-quoted with internal single quotes escaped by doubling.
+     */
+    static String toSqlLiteral(Object param) {
+        if (param instanceof Number || param instanceof Boolean) {
+            return param.toString();
+        }
+        return "'" + param.toString().replace("'", "''") + "'";
     }
 }
