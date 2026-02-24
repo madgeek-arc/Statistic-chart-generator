@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
-import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -90,41 +89,6 @@ public class StatsRepository {
         return count;
     }
 
-    private static void bindParameter(PreparedStatement st, int index, Object value) throws SQLException {
-        if (value == null) {
-            throw new IllegalArgumentException("Null parameter at index " + index + " is not allowed");
-        }
-        if (value instanceof String) {
-            st.setString(index, (String) value);
-        } else if (value instanceof Integer) {
-            st.setInt(index, (Integer) value);
-        } else if (value instanceof Long) {
-            st.setLong(index, (Long) value);
-        } else if (value instanceof Double) {
-            st.setDouble(index, (Double) value);
-        } else if (value instanceof Float) {
-            st.setFloat(index, (Float) value);
-        } else if (value instanceof BigDecimal) {
-            st.setBigDecimal(index, (BigDecimal) value);
-        } else if (value instanceof Boolean) {
-            st.setBoolean(index, (Boolean) value);
-        } else if (value instanceof java.sql.Date) {
-            st.setDate(index, (java.sql.Date) value);
-        } else if (value instanceof java.sql.Timestamp) {
-            st.setTimestamp(index, (java.sql.Timestamp) value);
-        } else if (value instanceof java.util.Date) {
-            // prefer Timestamp for util.Date to preserve time component
-            st.setTimestamp(index, new java.sql.Timestamp(((java.util.Date) value).getTime()));
-        } else if (value instanceof Short) {
-            st.setShort(index, (Short) value);
-        } else if (value instanceof Byte) {
-            st.setByte(index, (Byte) value);
-        } else {
-            // Fallback: concrete non-null object; let driver handle it
-            st.setObject(index, value);
-        }
-    }
-
     public class ResultCallable implements Callable<Result> {
         private final QueryWithParameters query;
 
@@ -161,7 +125,7 @@ public class StatsRepository {
                 int index = 1;
                 if (params != null) {
                     for (Object param : params) {
-                        bindParameter(st, index++, param);
+                        st.setObject(index++, param);
                     }
                 }
 
