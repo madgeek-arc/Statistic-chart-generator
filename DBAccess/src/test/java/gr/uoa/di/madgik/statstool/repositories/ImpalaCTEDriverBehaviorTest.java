@@ -72,14 +72,6 @@ public class ImpalaCTEDriverBehaviorTest {
         jdbcUser     = System.getProperty("impala.test.jdbc.user", "");
         jdbcPassword = System.getProperty("impala.test.jdbc.password", "");
 
-        // Skip if the driver class is not on the classpath
-        try {
-            Class.forName("com.cloudera.jdbc.impala.ImpalaDriver");
-        } catch (ClassNotFoundException e) {
-            assumeTrue(false,
-                    "Skipping: Simba/Cloudera JDBC driver not on classpath");
-        }
-
         // Skip if the host is not reachable
         try (Connection c = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword)) {
             assumeTrue(c != null, "Skipping: getConnection() returned null");
