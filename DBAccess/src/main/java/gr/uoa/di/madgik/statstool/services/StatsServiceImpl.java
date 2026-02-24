@@ -171,21 +171,29 @@ public class StatsServiceImpl implements StatsService {
                 }
 
                 Result mergedResult;
-                if (allUseCache) {
-                    String cacheKey = StatsCache.getCacheKey(finalSql, mergedParameters, baseProfile);
-                    if (statsCache.exists(cacheKey)) {
-                        mergedResult = statsCache.get(cacheKey);
-                        log.debug("Merged key {} in cache! Returning cached result.", cacheKey);
+                try {
+                    if (allUseCache) {
+                        String cacheKey = StatsCache.getCacheKey(finalSql, mergedParameters, baseProfile);
+                        if (statsCache.exists(cacheKey)) {
+                            mergedResult = statsCache.get(cacheKey);
+                            log.debug("Merged key {} in cache! Returning cached result.", cacheKey);
+                        } else {
+                            log.info("Performing merged query {}", finalSql);
+                            long start = new Date().getTime();
+                            mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
+                            long execTime = new Date().getTime() - start;
+                            statsCache.save(new QueryWithParameters(finalSql, mergedParameters, baseProfile), mergedResult, (int) execTime);
+                        }
                     } else {
-                        log.info("Performing merged query {}", finalSql);
-                        long start = new Date().getTime();
+                        log.debug("Cache disabled for at least one subquery. Executing merged SQL without cache.");
                         mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
-                        long execTime = new Date().getTime() - start;
-                        statsCache.save(new QueryWithParameters(finalSql, mergedParameters, baseProfile), mergedResult, (int) execTime);
                     }
-                } else {
-                    log.debug("Cache disabled for at least one subquery. Executing merged SQL without cache.");
-                    mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
+                } catch (Exception mergedEx) {
+                    if (isSimbaCteFallback(mergedEx)) {
+                        log.warn("Merged CTE query failed on Simba JDBC (CTE not supported); falling back to per-query execution.");
+                        return runIndividually(queryList, orderBy);
+                    }
+                    throw mergedEx;
                 }
 
                 results.add(mergedResult);
@@ -257,5 +265,22 @@ public class StatsServiceImpl implements StatsService {
 
     private String getNamedQuery(String queryName) throws IOException {
             return namedQueryRepository.getQuery(queryName);
+    }
+
+    /**
+     * Returns true when the exception chain contains a Simba JDBC error code that
+     * indicates the driver cannot execute a CTE query (11420 = parameter metadata
+     * not populated; 11300 = no ResultSet generated).  Used to decide whether to
+     * fall back from the merged-CTE path to per-query execution.
+     */
+    private static boolean isSimbaCteFallback(Throwable t) {
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null && (msg.contains("11420") || msg.contains("11300"))) {
+                return true;
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 }
