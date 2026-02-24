@@ -42,8 +42,6 @@ public class StatsRepositoryBindingTest {
         when(connection.prepareStatement(anyString())).thenReturn(ps);
         when(connection.createStatement()).thenReturn(stmt);
         when(ps.executeQuery()).thenReturn(rs);
-        when(stmt.execute(anyString())).thenReturn(true);
-        when(stmt.getResultSet()).thenReturn(rs);
         when(rs.getMetaData()).thenReturn(rsmd);
         when(rsmd.getColumnCount()).thenReturn(1);
         when(rs.next()).thenReturn(false); // no rows
@@ -142,9 +140,13 @@ public class StatsRepositoryBindingTest {
     }
 
     @Test
-    void fallsBackToStatement_onSimba11420Error() throws Exception {
-        // Simulate Simba JDBC error 11420 on PreparedStatement execution
+    void fallsBackToPreparedStatement_onSimba11420Error() throws Exception {
+        // First prepareStatement call (with ?) returns ps which throws 11420.
+        // Second call (with inlined SQL, no ?) returns psFallback which succeeds.
+        PreparedStatement psFallback = mock(PreparedStatement.class);
+        when(connection.prepareStatement(anyString())).thenReturn(ps, psFallback);
         when(ps.executeQuery()).thenThrow(new SQLException("[Simba][JDBC](11420) Error, parameter metadata not populated."));
+        when(psFallback.executeQuery()).thenReturn(rs);
 
         StatsRepository repo = newRepo();
         String sql = "WITH q1(y,x) AS (SELECT COUNT(*) FROM t WHERE type=?) SELECT y,x FROM q1";
@@ -152,10 +154,10 @@ public class StatsRepositoryBindingTest {
 
         repo.executeQuery(sql, params, "p.public");
 
-        // Should have fallen back to plain Statement with inlined SQL
+        // Fallback must prepare the SQL with inlined parameters (no ?)
         String expectedSql = "WITH q1(y,x) AS (SELECT COUNT(*) FROM t WHERE type='publication') SELECT y,x FROM q1";
-        verify(stmt).execute(expectedSql);
-        verify(stmt).getResultSet();
+        verify(connection).prepareStatement(expectedSql);
+        verify(psFallback).executeQuery();
     }
 
     // --- inlineParameters unit tests ---

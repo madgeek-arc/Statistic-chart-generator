@@ -134,15 +134,13 @@ public class StatsRepository {
                 } catch (SQLException e) {
                     if (e.getMessage() != null && e.getMessage().contains("11420")) {
                         // Simba JDBC (Impala) cannot resolve parameter metadata for ? inside CTEs.
-                        // Fall back to a plain Statement with parameters safely inlined as SQL literals.
-                        // Use execute()+getResultSet() instead of executeQuery(): Simba also rejects
-                        // Statement.executeQuery() for CTEs (error 11300).
+                        // Inline parameters as SQL literals (removes all ?) and re-prepare: without ?
+                        // there is no metadata lookup so 11420 cannot fire, and PreparedStatement
+                        // .executeQuery() is the path the driver handles correctly for CTEs.
                         String inlinedSql = inlineParameters(sql, params);
-                        try (Statement st = connection.createStatement()) {
-                            st.execute(inlinedSql);
-                            try (ResultSet rs = st.getResultSet()) {
-                                return readResult(rs);
-                            }
+                        try (PreparedStatement pst = connection.prepareStatement(inlinedSql);
+                             ResultSet rs = pst.executeQuery()) {
+                            return readResult(rs);
                         }
                     }
                     throw e;
