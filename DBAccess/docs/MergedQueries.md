@@ -24,7 +24,7 @@ Example 1: Two description-based queries aligned on x, with ORDER BY and LIMIT
        q2(y, x) AS (SELECT ? AS y, ? AS x FROM sales WHERE year >= ? ORDER BY x LIMIT 10),
        t AS (
          SELECT COALESCE(q1.x, q2.x) AS x, q1.y AS y1, q2.y AS y2
-         FROM q1 FULL OUTER JOIN q2 ON q2.x = COALESCE(q1.x)
+         FROM q1 FULL OUTER JOIN q2 ON q2.x = q1.x
        )
   SELECT y1 AS y, x FROM t
   UNION ALL SELECT y2 AS y, x FROM t

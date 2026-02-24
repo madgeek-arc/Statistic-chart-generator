@@ -120,16 +120,23 @@ public class StatsServiceImpl implements StatsService {
 
                 StringBuilder fromJoins = new StringBuilder("FROM q1");
                 for (int i = 2; i <= n; i++) {
-                    // coalesce previous xs for ON clause
-                    StringBuilder prevCoalesce = new StringBuilder("COALESCE(");
-                    for (int j = 1; j < i; j++) {
-                        if (j > 1) prevCoalesce.append(", ");
-                        prevCoalesce.append("q").append(j).append(".x");
+                    // Build ON expression referencing previous x's.
+                    // For the first join (i==2), use q1.x directly (Impala and SQL engines don't accept single-arg COALESCE).
+                    String prevExpr;
+                    if (i == 2) {
+                        prevExpr = "q1.x";
+                    } else {
+                        StringBuilder prevCoalesce = new StringBuilder("COALESCE(");
+                        for (int j = 1; j < i; j++) {
+                            if (j > 1) prevCoalesce.append(", ");
+                            prevCoalesce.append("q").append(j).append(".x");
+                        }
+                        prevCoalesce.append(")");
+                        prevExpr = prevCoalesce.toString();
                     }
-                    prevCoalesce.append(")");
                     fromJoins.append(" FULL OUTER JOIN q").append(i)
                             .append(" ON q").append(i).append(".x = ")
-                            .append(prevCoalesce);
+                            .append(prevExpr);
                 }
 
                 // Build a temp CTE t that selects coalesced x and all yi
