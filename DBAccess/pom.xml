@@ -149,6 +149,7 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <byte-buddy.version>1.17.5</byte-buddy.version>
     </properties>
 
     <build>
