@@ -118,33 +118,16 @@ public class StatsRepository {
                 }
             }
 
-            try (Connection connection = dataSource.getConnection()) {
-                try {
-                    try (PreparedStatement st = connection.prepareStatement(sql)) {
-                        int index = 1;
-                        if (params != null) {
-                            for (Object param : params) {
-                                st.setObject(index++, param);
-                            }
-                        }
-                        try (ResultSet rs = st.executeQuery()) {
-                            return readResult(rs);
-                        }
+            try (Connection connection = dataSource.getConnection();
+                 PreparedStatement st = connection.prepareStatement(sql)) {
+                int index = 1;
+                if (params != null) {
+                    for (Object param : params) {
+                        st.setObject(index++, param);
                     }
-                } catch (SQLException e) {
-                    if (e.getMessage() != null && e.getMessage().contains("11420")) {
-                        // Simba JDBC (Impala) throws 11420 at prepareStatement() time (not at
-                        // executeQuery()) when the SQL contains ? placeholders inside a CTE body:
-                        // the driver tries to resolve parameter metadata during preparation and fails.
-                        // Inline parameters as SQL literals (removes all ?) and re-prepare: without ?
-                        // there is no metadata lookup so 11420 cannot fire at prepare time.
-                        String inlinedSql = inlineParameters(sql, params);
-                        try (PreparedStatement pst = connection.prepareStatement(inlinedSql);
-                             ResultSet rs = pst.executeQuery()) {
-                            return readResult(rs);
-                        }
-                    }
-                    throw e;
+                }
+                try (ResultSet rs = st.executeQuery()) {
+                    return readResult(rs);
                 }
             }
         }
@@ -164,52 +147,4 @@ public class StatsRepository {
         return result;
     }
 
-    /**
-     * Replaces each {@code ?} placeholder in {@code sql} with the corresponding
-     * parameter value rendered as a SQL literal.  String literals in the SQL
-     * (single- or double-quoted) are skipped so that a {@code ?} that appears
-     * inside a quoted string is never touched.
-     */
-    static String inlineParameters(String sql, List<Object> params) {
-        if (params == null || params.isEmpty()) return sql;
-        StringBuilder result = new StringBuilder();
-        int paramIdx = 0;
-        boolean inSingle = false;
-        boolean inDouble = false;
-        for (int i = 0; i < sql.length(); i++) {
-            char c = sql.charAt(i);
-            if (c == '\'' && !inDouble) {
-                inSingle = !inSingle;
-                result.append(c);
-                if (inSingle && i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
-                    result.append('\'');
-                    i++;
-                }
-                continue;
-            }
-            if (c == '"' && !inSingle) {
-                inDouble = !inDouble;
-                result.append(c);
-                continue;
-            }
-            if (!inSingle && !inDouble && c == '?') {
-                result.append(toSqlLiteral(params.get(paramIdx++)));
-            } else {
-                result.append(c);
-            }
-        }
-        return result.toString();
-    }
-
-    /**
-     * Renders a Java object as a SQL literal safe for direct embedding in a
-     * statement string.  Numbers and booleans are written verbatim; everything
-     * else is single-quoted with internal single quotes escaped by doubling.
-     */
-    static String toSqlLiteral(Object param) {
-        if (param instanceof Number || param instanceof Boolean) {
-            return param.toString();
-        }
-        return "'" + param.toString().replace("'", "''") + "'";
-    }
 }

@@ -13,11 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -136,36 +134,6 @@ public class StatsServiceImplTest {
         assertEquals(2, list.size());
         // Repository should have been called twice (no merging)
         verify(statsRepository, times(2)).executeQuery(anyString(), anyList(), anyString());
-    }
-
-    @Test
-    void mergedPath_fallsBackToIndividual_onSimba11300Error() throws Exception {
-        Query q1 = newQuery("p", false);
-        Query q2 = newQuery("p", false);
-
-        when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
-        when(mapper.map(eq(q2), anyList(), isNull())).thenReturn("SELECT 2, 'B'");
-        when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
-        when(mapper.map(eq(q2), anyList(), isNull())).thenReturn("SELECT 2, 'B'");
-        // Also handle individual execution path (orderBy = null passed through)
-        when(mapper.map(eq(q1), anyList(), any())).thenReturn("SELECT 1, 'A'");
-        when(mapper.map(eq(q2), anyList(), any())).thenReturn("SELECT 2, 'B'");
-
-        Result r1 = new Result(); r1.setRows(new ArrayList<>());
-        Result r2 = new Result(); r2.setRows(new ArrayList<>());
-        when(statsCache.exists(anyString())).thenReturn(false);
-
-        // First call (merged CTE) throws Simba 11300; subsequent calls (individual) succeed
-        when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
-                .thenThrow(new ExecutionException(new SQLException("[Simba][JDBC](11300) A ResultSet was expected but not generated")))
-                .thenReturn(r1)
-                .thenReturn(r2);
-
-        List<Result> list = statsService.query(Arrays.asList(q1, q2), null);
-
-        // Should have fallen back to individual execution → 2 results
-        assertEquals(2, list.size());
-        verify(statsRepository, times(3)).executeQuery(anyString(), anyList(), anyString());
     }
 
     @Test

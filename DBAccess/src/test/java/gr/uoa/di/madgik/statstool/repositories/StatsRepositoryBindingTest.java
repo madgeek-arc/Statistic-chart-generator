@@ -15,9 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import static gr.uoa.di.madgik.statstool.repositories.StatsRepository.inlineParameters;
-import static gr.uoa.di.madgik.statstool.repositories.StatsRepository.toSqlLiteral;
-
 public class StatsRepositoryBindingTest {
 
     private DataSource dataSource;
@@ -62,7 +59,7 @@ public class StatsRepositoryBindingTest {
             }
         });
     }
-    
+
     private static class ImmediateFuture implements Future<Result> {
         private final Result result;
         ImmediateFuture(Result result) { this.result = result; }
@@ -137,82 +134,5 @@ public class StatsRepositoryBindingTest {
                 () -> repo.executeQuery(sql, params, "p.public"));
         assertTrue(ex.getMessage().toLowerCase().contains("placeholder count"));
         verify(dataSource, never()).getConnection();
-    }
-
-    @Test
-    void fallsBackToPreparedStatement_onSimba11420Error() throws Exception {
-        // First prepareStatement call (with ?) returns ps which throws 11420.
-        // Second call (with inlined SQL, no ?) returns psFallback which succeeds.
-        PreparedStatement psFallback = mock(PreparedStatement.class);
-        when(connection.prepareStatement(anyString())).thenReturn(ps, psFallback);
-        when(ps.executeQuery()).thenThrow(new SQLException("[Simba][JDBC](11420) Error, parameter metadata not populated."));
-        when(psFallback.executeQuery()).thenReturn(rs);
-
-        StatsRepository repo = newRepo();
-        String sql = "WITH q1(y,x) AS (SELECT COUNT(*) FROM t WHERE type=?) SELECT y,x FROM q1";
-        List<Object> params = Collections.singletonList("publication");
-
-        repo.executeQuery(sql, params, "p.public");
-
-        // Fallback must prepare the SQL with inlined parameters (no ?)
-        String expectedSql = "WITH q1(y,x) AS (SELECT COUNT(*) FROM t WHERE type='publication') SELECT y,x FROM q1";
-        verify(connection).prepareStatement(expectedSql);
-        verify(psFallback).executeQuery();
-    }
-
-    // --- inlineParameters unit tests ---
-
-    @Test
-    void inlineParameters_replacesStringParam() {
-        String sql = "SELECT * FROM t WHERE type=?";
-        String result = inlineParameters(sql, Collections.singletonList("publication"));
-        assertEquals("SELECT * FROM t WHERE type='publication'", result);
-    }
-
-    @Test
-    void inlineParameters_escapesInternalSingleQuotes() {
-        String result = inlineParameters("SELECT ?", Collections.singletonList("O'Brien"));
-        assertEquals("SELECT 'O''Brien'", result);
-    }
-
-    @Test
-    void inlineParameters_handlesNumericParam() {
-        String result = inlineParameters("SELECT ?", Collections.singletonList(42));
-        assertEquals("SELECT 42", result);
-    }
-
-    @Test
-    void inlineParameters_skipsPlaceholdersInsideStringLiterals() {
-        // The ? inside a quoted literal must not be replaced
-        String sql = "SELECT '?' AS q, ?";
-        String result = inlineParameters(sql, Collections.singletonList("val"));
-        assertEquals("SELECT '?' AS q, 'val'", result);
-    }
-
-    @Test
-    void inlineParameters_multipleParams_inOrder() {
-        String sql = "WHERE a=? AND b=?";
-        String result = inlineParameters(sql, Arrays.asList("x", 99));
-        assertEquals("WHERE a='x' AND b=99", result);
-    }
-
-    @Test
-    void toSqlLiteral_string() {
-        assertEquals("'hello'", toSqlLiteral("hello"));
-    }
-
-    @Test
-    void toSqlLiteral_integer() {
-        assertEquals("42", toSqlLiteral(42));
-    }
-
-    @Test
-    void toSqlLiteral_double() {
-        assertEquals("3.14", toSqlLiteral(3.14));
-    }
-
-    @Test
-    void toSqlLiteral_boolean() {
-        assertEquals("true", toSqlLiteral(true));
     }
 }

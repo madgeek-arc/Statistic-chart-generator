@@ -35,18 +35,38 @@
     <scope>runtime</scope>
   </dependency>
 
-  <!-- Cloudera Impala JDBC -->
+  <!-- Apache Hive JDBC driver — connects to Impala via HiveServer2 Thrift protocol -->
+  <!-- Configure datasources with: url=jdbc:hive2://host:21050/db;auth=noSasl -->
+  <!--                              driver-class-name=org.apache.hive.jdbc.HiveDriver -->
   <dependency>
-    <groupId>com.cloudera.impala</groupId>
-    <artifactId>jdbc</artifactId>
-    <version>2.5.31-hvjdbc</version>
+    <groupId>org.apache.hive</groupId>
+    <artifactId>hive-jdbc</artifactId>
+    <version>1.2.2</version>
     <exclusions>
-      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
-      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-reload4j</artifactId></exclusion>
       <exclusion><groupId>org.apache.hive</groupId><artifactId>hive-service</artifactId></exclusion>
-      <exclusion><groupId>org.apache.hive</groupId><artifactId>hive-jdbc</artifactId></exclusion>
       <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
       <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
+      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
+      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
+    </exclusions>
+  </dependency>
+
+  <!-- hadoop-common required by hive-jdbc (provides o.a.hadoop.conf.Configuration) -->
+  <dependency>
+    <groupId>org.apache.hadoop</groupId>
+    <artifactId>hadoop-common</artifactId>
+    <version>2.7.3</version>
+    <exclusions>
+      <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
+      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
+      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
+      <exclusion><groupId>com.sun.jersey</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>org.mortbay.jetty</groupId><artifactId>*</artifactId></exclusion>
       <exclusion><groupId>tomcat</groupId><artifactId>*</artifactId></exclusion>
     </exclusions>
   </dependency>
@@ -110,41 +130,6 @@
     <scope>test</scope>
   </dependency>
 
-  <!-- Hive JDBC driver — test-only probe for CTE compatibility -->
-  <dependency>
-    <groupId>org.apache.hive</groupId>
-    <artifactId>hive-jdbc</artifactId>
-    <version>1.2.2</version>
-    <scope>test</scope>
-    <exclusions>
-      <exclusion><groupId>org.apache.hive</groupId><artifactId>hive-service</artifactId></exclusion>
-      <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
-      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
-      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
-    </exclusions>
-  </dependency>
-
-  <!-- hadoop-common required by hive-jdbc (provides o.a.hadoop.conf.Configuration) -->
-  <dependency>
-    <groupId>org.apache.hadoop</groupId>
-    <artifactId>hadoop-common</artifactId>
-    <version>2.7.3</version>
-    <scope>test</scope>
-    <exclusions>
-      <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
-      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
-      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
-      <exclusion><groupId>com.sun.jersey</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>org.mortbay.jetty</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>tomcat</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
-  </dependency>
 
 </dependencies>
 
