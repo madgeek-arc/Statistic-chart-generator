@@ -86,12 +86,13 @@ public class ImpalaCTEDriverBehaviorTest {
     }
 
     private static String toHiveJdbcUrl(String impalaUrl) {
-        // Strip Simba-specific ;key=value parameters, swap scheme
-        // jdbc:impala://host:21050/db;UseNativeQuery=1 → jdbc:hive2://host:21050/db
+        // Strip Simba-specific ;key=value parameters, swap scheme, disable SASL.
+        // jdbc:impala://host:21050/db;UseNativeQuery=1 → jdbc:hive2://host:21050/db;auth=noSasl
+        // Without auth=noSasl the Hive driver defaults to Kerberos and times out.
         String stripped = impalaUrl.contains(";")
                 ? impalaUrl.substring(0, impalaUrl.indexOf(';'))
                 : impalaUrl;
-        return stripped.replace("jdbc:impala://", "jdbc:hive2://");
+        return stripped.replace("jdbc:impala://", "jdbc:hive2://") + ";auth=noSasl";
     }
 
     // -------------------------------------------------------------------------
