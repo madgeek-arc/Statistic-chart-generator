@@ -85,6 +85,15 @@ public class ImpalaCTEDriverBehaviorTest {
         return DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
     }
 
+    private static String toHiveJdbcUrl(String impalaUrl) {
+        // Strip Simba-specific ;key=value parameters, swap scheme
+        // jdbc:impala://host:21050/db;UseNativeQuery=1 → jdbc:hive2://host:21050/db
+        String stripped = impalaUrl.contains(";")
+                ? impalaUrl.substring(0, impalaUrl.indexOf(';'))
+                : impalaUrl;
+        return stripped.replace("jdbc:impala://", "jdbc:hive2://");
+    }
+
     // -------------------------------------------------------------------------
     // Expected failure: PreparedStatement with ? parameters
     // -------------------------------------------------------------------------
@@ -189,6 +198,34 @@ public class ImpalaCTEDriverBehaviorTest {
             assertNull(st.getResultSet(),
                     "getResultSet() must be null when execute() returned false (per JDBC spec). " +
                     "If this assertion fails the driver has been fixed — remove CTE workarounds.");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Probe: open-source Hive JDBC driver CTE compatibility
+    // -------------------------------------------------------------------------
+
+    /**
+     * Probe: does the open-source Hive JDBC driver handle CTE queries with ?
+     * parameters correctly when connected to Impala?
+     *
+     * <p>PASS → Hive driver is a viable replacement for Simba; workarounds in
+     *           StatsRepository / StatsServiceImpl can be removed.
+     * <p>FAIL → the error message documents how the Hive driver behaves.
+     */
+    @Test
+    void hiveDriver_preparedStatement_withParams_canExecuteCTE() throws Exception {
+        String hiveUrl = toHiveJdbcUrl(jdbcUrl);
+        try (Connection conn = DriverManager.getConnection(hiveUrl, jdbcUser, jdbcPassword);
+             PreparedStatement ps = conn.prepareStatement(CTE_WITH_PARAMS)) {
+            ps.setObject(1, 1);
+            ps.setObject(2, "a");
+            ps.setObject(3, 2);
+            ps.setObject(4, "b");
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next(),
+                        "Hive driver should return at least one row from the CTE query");
+            }
         }
     }
 }

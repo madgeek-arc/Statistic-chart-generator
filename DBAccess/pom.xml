@@ -110,6 +110,22 @@
     <scope>test</scope>
   </dependency>
 
+  <!-- Hive JDBC driver — test-only probe for CTE compatibility -->
+  <dependency>
+    <groupId>org.apache.hive</groupId>
+    <artifactId>hive-jdbc</artifactId>
+    <version>1.2.2</version>
+    <scope>test</scope>
+    <exclusions>
+      <exclusion><groupId>org.apache.hive</groupId><artifactId>hive-service</artifactId></exclusion>
+      <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
+      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
+      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
+    </exclusions>
+  </dependency>
+
 </dependencies>
 
 
