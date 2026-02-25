@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
@@ -17,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 
 @Service
@@ -205,14 +205,13 @@ public class StatsServiceImpl implements StatsService {
                         log.debug("Merged key {} in cache! Returning cached result.", cacheKey);
                     } else {
                         log.info("Performing merged query {}", finalSql);
-                        long start = new Date().getTime();
-                        mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
-                        long execTime = new Date().getTime() - start;
-                        statsCache.save(new QueryWithParameters(finalSql, mergedParameters, baseProfile), mergedResult, (int) execTime);
+                        TimedResult timedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
+                        mergedResult = timedResult.result;
+                        statsCache.save(new QueryWithParameters(finalSql, mergedParameters, baseProfile), mergedResult, timedResult.execTimeMs, timedResult.queueTimeMs);
                     }
                 } else {
                     log.debug("Cache disabled for at least one subquery. Executing merged SQL without cache.");
-                    mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
+                    mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile).result;
                 }
 
                 // Split the wide merged row [y1, ..., yn, x1, ..., xm] into N individual Results.
@@ -276,16 +275,15 @@ public class StatsServiceImpl implements StatsService {
                 } else {
                     log.info("Performing query {}", querySql);
                     log.debug("result for key {} not in cache. Querying db!", cacheKey);
-                    long start = new Date().getTime();
-                    result = statsRepository.executeQuery(querySql, parameters, profile);
+                    TimedResult timedResult = statsRepository.executeQuery(querySql, parameters, profile);
+                    result = timedResult.result;
                     log.debug("result: {}", result);
-                    long execTime = new Date().getTime() - start;
 
-                    statsCache.save(new QueryWithParameters(querySql, parameters, profile), result, (int) execTime);
+                    statsCache.save(new QueryWithParameters(querySql, parameters, profile), result, timedResult.execTimeMs, timedResult.queueTimeMs);
                 }
             } else {
                 log.debug("Cache disabled for query.");
-                result = statsRepository.executeQuery(querySql, parameters, profile);
+                result = statsRepository.executeQuery(querySql, parameters, profile).result;
             }
 
             results.add(result);

@@ -49,7 +49,15 @@ public class StatsDBRepository implements StatsCache {
                         "session_hits int default 0 not null," +
                         "pinned boolean default false not null," +
                         "exectime int default 0 not null," +
+                        "queuetime int default 0 not null," +
                         "profile varchar(255) not null)" );
+
+        // Migrate existing tables that predate the queuetime column
+        try {
+            jdbcTemplate.execute("alter table cache_entry add column if not exists queuetime int default 0 not null");
+        } catch (Exception ignored) {
+            // Column may already exist or DB may not support IF NOT EXISTS; safe to ignore
+        }
 
         jdbcTemplate.execute("create index if not exists key_idx on cache_entry(key)");
     }
@@ -105,7 +113,7 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public void save(QueryWithParameters fullSqlQuery, Result result, int execTime) throws Exception {
+    public void save(QueryWithParameters fullSqlQuery, Result result, int execTime, int queueTime) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
         try {
             String key = StatsCache.getCacheKey(fullSqlQuery);
@@ -116,6 +124,7 @@ public class StatsDBRepository implements StatsCache {
                 CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
 
                 entry.setExecTime(execTime);
+                entry.setQueueTime(queueTime);
                 entry.setProfile(fullSqlQuery.getDbId());
 
                 storeEntry(entry);
@@ -128,7 +137,7 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-	String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.profile;";
+        String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile;";
 
         log.debug("Storing entry " + entry);
 
@@ -146,6 +155,7 @@ public class StatsDBRepository implements StatsCache {
                 entry.getSessionHits(),
                 entry.isPinned(),
                 entry.getExecTime(),
+                entry.getQueueTime(),
                 entry.getProfile()
         );
     }
@@ -188,6 +198,7 @@ public class StatsDBRepository implements StatsCache {
                     entry.setSessionHits(rs.getInt("session_hits"));
                     entry.setPinned(rs.getBoolean("pinned"));
                     entry.setExecTime(rs.getInt("exectime"));
+                    entry.setQueueTime(rs.getInt("queuetime"));
                     entry.setProfile(rs.getString("profile"));
                 } catch (IOException e) {
                     log.error("Error reading entry", e);
@@ -247,12 +258,13 @@ public class StatsDBRepository implements StatsCache {
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
         stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow is not null",new Object[] {}, Integer.class));
-        stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
+        stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time, avg(queuetime) as avg_queue_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
             Map<String, Object> map = new LinkedHashMap<>();
 
             map.put("profile", rs.getString("profile"));
             map.put("queries", rs.getInt("queries"));
             map.put("avg_exec_time", rs.getInt("avg_exec_time"));
+            map.put("avg_queue_time", rs.getInt("avg_queue_time"));
 
             return map;
         }));

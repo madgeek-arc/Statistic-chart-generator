@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.statstool.services;
 
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
@@ -73,7 +74,7 @@ public class StatsServiceImplTest {
         Result merged = new Result();
         merged.setRows(new ArrayList<>());
         when(statsCache.exists(anyString())).thenReturn(false);
-        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         // Act — pass "xaxis" so the merged ORDER BY resolves to the x column
         List<Result> results = statsService.query(Arrays.asList(q1, q2), "xaxis");
@@ -109,7 +110,7 @@ public class StatsServiceImplTest {
         assertEquals("p.public", profile);
 
         // Cache save should be invoked once (since exists=false)
-        verify(statsCache, times(1)).save(any(), eq(merged), anyInt());
+        verify(statsCache, times(1)).save(any(), eq(merged), anyInt(), anyInt());
     }
 
     @Test
@@ -126,8 +127,8 @@ public class StatsServiceImplTest {
         Result r2 = new Result();
         when(statsCache.exists(anyString())).thenReturn(false);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
-                .thenReturn(r1)
-                .thenReturn(r2);
+                .thenReturn(new TimedResult(r1, 10, 5))
+                .thenReturn(new TimedResult(r2, 10, 5));
 
         List<Result> list = statsService.query(Arrays.asList(q1, q2), "x DESC");
 
@@ -172,7 +173,7 @@ public class StatsServiceImplTest {
 
         Result merged = new Result();
         when(statsCache.exists(anyString())).thenReturn(false);
-        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "stacked");
 
@@ -200,7 +201,7 @@ public class StatsServiceImplTest {
 
         Result merged = new Result();
         when(statsCache.exists(anyString())).thenReturn(false);
-        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "yaxis");
 
