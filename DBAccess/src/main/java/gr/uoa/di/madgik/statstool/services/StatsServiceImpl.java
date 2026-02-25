@@ -76,8 +76,8 @@ public class StatsServiceImpl implements StatsService {
 
                     if (queryName == null) {
                         log.debug("Building query from description");
-                        // When merging, avoid applying orderBy inside each subquery to keep SQL valid
-                        querySql = mapper.map(query, parameters, null);
+                        // Pass orderBy into each subquery so CTEs order consistently with the outer query
+                        querySql = mapper.map(query, parameters, orderBy);
                     } else {
                         log.debug("Retrieving named sql query from repository");
                         querySql = getNamedQuery(queryName);

@@ -56,19 +56,18 @@ public class StatsServiceImplTest {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
 
-        // mapper.map should be called with orderBy = null for merged subqueries
-        // Simulate parameters being filled for each subquery
+        // mapper.map is called with the same orderBy passed to the merged query
         doAnswer(invocation -> {
             List<Object> params = invocation.getArgument(1);
             params.addAll(Arrays.asList(1, "A"));
             return "SELECT ? AS y, ? AS x"; // [y, x]
-        }).when(mapper).map(eq(q1), anyList(), isNull());
+        }).when(mapper).map(eq(q1), anyList(), eq("xaxis"));
 
         doAnswer(invocation -> {
             List<Object> params = invocation.getArgument(1);
             params.addAll(Arrays.asList(2, "B"));
             return "SELECT ? AS y, ? AS x";
-        }).when(mapper).map(eq(q2), anyList(), isNull());
+        }).when(mapper).map(eq(q2), anyList(), eq("xaxis"));
 
         // Repository returns a simple merged result
         Result merged = new Result();
@@ -146,7 +145,7 @@ public class StatsServiceImplTest {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
 
-        // simple subqueries
+        // simple subqueries — orderBy=null flows through to mapper
         when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
         when(mapper.map(eq(q2), anyList(), isNull())).thenReturn("SELECT 2, 'B'");
 
@@ -169,8 +168,8 @@ public class StatsServiceImplTest {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
 
-        when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
-        when(mapper.map(eq(q2), anyList(), isNull())).thenReturn("SELECT 2, 'B'");
+        when(mapper.map(eq(q1), anyList(), eq("yaxis"))).thenReturn("SELECT 1, 'A'");
+        when(mapper.map(eq(q2), anyList(), eq("yaxis"))).thenReturn("SELECT 2, 'B'");
 
         Result merged = new Result();
         when(statsCache.exists(anyString())).thenReturn(false);
