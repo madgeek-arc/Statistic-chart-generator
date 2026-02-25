@@ -19,6 +19,7 @@ function drawTable(dataJSONobj){
     //Create ChartInfo and pass the Chart data queries to ChartDataFormatter
     //along with the requested Chart type
     RequestInfoObj.chartsInfo = dataJSONobj.tableDescription.queriesInfo;
+    RequestInfoObj.orderBy = dataJSONobj.orderBy || dataJSONobj.tableDescription.orderBy || "yaxis";
 
     passToChartDataFormatter(dataJSONobj,RequestInfoObj,
                 domainLink+"/table");
