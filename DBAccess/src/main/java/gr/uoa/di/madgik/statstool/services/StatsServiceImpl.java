@@ -99,50 +99,38 @@ public class StatsServiceImpl implements StatsService {
                     }
                 }
 
-                // Build CTEs q1..qn with explicit (y, x) column naming to normalize outputs
+                // Build CTEs q1..qn with explicit (y, x) column naming to normalize outputs.
+                // q1 is the primary series and keeps its ORDER BY + LIMIT (top-N by y).
+                // Secondary CTEs (q2..qn) have ORDER BY and LIMIT stripped so they return
+                // all rows; the LEFT JOIN below restricts them to x-values present in q1.
                 cteSql.append("WITH ");
                 for (int i = 0; i < individualSqls.size(); i++) {
                     if (i > 0) cteSql.append(", ");
                     String qi = "q" + (i + 1);
-                    cteSql.append(qi).append("(y, x) AS (").append(individualSqls.get(i)).append(")");
+                    String subSql = individualSqls.get(i);
+                    if (i > 0) {
+                        // Strip trailing ORDER BY (and any LIMIT that follows it)
+                        int orderByIdx = subSql.toUpperCase().lastIndexOf("ORDER BY");
+                        if (orderByIdx >= 0) {
+                            subSql = subSql.substring(0, orderByIdx).trim();
+                        }
+                    }
+                    cteSql.append(qi).append("(y, x) AS (").append(subSql).append(")");
                     List<Object> params = individualParams.get(i);
                     if (params != null) mergedParameters.addAll(params);
                 }
 
-                // Build FULL OUTER JOIN chain and COALESCE expression for x
+                // q1 drives the result set via LEFT JOIN; its x is always non-null so no COALESCE needed.
                 int n = individualSqls.size();
-                StringBuilder coalesceAll = new StringBuilder("COALESCE(");
-                for (int i = 1; i <= n; i++) {
-                    if (i > 1) coalesceAll.append(", ");
-                    coalesceAll.append("q").append(i).append(".x");
-                }
-                coalesceAll.append(")");
-
                 StringBuilder fromJoins = new StringBuilder("FROM q1");
                 for (int i = 2; i <= n; i++) {
-                    // Build ON expression referencing previous x's.
-                    // For the first join (i==2), use q1.x directly (Impala and SQL engines don't accept single-arg COALESCE).
-                    String prevExpr;
-                    if (i == 2) {
-                        prevExpr = "q1.x";
-                    } else {
-                        StringBuilder prevCoalesce = new StringBuilder("COALESCE(");
-                        for (int j = 1; j < i; j++) {
-                            if (j > 1) prevCoalesce.append(", ");
-                            prevCoalesce.append("q").append(j).append(".x");
-                        }
-                        prevCoalesce.append(")");
-                        prevExpr = prevCoalesce.toString();
-                    }
-                    fromJoins.append(" FULL OUTER JOIN q").append(i)
-                            .append(" ON q").append(i).append(".x = ")
-                            .append(prevExpr);
+                    fromJoins.append(" LEFT JOIN q").append(i)
+                            .append(" ON q").append(i).append(".x = q1.x");
                 }
 
-                // Build a temp CTE t that selects coalesced x and all yi
+                // Build a temp CTE t that selects q1.x and all yi
                 StringBuilder selectT = new StringBuilder();
-                selectT.append(", t AS (SELECT ")
-                        .append(coalesceAll).append(" AS x");
+                selectT.append(", t AS (SELECT q1.x AS x");
                 for (int i = 1; i <= n; i++) {
                     selectT.append(", q").append(i).append(".y AS y").append(i);
                 }

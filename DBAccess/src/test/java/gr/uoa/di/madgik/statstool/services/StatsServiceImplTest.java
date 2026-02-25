@@ -91,10 +91,10 @@ public class StatsServiceImplTest {
         List<Object> params = paramsCaptor.getValue();
         String profile = profileCaptor.getValue();
 
-        // SQL should contain WITH CTEs, FULL OUTER JOIN alignment, COALESCE on x, and outer ORDER BY x
+        // SQL should contain WITH CTEs, LEFT JOIN (q1 drives), q1.x as the join key, and outer ORDER BY x
         assertTrue(sql.toUpperCase().contains("WITH"), "Expected WITH CTE in merged SQL, got: " + sql);
-        assertTrue(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected FULL OUTER JOIN in merged SQL, got: " + sql);
-        assertTrue(sql.toUpperCase().contains("COALESCE"), "Expected COALESCE in merged SQL, got: " + sql);
+        assertTrue(sql.toUpperCase().contains("LEFT JOIN"), "Expected LEFT JOIN in merged SQL, got: " + sql);
+        assertFalse(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected no FULL OUTER JOIN in merged SQL, got: " + sql);
         assertTrue(sql.contains("ORDER BY x"), "Expected ORDER BY x in merged SQL, got: " + sql);
 
         // Multi-column SELECT: y1 and y2 selected together, no UNION ALL
