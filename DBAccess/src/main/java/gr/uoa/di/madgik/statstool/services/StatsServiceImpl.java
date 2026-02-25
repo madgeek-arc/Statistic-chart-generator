@@ -148,12 +148,13 @@ public class StatsServiceImpl implements StatsService {
                 }
                 selectT.append(" ").append(fromJoins).append(")");
 
-                // Unpivot y1..yn into two-column (y, x) result with UNION ALL to maintain formatter expectations
-                StringBuilder finalSelect = new StringBuilder();
-                finalSelect.append(" SELECT y1 AS y, x FROM t");
-                for (int i = 2; i <= n; i++) {
-                    finalSelect.append(" UNION ALL SELECT y").append(i).append(" AS y, x FROM t");
+                // Select all yi columns alongside x in a single row per x-value
+                StringBuilder finalSelect = new StringBuilder(" SELECT ");
+                for (int i = 1; i <= n; i++) {
+                    if (i > 1) finalSelect.append(", ");
+                    finalSelect.append("y").append(i);
                 }
+                finalSelect.append(", x FROM t");
 
                 String finalSql = cteSql.toString() + selectT + finalSelect.toString();
                 // Apply outer ORDER BY and LIMIT if provided/available
@@ -188,7 +189,17 @@ public class StatsServiceImpl implements StatsService {
                     mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
                 }
 
-                results.add(mergedResult);
+                // Split the wide merged row [y1, y2, ..., yn, x] into N individual (yi, x) Results
+                for (int i = 0; i < n; i++) {
+                    Result r = new Result();
+                    for (List<?> row : mergedResult.getRows()) {
+                        List<Object> pair = new ArrayList<>();
+                        pair.add(row.get(i)); // yi
+                        pair.add(row.get(n)); // x
+                        r.addRow(pair);
+                    }
+                    results.add(r);
+                }
                 return results;
             }
 

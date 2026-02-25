@@ -79,8 +79,8 @@ public class StatsServiceImplTest {
         // Act
         List<Result> results = statsService.query(Arrays.asList(q1, q2), "1");
 
-        // Assert - one merged result
-        assertEquals(1, results.size());
+        // Assert - two individual results, one per query
+        assertEquals(2, results.size());
 
         // Capture SQL and parameters passed to repository
         ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
@@ -97,6 +97,11 @@ public class StatsServiceImplTest {
         assertTrue(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected FULL OUTER JOIN in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("COALESCE"), "Expected COALESCE in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("ORDER BY"), "Expected ORDER BY in merged SQL, got: " + sql);
+
+        // Multi-column SELECT: y1 and y2 selected together, no UNION ALL
+        assertTrue(sql.contains("y1"), "Expected y1 column in merged SQL, got: " + sql);
+        assertTrue(sql.contains("y2"), "Expected y2 column in merged SQL, got: " + sql);
+        assertFalse(sql.toUpperCase().contains("UNION ALL"), "Expected no UNION ALL in merged SQL, got: " + sql);
 
         // Parameters must be concatenated in the same order as subqueries
         assertEquals(Arrays.asList(1, "A", 2, "B"), params);
@@ -152,8 +157,8 @@ public class StatsServiceImplTest {
 
         List<Result> list = statsService.query(Arrays.asList(q1, q2), null);
 
-        assertEquals(1, list.size());
-        assertSame(cached, list.get(0));
+        // Merged result is split into one Result per query
+        assertEquals(2, list.size());
 
         // No repository call on cache hit
         verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
