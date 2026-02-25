@@ -115,9 +115,10 @@ public class StatsServiceImpl implements StatsService {
                 }
 
                 // Build CTE column list: (y, x1) for single group-by, (y, x1, x2, ...) for multi.
-                // q1 is the primary series and keeps its ORDER BY + LIMIT (top-N).
-                // Secondary CTEs (q2..qn) have ORDER BY and LIMIT stripped so they return all rows;
-                // the LEFT JOIN below restricts them to x-values present in q1.
+                // For "stacked" ordering all CTEs run unlimited (the outer query decides top-N by
+                // combined sum). Otherwise q1 keeps its ORDER BY + LIMIT so it defines the top-N
+                // and secondary CTEs are stripped so they return all rows for the LEFT JOIN.
+                boolean stackedOrder = "stacked".equals(orderBy);
                 StringBuilder cteColumns = new StringBuilder("(y");
                 for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
                 cteColumns.append(")");
@@ -127,7 +128,7 @@ public class StatsServiceImpl implements StatsService {
                     if (i > 0) cteSql.append(", ");
                     String qi = "q" + (i + 1);
                     String subSql = individualSqls.get(i);
-                    if (i > 0) {
+                    if (i > 0 || stackedOrder) {
                         // Strip trailing ORDER BY (and any LIMIT that follows it)
                         int orderByIdx = subSql.toUpperCase().lastIndexOf("ORDER BY");
                         if (orderByIdx >= 0) subSql = subSql.substring(0, orderByIdx).trim();
@@ -170,11 +171,17 @@ public class StatsServiceImpl implements StatsService {
                 finalSelect.append(" FROM t");
 
                 String finalSql = cteSql.toString() + selectT + finalSelect.toString();
-                // Mirror SqlQueryTree's convention: xaxis/null → order by x1 (first grouping column);
-                // anything else (e.g. "yaxis") → positional "1 DESC" (first y column).
+                // xaxis/null → ORDER BY x1
+                // stacked    → ORDER BY COALESCE(y1,0)+COALESCE(y2,0)+...+COALESCE(yn,0) DESC
+                // yaxis/else → ORDER BY 1 DESC  (first y column)
                 String effectiveOrderBy;
                 if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
                     effectiveOrderBy = "x1";
+                } else if (stackedOrder) {
+                    StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
+                    for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");
+                    sum.append(" DESC");
+                    effectiveOrderBy = sum.toString();
                 } else {
                     effectiveOrderBy = "1 DESC";
                 }

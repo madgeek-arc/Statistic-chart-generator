@@ -161,6 +161,36 @@ public class StatsServiceImplTest {
     }
 
     @Test
+    void mergedPath_stackedOrderBy_generatesCombinedSumAndStripsAllLimits() throws Exception {
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        // For stacked, all CTEs are stripped — mapper is called with "stacked" but the
+        // ORDER BY/LIMIT it generates inside each CTE will be removed before execution.
+        when(mapper.map(eq(q1), anyList(), eq("stacked"))).thenReturn("SELECT 1, 'A' ORDER BY 1 DESC");
+        when(mapper.map(eq(q2), anyList(), eq("stacked"))).thenReturn("SELECT 2, 'B' ORDER BY 1 DESC");
+
+        Result merged = new Result();
+        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
+
+        statsService.query(Arrays.asList(q1, q2), "stacked");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+
+        String sql = sqlCaptor.getValue();
+        // All CTEs must have no ORDER BY (including q1)
+        // Count occurrences: only the outer ORDER BY should remain
+        int orderByCount = (sql.toUpperCase().split("ORDER BY", -1).length - 1);
+        assertEquals(1, orderByCount, "Expected exactly one ORDER BY (outer), got: " + sql);
+
+        // Outer ORDER BY must be the COALESCE sum expression
+        assertTrue(sql.contains("COALESCE(y1,0)+COALESCE(y2,0)"), "Expected stacked sum in ORDER BY, got: " + sql);
+        assertTrue(sql.toUpperCase().contains("ORDER BY COALESCE(Y1,0)+COALESCE(Y2,0)"), "Expected stacked ORDER BY, got: " + sql);
+    }
+
+    @Test
     void mergedPath_yaxisOrderBy_translatesTo1Desc() throws Exception {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);

@@ -162,8 +162,14 @@ function handleAdminSideData(dataJSONobj) {
             var RequestInfoObj = new Object();
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
-            RequestInfoObj.orderBy = dataJSONobj.orderBy;
             RequestInfoObj.drilldown = dataJSONobj.drilldown;
+
+            // When global stacking is enabled and ordering by yaxis, sort by the combined
+            // sum of all series so the tallest stacked bars come first.
+            const globalStacking = dataJSONobj.chartDescription?.plotOptions?.series?.stacking;
+            RequestInfoObj.orderBy = (globalStacking && dataJSONobj.orderBy === "yaxis")
+                ? "stacked"
+                : dataJSONobj.orderBy;
             //Pass the Chart type to ChartDataFormatter
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array
