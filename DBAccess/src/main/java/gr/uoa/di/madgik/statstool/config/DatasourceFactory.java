@@ -53,7 +53,11 @@ public class DatasourceFactory {
 
         // HiveConnection.isValid() throws "Method not supported"; set a fallback
         // validation query so HikariCP can test pooled connections without it.
-        if (dataSource instanceof HikariDataSource hds && hds.getConnectionTestQuery() == null) {
+        // Only applied to Hive datasources — other drivers (PostgreSQL, HSQLDB)
+        // support isValid() correctly and don't need this.
+        if (dataSource instanceof HikariDataSource hds
+                && dataSourceProperty.getUrl() != null
+                && dataSourceProperty.getUrl().startsWith("jdbc:hive2://")) {
             hds.setConnectionTestQuery("SELECT 1");
         }
 
