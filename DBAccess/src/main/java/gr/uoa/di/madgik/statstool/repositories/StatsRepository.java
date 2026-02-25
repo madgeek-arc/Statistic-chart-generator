@@ -8,9 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +62,33 @@ public class StatsRepository {
         }
     }
 
+    private static int countPlaceholders(String sql) {
+        boolean inSingle = false;
+        boolean inDouble = false;
+        int count = 0;
+        for (int i = 0; i < sql.length(); i++) {
+            char c = sql.charAt(i);
+            if (c == '\'' && !inDouble) {
+                // handle doubled single quotes inside single-quoted strings
+                inSingle = !inSingle;
+                // if next is also quote, stay inside string
+                if (inSingle && i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
+                    // skip the escaped quote
+                    i++;
+                }
+                continue;
+            }
+            if (c == '"' && !inSingle) {
+                inDouble = !inDouble;
+                continue;
+            }
+            if (!inSingle && !inDouble && c == '?') {
+                count++;
+            }
+        }
+        return count;
+    }
+
     public class ResultCallable implements Callable<Result> {
         private final QueryWithParameters query;
 
@@ -73,36 +98,53 @@ public class StatsRepository {
 
         @Override
         public Result call() throws Exception {
-            Result result = new Result();
-
             DatasourceContext.setContext(query.getDbId());
 
-            try (Connection connection = dataSource.getConnection()) {
-                PreparedStatement st = connection.prepareStatement(query.getQuery());
-                int count = 1;
-                if (query.getParameters() != null)
-                    for (Object param : query.getParameters())
-                        st.setObject(count++, param);
+            String sql = query.getQuery();
+            List<Object> params = query.getParameters();
 
-                ResultSet rs = st.executeQuery();
-                int columnCount = rs.getMetaData().getColumnCount();
-                while (rs.next()) {
-                    ArrayList<Object> row = new ArrayList<>();
-                    for (int i = 1; i <= columnCount; i++) {
-                        String stringResult = rs.getString(i);
-                        if ("null".equals(stringResult))
-                            row.add(null);
-                        else
-                            row.add(stringResult);
+            // Validate placeholder and parameter counts BEFORE acquiring a connection
+            int placeholderCount = countPlaceholders(sql);
+            int paramCount = (params == null) ? 0 : params.size();
+            if (placeholderCount != paramCount) {
+                throw new IllegalArgumentException("Placeholder count (" + placeholderCount + ") does not match parameter count (" + paramCount + ")");
+            }
+            // Validate no null parameters allowed BEFORE acquiring a connection
+            if (params != null) {
+                for (int i = 0; i < params.size(); i++) {
+                    if (params.get(i) == null) {
+                        throw new IllegalArgumentException("Null parameter at index " + (i + 1) + " is not allowed");
                     }
-                    result.addRow(row);
                 }
+            }
 
-                rs.close();
-                st.close();
-                connection.close();
-                return result;
+            try (Connection connection = dataSource.getConnection();
+                 PreparedStatement st = connection.prepareStatement(sql)) {
+                int index = 1;
+                if (params != null) {
+                    for (Object param : params) {
+                        st.setObject(index++, param);
+                    }
+                }
+                try (ResultSet rs = st.executeQuery()) {
+                    return readResult(rs);
+                }
             }
         }
     }
+
+    private static Result readResult(ResultSet rs) throws SQLException {
+        Result result = new Result();
+        int columnCount = rs.getMetaData().getColumnCount();
+        while (rs.next()) {
+            ArrayList<Object> row = new ArrayList<>();
+            for (int i = 1; i <= columnCount; i++) {
+                String stringResult = rs.getString(i);
+                row.add("null".equals(stringResult) ? null : stringResult);
+            }
+            result.addRow(row);
+        }
+        return result;
+    }
+
 }

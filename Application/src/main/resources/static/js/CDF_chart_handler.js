@@ -90,8 +90,7 @@ function handleAdminSideData(dataJSONobj) {
                         //along with the requested Chart type
                         RequestInfoObj.chartsInfo = dataJSONobj.chartDescription.queriesInfo;
 
-                        passToChartDataFormatter(dataJSONobj, RequestInfoObj,
-                            domainLink + "/chart");
+                        passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
                     });
                 });
             break;
@@ -135,7 +134,7 @@ function handleAdminSideData(dataJSONobj) {
                         RequestInfoObj.chartsInfo.push(ChartInfoObj);
                     }
 
-                    passToChartDataFormatter(dataJSONobj, RequestInfoObj, domainLink + "/chart");
+                    passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
                 });
             break;
         }
@@ -162,8 +161,14 @@ function handleAdminSideData(dataJSONobj) {
             var RequestInfoObj = new Object();
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
-            RequestInfoObj.orderBy = dataJSONobj.orderBy;
             RequestInfoObj.drilldown = dataJSONobj.drilldown;
+
+            // When global stacking is enabled and ordering by yaxis, sort by the combined
+            // sum of all series so the tallest stacked bars come first.
+            const globalStacking = dataJSONobj.chartDescription?.plotOptions?.series?.stacking;
+            RequestInfoObj.orderBy = (globalStacking && dataJSONobj.orderBy === "yaxis")
+                ? "stacked"
+                : dataJSONobj.orderBy;
             //Pass the Chart type to ChartDataFormatter
             var defaultType = dataJSONobj.chartDescription.chart.type;
             //Create ChartInfo Object Array
@@ -189,8 +194,7 @@ function handleAdminSideData(dataJSONobj) {
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
 
-            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                        domainLink+"/chart");
+            passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
         }
 
         ))))))))))));
@@ -228,8 +232,7 @@ function handleAdminSideData(dataJSONobj) {
                 ChartInfoObj.query = element.query;
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
-            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                domainLink+"/chart");
+            passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
         }))));
 
         break;
@@ -248,7 +251,7 @@ function passToChartDataFormatter(dataJSONobj, ChartDataFormatterReadyJSONobj, C
 
     $.ajax(
         {
-            url: this.ChartDataFormatterUrl,
+            url: ChartDataFormatterUrl,
             type: "POST",
             dataType: "json",
             contentType: 'application/json; charset=utf-8',
