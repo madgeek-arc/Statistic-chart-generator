@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 import javax.sql.DataSource;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,6 +50,12 @@ public class DatasourceFactory {
                 .password(dataSourceProperty.getPassword())
                 .driverClassName(dataSourceProperty.getDriverClassName())
                 .build();
+
+        // HiveConnection.isValid() throws "Method not supported"; set a fallback
+        // validation query so HikariCP can test pooled connections without it.
+        if (dataSource instanceof HikariDataSource hds && hds.getConnectionTestQuery() == null) {
+            hds.setConnectionTestQuery("SELECT 1");
+        }
 
         return new IdDataSource(dataSourceProperty.getId(), dataSource);
     }
