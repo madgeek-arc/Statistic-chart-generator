@@ -56,21 +56,36 @@ public class StatsServiceImpl implements StatsService {
                 List<String> individualSqls = new ArrayList<>();
                 List<List<Object>> individualParams = new ArrayList<>();
 
+                // Pre-scan: determine xCount (number of grouping columns) from description-based
+                // queries. All queries must agree; named queries are assumed to match.
+                // Fall back if profiles differ or xCount is inconsistent across queries.
+                int xCount = 1; // default for named-only query lists
+                boolean xCountSet = false;
                 for (Query query : queryList) {
-                    List<Object> parameters = new ArrayList<>();
-                    String queryName = query.getName();
-                    String querySql;
-
                     String profile = query.getProfile() + ".public";
-                    if (baseProfile == null) {
-                        baseProfile = profile;
-                    }
-
-                    // If profiles differ, fall back to default behavior (cannot merge across DBs)
+                    if (baseProfile == null) baseProfile = profile;
                     if (!baseProfile.equals(profile)) {
                         log.debug("Queries target different profiles ({} vs {}). Falling back to per-query execution.", baseProfile, profile);
                         return runIndividually(queryList, orderBy);
                     }
+                    if (query.getName() == null && query.getSelect() != null) {
+                        int qx = (int) query.getSelect().stream()
+                                .filter(s -> s.getAggregate() == null || s.getAggregate().isEmpty())
+                                .count();
+                        if (!xCountSet) {
+                            xCount = Math.max(qx, 1);
+                            xCountSet = true;
+                        } else if (qx != xCount) {
+                            log.debug("Queries have inconsistent grouping column counts ({} vs {}). Falling back to per-query execution.", xCount, qx);
+                            return runIndividually(queryList, orderBy);
+                        }
+                    }
+                }
+
+                for (Query query : queryList) {
+                    List<Object> parameters = new ArrayList<>();
+                    String queryName = query.getName();
+                    String querySql;
 
                     log.debug("query: {}", query);
 
@@ -86,7 +101,7 @@ public class StatsServiceImpl implements StatsService {
                             throw new StatsServiceException("query " + queryName + " not found!");
                     }
 
-                    // Strip trailing semicolon if exists to safely UNION
+                    // Strip trailing semicolon if exists
                     querySql = querySql.trim();
                     if (querySql.endsWith(";")) {
                         querySql = querySql.substring(0, querySql.length() - 1);
@@ -99,10 +114,14 @@ public class StatsServiceImpl implements StatsService {
                     }
                 }
 
-                // Build CTEs q1..qn with explicit (y, x) column naming to normalize outputs.
-                // q1 is the primary series and keeps its ORDER BY + LIMIT (top-N by y).
-                // Secondary CTEs (q2..qn) have ORDER BY and LIMIT stripped so they return
-                // all rows; the LEFT JOIN below restricts them to x-values present in q1.
+                // Build CTE column list: (y, x1) for single group-by, (y, x1, x2, ...) for multi.
+                // q1 is the primary series and keeps its ORDER BY + LIMIT (top-N).
+                // Secondary CTEs (q2..qn) have ORDER BY and LIMIT stripped so they return all rows;
+                // the LEFT JOIN below restricts them to x-values present in q1.
+                StringBuilder cteColumns = new StringBuilder("(y");
+                for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
+                cteColumns.append(")");
+
                 cteSql.append("WITH ");
                 for (int i = 0; i < individualSqls.size(); i++) {
                     if (i > 0) cteSql.append(", ");
@@ -111,46 +130,51 @@ public class StatsServiceImpl implements StatsService {
                     if (i > 0) {
                         // Strip trailing ORDER BY (and any LIMIT that follows it)
                         int orderByIdx = subSql.toUpperCase().lastIndexOf("ORDER BY");
-                        if (orderByIdx >= 0) {
-                            subSql = subSql.substring(0, orderByIdx).trim();
-                        }
+                        if (orderByIdx >= 0) subSql = subSql.substring(0, orderByIdx).trim();
                     }
-                    cteSql.append(qi).append("(y, x) AS (").append(subSql).append(")");
+                    cteSql.append(qi).append(cteColumns).append(" AS (").append(subSql).append(")");
                     List<Object> params = individualParams.get(i);
                     if (params != null) mergedParameters.addAll(params);
                 }
 
-                // q1 drives the result set via LEFT JOIN; its x is always non-null so no COALESCE needed.
+                // q1 drives the result set via LEFT JOIN on all x columns.
                 int n = individualSqls.size();
                 StringBuilder fromJoins = new StringBuilder("FROM q1");
                 for (int i = 2; i <= n; i++) {
-                    fromJoins.append(" LEFT JOIN q").append(i)
-                            .append(" ON q").append(i).append(".x = q1.x");
+                    fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                    for (int xi = 1; xi <= xCount; xi++) {
+                        if (xi > 1) fromJoins.append(" AND ");
+                        fromJoins.append("q").append(i).append(".x").append(xi)
+                                 .append(" = q1.x").append(xi);
+                    }
                 }
 
-                // Build a temp CTE t that selects q1.x and all yi
-                StringBuilder selectT = new StringBuilder();
-                selectT.append(", t AS (SELECT q1.x AS x");
+                // Build t CTE: all x columns from q1, then y1..yn
+                StringBuilder selectT = new StringBuilder(", t AS (SELECT ");
+                for (int xi = 1; xi <= xCount; xi++) {
+                    if (xi > 1) selectT.append(", ");
+                    selectT.append("q1.x").append(xi).append(" AS x").append(xi);
+                }
                 for (int i = 1; i <= n; i++) {
                     selectT.append(", q").append(i).append(".y AS y").append(i);
                 }
                 selectT.append(" ").append(fromJoins).append(")");
 
-                // Select all yi columns alongside x in a single row per x-value
+                // Final SELECT: y1..yn, x1..xm FROM t
                 StringBuilder finalSelect = new StringBuilder(" SELECT ");
                 for (int i = 1; i <= n; i++) {
                     if (i > 1) finalSelect.append(", ");
                     finalSelect.append("y").append(i);
                 }
-                finalSelect.append(", x FROM t");
+                for (int xi = 1; xi <= xCount; xi++) finalSelect.append(", x").append(xi);
+                finalSelect.append(" FROM t");
 
                 String finalSql = cteSql.toString() + selectT + finalSelect.toString();
-                // Apply outer ORDER BY and LIMIT if provided/available.
-                // Mirror SqlQueryTree's convention: xaxis/null → order by x (the join key);
+                // Mirror SqlQueryTree's convention: xaxis/null → order by x1 (first grouping column);
                 // anything else (e.g. "yaxis") → positional "1 DESC" (first y column).
                 String effectiveOrderBy;
                 if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
-                    effectiveOrderBy = "x";
+                    effectiveOrderBy = "x1";
                 } else {
                     effectiveOrderBy = "1 DESC";
                 }
@@ -184,14 +208,15 @@ public class StatsServiceImpl implements StatsService {
                     mergedResult = statsRepository.executeQuery(finalSql, mergedParameters, baseProfile);
                 }
 
-                // Split the wide merged row [y1, y2, ..., yn, x] into N individual (yi, x) Results
+                // Split the wide merged row [y1, ..., yn, x1, ..., xm] into N individual Results.
+                // Each Result row contains [yi, x1, ..., xm]: yi at index i, x columns at n..n+xCount-1.
                 for (int i = 0; i < n; i++) {
                     Result r = new Result();
                     for (List<?> row : mergedResult.getRows()) {
-                        List<Object> pair = new ArrayList<>();
-                        pair.add(row.get(i)); // yi
-                        pair.add(row.get(n)); // x
-                        r.addRow(pair);
+                        List<Object> tuple = new ArrayList<>();
+                        tuple.add(row.get(i)); // yi
+                        for (int xi = 0; xi < xCount; xi++) tuple.add(row.get(n + xi)); // x1..xm
+                        r.addRow(tuple);
                     }
                     results.add(r);
                 }

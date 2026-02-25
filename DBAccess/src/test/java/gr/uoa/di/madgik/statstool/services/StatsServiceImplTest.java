@@ -95,7 +95,7 @@ public class StatsServiceImplTest {
         assertTrue(sql.toUpperCase().contains("WITH"), "Expected WITH CTE in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("LEFT JOIN"), "Expected LEFT JOIN in merged SQL, got: " + sql);
         assertFalse(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected no FULL OUTER JOIN in merged SQL, got: " + sql);
-        assertTrue(sql.contains("ORDER BY x"), "Expected ORDER BY x in merged SQL, got: " + sql);
+        assertTrue(sql.contains("ORDER BY x1"), "Expected ORDER BY x1 in merged SQL, got: " + sql);
 
         // Multi-column SELECT: y1 and y2 selected together, no UNION ALL
         assertTrue(sql.contains("y1"), "Expected y1 column in merged SQL, got: " + sql);
@@ -117,13 +117,10 @@ public class StatsServiceImplTest {
         Query q1 = newQuery("p1", true);
         Query q2 = newQuery("p2", true);
 
-        // For fallback path, mapper.map will be called with provided orderBy, but
-        // the implementation will also call mapper.map for the first query with orderBy=null
-        // before detecting the profile mismatch on the second query.
+        // Profile mismatch is detected in the pre-scan before any mapper call is made.
+        // runIndividually then calls mapper.map with the provided orderBy for each query.
         when(mapper.map(eq(q1), anyList(), eq("x DESC"))).thenReturn("SELECT 1, 'A'");
         when(mapper.map(eq(q2), anyList(), eq("x DESC"))).thenReturn("SELECT 2, 'B'");
-        // Allow initial merged-attempt call with null orderBy for q1
-        when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
 
         Result r1 = new Result();
         Result r2 = new Result();
