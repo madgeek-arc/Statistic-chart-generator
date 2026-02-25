@@ -21,8 +21,7 @@ function drawTable(dataJSONobj){
     RequestInfoObj.chartsInfo = dataJSONobj.tableDescription.queriesInfo;
     RequestInfoObj.orderBy = dataJSONobj.orderBy || dataJSONobj.tableDescription.orderBy || "yaxis";
 
-    passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                domainLink+"/table");
+    passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
     });
 }
 
@@ -35,7 +34,7 @@ function passToChartDataFormatter(dataJSONobj,ChartDataFormatterReadyJSONobj,Cha
     }
     
     $.ajax(
-    {url: this.ChartDataFormatterUrl,
+    {url: ChartDataFormatterUrl,
     type: "POST",
     dataType: "json",
     contentType: 'application/json; charset=utf-8',

@@ -90,8 +90,7 @@ function handleAdminSideData(dataJSONobj) {
                         //along with the requested Chart type
                         RequestInfoObj.chartsInfo = dataJSONobj.chartDescription.queriesInfo;
 
-                        passToChartDataFormatter(dataJSONobj, RequestInfoObj,
-                            domainLink + "/chart");
+                        passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
                     });
                 });
             break;
@@ -135,7 +134,7 @@ function handleAdminSideData(dataJSONobj) {
                         RequestInfoObj.chartsInfo.push(ChartInfoObj);
                     }
 
-                    passToChartDataFormatter(dataJSONobj, RequestInfoObj, domainLink + "/chart");
+                    passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
                 });
             break;
         }
@@ -195,8 +194,7 @@ function handleAdminSideData(dataJSONobj) {
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
 
-            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                        domainLink+"/chart");
+            passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
         }
 
         ))))))))))));
@@ -234,8 +232,7 @@ function handleAdminSideData(dataJSONobj) {
                 ChartInfoObj.query = element.query;
                 RequestInfoObj.chartsInfo.push(ChartInfoObj);
             });
-            passToChartDataFormatter(dataJSONobj,RequestInfoObj,
-                domainLink+"/chart");
+            passToChartDataFormatter(dataJSONobj, RequestInfoObj, window.location.pathname);
         }))));
 
         break;
@@ -254,7 +251,7 @@ function passToChartDataFormatter(dataJSONobj, ChartDataFormatterReadyJSONobj, C
 
     $.ajax(
         {
-            url: this.ChartDataFormatterUrl,
+            url: ChartDataFormatterUrl,
             type: "POST",
             dataType: "json",
             contentType: 'application/json; charset=utf-8',
