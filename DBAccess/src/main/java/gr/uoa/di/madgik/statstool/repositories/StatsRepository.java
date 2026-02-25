@@ -2,6 +2,7 @@ package gr.uoa.di.madgik.statstool.repositories;
 
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,16 +27,17 @@ public class StatsRepository {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    private final Map<QueryWithParameters, Future<Result>> tasks = new HashMap<>();
+    private final Map<QueryWithParameters, Future<TimedResult>> tasks = new HashMap<>();
 
     public StatsRepository(DataSource dataSource, ExecutorService executorService) {
         this.dataSource = dataSource;
         this.executorService = executorService;
     }
 
-    public Result executeQuery(String query, List<Object> parameters, String dbId) throws Exception {
+    public TimedResult executeQuery(String query, List<Object> parameters, String dbId) throws Exception {
         QueryWithParameters q = new QueryWithParameters(query, parameters, dbId);
-        Future<Result> future;
+        Future<TimedResult> future;
+        long submitTime = System.currentTimeMillis();
 
         synchronized (tasks) {
             future = tasks.get(q);
@@ -52,8 +54,10 @@ public class StatsRepository {
         }
 
         try {
-
-            return future.get();
+            TimedResult tr = future.get();
+            long totalElapsed = System.currentTimeMillis() - submitTime;
+            int queueTimeMs = (int) Math.max(0, totalElapsed - tr.execTimeMs);
+            return new TimedResult(tr.result, tr.execTimeMs, queueTimeMs);
         } finally {
             synchronized (tasks) {
                 tasks.remove(q);
@@ -89,7 +93,7 @@ public class StatsRepository {
         return count;
     }
 
-    public class ResultCallable implements Callable<Result> {
+    public class ResultCallable implements Callable<TimedResult> {
         private final QueryWithParameters query;
 
         public ResultCallable(QueryWithParameters q) {
@@ -97,7 +101,7 @@ public class StatsRepository {
         }
 
         @Override
-        public Result call() throws Exception {
+        public TimedResult call() throws Exception {
             DatasourceContext.setContext(query.getDbId());
 
             String sql = query.getQuery();
@@ -118,6 +122,7 @@ public class StatsRepository {
                 }
             }
 
+            long execStart = System.currentTimeMillis();
             try (Connection connection = dataSource.getConnection();
                  PreparedStatement st = connection.prepareStatement(sql)) {
                 int index = 1;
@@ -127,7 +132,9 @@ public class StatsRepository {
                     }
                 }
                 try (ResultSet rs = st.executeQuery()) {
-                    return readResult(rs);
+                    Result result = readResult(rs);
+                    int execTimeMs = (int) (System.currentTimeMillis() - execStart);
+                    return new TimedResult(result, execTimeMs, 0);
                 }
             }
         }

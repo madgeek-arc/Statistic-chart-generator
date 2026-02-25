@@ -19,6 +19,7 @@ public class CacheEntry {
     private String profile;
 
     private int execTime;
+    private int queueTime;
 
     public CacheEntry(String key, QueryWithParameters query, Result result) {
         this.key = key;
@@ -31,6 +32,14 @@ public class CacheEntry {
         this.query = query;
         this.result = result;
         this.execTime = execTime;
+    }
+
+    public CacheEntry(String key, QueryWithParameters query, Result result, int execTime, int queueTime) {
+        this.key = key;
+        this.query = query;
+        this.result = result;
+        this.execTime = execTime;
+        this.queueTime = queueTime;
     }
 
     public String getKey() {
@@ -113,6 +122,14 @@ public class CacheEntry {
         this.execTime = execTime;
     }
 
+    public int getQueueTime() {
+        return queueTime;
+    }
+
+    public void setQueueTime(int queueTime) {
+        this.queueTime = queueTime;
+    }
+
     public String getProfile() {
         return profile;
     }
@@ -134,6 +151,7 @@ public class CacheEntry {
                 ", sessionHits=" + sessionHits +
                 ", pinned=" + pinned +
                 ", execTime= " + execTime +
+                ", queueTime= " + queueTime +
                 ", profile= " + profile +
                 '}';
     }

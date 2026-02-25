@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import javax.sql.DataSource;
@@ -45,35 +46,27 @@ public class StatsRepositoryBindingTest {
 
         // run tasks synchronously by executing callable immediately and returning an already-completed Future
         when(executorService.submit(any(StatsRepository.ResultCallable.class))).thenAnswer(invocation -> {
-            CallableWrapper callable = new CallableWrapper((StatsRepository.ResultCallable) invocation.getArgument(0));
+            StatsRepository.ResultCallable callable = invocation.getArgument(0);
             try {
-                // execute immediately; let exceptions bubble as-is
-                Result res = callable.call();
-                return new ImmediateFuture(res);
+                TimedResult tr = callable.call();
+                return new ImmediateFuture(tr);
             } catch (RuntimeException e) {
                 throw e;
             } catch (Exception e) {
-                // unwrap IllegalArgumentException if it's the cause
                 if (e instanceof IllegalArgumentException) throw (IllegalArgumentException) e;
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private static class ImmediateFuture implements Future<Result> {
-        private final Result result;
-        ImmediateFuture(Result result) { this.result = result; }
+    private static class ImmediateFuture implements Future<TimedResult> {
+        private final TimedResult result;
+        ImmediateFuture(TimedResult result) { this.result = result; }
         @Override public boolean cancel(boolean mayInterruptIfRunning) { return false; }
         @Override public boolean isCancelled() { return false; }
         @Override public boolean isDone() { return true; }
-        @Override public Result get() { return result; }
-        @Override public Result get(long timeout, java.util.concurrent.TimeUnit unit) { return result; }
-    }
-
-    private static class CallableWrapper {
-        private final StatsRepository.ResultCallable callable;
-        CallableWrapper(StatsRepository.ResultCallable callable) { this.callable = callable; }
-        Result call() throws Exception { return callable.call(); }
+        @Override public TimedResult get() { return result; }
+        @Override public TimedResult get(long timeout, java.util.concurrent.TimeUnit unit) { return result; }
     }
 
     private StatsRepository newRepo() {
