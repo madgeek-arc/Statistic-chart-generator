@@ -157,8 +157,15 @@ public class StatsServiceImpl implements StatsService {
                 finalSelect.append(", x FROM t");
 
                 String finalSql = cteSql.toString() + selectT + finalSelect.toString();
-                // Apply outer ORDER BY and LIMIT if provided/available
-                String effectiveOrderBy = (orderBy != null && !orderBy.trim().isEmpty()) ? orderBy : "x";
+                // Apply outer ORDER BY and LIMIT if provided/available.
+                // Mirror SqlQueryTree's convention: xaxis/null → order by x (the join key);
+                // anything else (e.g. "yaxis") → positional "1 DESC" (first y column).
+                String effectiveOrderBy;
+                if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
+                    effectiveOrderBy = "x";
+                } else {
+                    effectiveOrderBy = "1 DESC";
+                }
                 finalSql += " ORDER BY " + effectiveOrderBy;
 
                 // Derive LIMIT as min positive limit across queries

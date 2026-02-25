@@ -76,8 +76,8 @@ public class StatsServiceImplTest {
         when(statsCache.exists(anyString())).thenReturn(false);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
 
-        // Act
-        List<Result> results = statsService.query(Arrays.asList(q1, q2), "1");
+        // Act — pass "xaxis" so the merged ORDER BY resolves to the x column
+        List<Result> results = statsService.query(Arrays.asList(q1, q2), "xaxis");
 
         // Assert - two individual results, one per query
         assertEquals(2, results.size());
@@ -92,11 +92,11 @@ public class StatsServiceImplTest {
         List<Object> params = paramsCaptor.getValue();
         String profile = profileCaptor.getValue();
 
-        // SQL should contain WITH CTEs, FULL OUTER JOIN alignment, COALESCE on x, and outer ORDER BY
+        // SQL should contain WITH CTEs, FULL OUTER JOIN alignment, COALESCE on x, and outer ORDER BY x
         assertTrue(sql.toUpperCase().contains("WITH"), "Expected WITH CTE in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected FULL OUTER JOIN in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("COALESCE"), "Expected COALESCE in merged SQL, got: " + sql);
-        assertTrue(sql.toUpperCase().contains("ORDER BY"), "Expected ORDER BY in merged SQL, got: " + sql);
+        assertTrue(sql.contains("ORDER BY x"), "Expected ORDER BY x in merged SQL, got: " + sql);
 
         // Multi-column SELECT: y1 and y2 selected together, no UNION ALL
         assertTrue(sql.contains("y1"), "Expected y1 column in merged SQL, got: " + sql);
@@ -162,5 +162,27 @@ public class StatsServiceImplTest {
 
         // No repository call on cache hit
         verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
+    }
+
+    @Test
+    void mergedPath_yaxisOrderBy_translatesTo1Desc() throws Exception {
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), isNull())).thenReturn("SELECT 1, 'A'");
+        when(mapper.map(eq(q2), anyList(), isNull())).thenReturn("SELECT 2, 'B'");
+
+        Result merged = new Result();
+        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(merged);
+
+        statsService.query(Arrays.asList(q1, q2), "yaxis");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+
+        String sql = sqlCaptor.getValue();
+        assertTrue(sql.contains("ORDER BY 1 DESC"), "Expected ORDER BY 1 DESC for yaxis, got: " + sql);
+        assertFalse(sql.contains("ORDER BY yaxis"), "yaxis must not appear literally in merged SQL, got: " + sql);
     }
 }
