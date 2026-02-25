@@ -56,9 +56,9 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void nonRootSelect_usesDerivedLeftJoin_impalaCompatible() {
+    public void nonRootNonAggSelect_usesDirectJoin_groupByColumn() {
         ProfileConfiguration pc = buildProfile();
-        // Build Query selecting a non-root field: result.project_results.value
+        // Build Query selecting a non-root non-aggregate field: result.project_results.value
         Query apiQuery = new Query(null, null, new ArrayList<>(),
                 Arrays.asList(new Select("result.project_results.value", null, 1)),
                 "result", "test", 0, null, false);
@@ -66,13 +66,14 @@ public class SqlQueryTreeTest {
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
-        // Expect: main FROM root and a LEFT JOIN to a derived subquery that aggregates by result_id
+        // Non-agg non-root: must use a direct JOIN, not a derived subquery
         assertTrue(sql.contains(" FROM result r0 "), "Main query should start from root table");
-        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+\\w+\\.result_id\\s+AS\\s+k.*FROM\\s+project_results\\s+\\w+\\s+GROUP\\s+BY\\s+\\w+\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
-                "Non-root select must be produced by a LEFT JOIN to a derived subquery grouped by child key");
-        // Outer select should reference derived alias column c1 (column alias based on select order)
-        assertTrue(sql.matches("(?s)SELECT\\s+\\w+\\.c1\\s+FROM.*"), "Outer select should project column from derived table");
-        // No parameters expected
+        assertTrue(sql.contains("JOIN project_results"), "Non-root non-agg select must use a direct JOIN");
+        assertFalse(sql.contains("LEFT JOIN ("), "No derived subquery expected for non-agg non-root select");
+        // Column referenced directly (not via derived alias)
+        assertTrue(sql.matches("(?s)SELECT\\s+\\w+\\.value\\s+FROM.*"), "Outer select should use direct column reference");
+        // GROUP BY the non-root column
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.value.*"), "Non-agg non-root column must appear in GROUP BY");
         assertTrue(params.isEmpty(), "No bound parameters expected without filters");
     }
 
@@ -115,10 +116,10 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void rootAggregate_plusNonRootNonAgg_groupsByDerivedColumn() {
+    public void rootAggregate_plusNonRootNonAgg_groupsByDirectColumn() {
         ProfileConfiguration pc = buildProfile();
 
-        // SUM on root id (just for testing) and plain non-root field
+        // SUM on root id and plain non-root field (group-by key)
         Query apiQuery = new Query(null, null, new ArrayList<>(),
                 Arrays.asList(
                         new Select("result.id", "sum", 1),
@@ -128,19 +129,19 @@ public class SqlQueryTreeTest {
 
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
-        System.out.println("[DEBUG_LOG] SQL rootAggregate_plusNonRootNonAgg_groupsByDerivedColumn: \n" + sql);
+        System.out.println("[DEBUG_LOG] SQL rootAggregate_plusNonRootNonAgg_groupsByDirectColumn: \n" + sql);
 
-        // Expect derived join present
-        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(.*FROM\\s+project_results\\s+\\w+\\s+GROUP\\s+BY\\s+\\w+\\.result_id.*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
-                "Should join a derived subquery on child key");
-        // Expect outer select contains SUM(r0.id) and plain derived column as second projection
-        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s+FROM.*"),
-                "Outer SELECT should be SUM(root) and plain derived column for non-agg");
-        // GROUP BY must include derived non-agg column
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2.*"),
-                "Derived non-aggregated column must be grouped when root has aggregates");
-        // ORDER BY defaults to grouped expressions when orderBy is null
-        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.c2.*"),
+        // Non-agg non-root must use a direct JOIN, not a derived subquery
+        assertFalse(sql.contains("LEFT JOIN ("), "No derived subquery expected for non-agg non-root select");
+        assertTrue(sql.matches("(?s).*JOIN\\s+project_results\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
+                "Non-root non-agg select must use a direct JOIN on result_id");
+        // Outer SELECT: SUM(root) and direct column reference
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.category\\s+FROM.*"),
+                "Outer SELECT should be SUM(root) and the direct non-root column");
+        // GROUP BY the direct column
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.category.*"),
+                "Non-agg non-root column must appear directly in GROUP BY");
+        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.category.*"),
                 "ORDER BY should follow grouped column by default");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
@@ -174,7 +175,7 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void rootAggregate_withNonRootNonAgg_andNonRootAgg_groupsOnlyNonAgg_andSumsAgg() {
+    public void rootAggregate_withNonRootNonAgg_andNonRootAgg_directJoinForNonAgg_derivedForAgg() {
         ProfileConfiguration pc = buildProfile();
 
         Query apiQuery = new Query(null, null, new ArrayList<>(),
@@ -187,19 +188,24 @@ public class SqlQueryTreeTest {
 
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
-        System.out.println("[DEBUG_LOG] SQL rootAggregate_withNonRootNonAgg_andNonRootAgg_groupsOnlyNonAgg_andSumsAgg: \n" + sql);
+        System.out.println("[DEBUG_LOG] SQL rootAggregate_withNonRootNonAgg_andNonRootAgg_directJoinForNonAgg_derivedForAgg: \n" + sql);
 
-        // Must include GROUP BY derived non-agg col only
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2(\\s|,|$).*"),
-                "GROUP BY must include only the non-aggregated derived column");
-        // The aggregated child column must be wrapped with SUM at outer level because of grouping
-        assertTrue(sql.matches("(?is)SELECT.*SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.c2\\s*,\\s*SUM\\(\\w+\\.c3\\).*FROM.*"),
-                "Outer SELECT should wrap derived aggregated column with SUM when grouping");
+        // Non-agg non-root (category) uses a direct JOIN
+        assertTrue(sql.matches("(?s).*JOIN\\s+project_results\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
+                "Non-agg non-root must use a direct JOIN");
+        // Agg non-root (sum value) uses a derived LEFT JOIN subquery
+        assertTrue(sql.contains("LEFT JOIN ("), "Agg non-root must still use a derived subquery");
+        // GROUP BY the direct column
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.category(\\s|,|;).*"),
+                "GROUP BY must use the direct non-agg column");
+        // Outer SELECT: SUM(root), direct column, SUM(derived agg col)
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.category\\s*,\\s*SUM\\(\\w+\\.c3\\)\\s+FROM.*"),
+                "Outer SELECT: SUM(root), direct non-agg col, SUM(derived agg col)");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
 
     @Test
-    public void multiHop_nonRootNonAgg_withRootAggregate_usesNumericAliases_notKeywords() {
+    public void multiHop_nonRootNonAgg_withRootAggregate_usesDirectJoins() {
         ProfileConfiguration pc = buildProfile();
         // Path: result -> result_organization -> organization.country
         Query apiQuery = new Query(null, null, new ArrayList<>(),
@@ -211,16 +217,73 @@ public class SqlQueryTreeTest {
 
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
-        System.out.println("[DEBUG_LOG] SQL multiHop_nonRootNonAgg_withRootAggregate_usesNumericAliases_notKeywords: \n" + sql);
+        System.out.println("[DEBUG_LOG] SQL multiHop_nonRootNonAgg_withRootAggregate_usesDirectJoins: \n" + sql);
 
-        // Should contain a derived LEFT JOIN with numeric t-aliases within the subquery (no reserved words) and group by child key
-        assertTrue(sql.matches("(?s).*LEFT\\s+JOIN\\s*\\(\\s*SELECT\\s+t1\\.result_id\\s+AS\\s+k.*FROM\\s+result_organization\\s+t1\\s+JOIN\\s+organization\\s+t2.*GROUP\\s+BY\\s+t1\\.result_id\\s*\\)\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.k.*"),
-                "Derived subquery should use numeric aliases (t1/t2/...) and group by child key");
-        // Ensure no reserved-word alias like 'to' appears
-        assertFalse(sql.matches("(?is).*\\s+to\\s*\\."), "No alias named 'to' should be used");
-        // GROUP BY must include derived col
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.c2.*"),
-                "Outer GROUP BY must include the derived non-agg column");
+        // Non-agg non-root multi-hop must use direct JOINs, not a derived subquery
+        assertFalse(sql.contains("LEFT JOIN ("), "No derived subquery expected for non-agg non-root select");
+        assertTrue(sql.matches("(?s).*JOIN\\s+result_organization\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
+                "Must JOIN result_organization on result_id");
+        assertTrue(sql.matches("(?s).*JOIN\\s+organization\\s+\\w+\\s+ON\\s+\\w+\\.organization=\\w+\\.id.*"),
+                "Must JOIN organization on organization/id");
+        // No reserved-word aliases ('to', 'or', etc.) from the join chain
+        assertFalse(sql.matches("(?is).*\\bto\\b\\..*"), "No alias named 'to' should be used");
+        // GROUP BY and ORDER BY on the direct country column
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.country.*"), "GROUP BY must use country column");
+        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.country.*"), "ORDER BY must use country column");
         assertTrue(params.isEmpty(), "No bound parameters expected");
+    }
+
+    @Test
+    public void countDistinct_withNonRootNonAggGroupBy_andExistsFilter_matchesOldBehavior() {
+        ProfileConfiguration pc = buildProfile();
+        // Additional root fields used as direct filters in this test
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+        pc.fields.put("result.year", new Field("result", "year", "int"));
+        // This is the exact pattern from the regression: COUNT DISTINCT results per country,
+        // filtered by type, year (root), and country != X (non-root → EXISTS).
+        // Old SQL: SELECT count(DISTINCT r0.id), o2.country FROM result r0
+        //   JOIN result_organization r1 ON r0.id=r1.id JOIN organization o2 ON r1.organization=o2.id
+        //   WHERE o2.country!=? AND r0.year>? AND r0.type=? GROUP BY o2.country ORDER BY 1 DESC LIMIT 30
+        Filter typeFilter  = new Filter("result.type",  "=",  Collections.singletonList("Software"), "text");
+        Filter yearFilter  = new Filter("result.year",  ">",  Collections.singletonList("2019"),     "int");
+        Filter countryFilter = new Filter(
+                "result.result_organization.organization.country", "!=",
+                Collections.singletonList("Unknown"), "text");
+        FilterGroup rootFilters    = new FilterGroup(Arrays.asList(typeFilter, yearFilter), "AND");
+        FilterGroup countryFilters = new FilterGroup(Collections.singletonList(countryFilter), "AND");
+
+        Query apiQuery = new Query(null, null,
+                Arrays.asList(rootFilters, countryFilters),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.result_organization.organization.country", null, 2)
+                ),
+                "result", "test", 30, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL countDistinct_withNonRootNonAggGroupBy_andExistsFilter: \n" + sql);
+
+        // Root aggregate is COUNT DISTINCT
+        assertTrue(sql.matches("(?is)SELECT\\s+COUNT\\(DISTINCT\\s+r0\\.id\\).*"), "Must COUNT DISTINCT r0.id");
+        // country is a direct column reference from the JOIN, not a derived alias
+        assertTrue(sql.matches("(?is)SELECT.*\\w+\\.country.*FROM.*"), "country must be selected directly");
+        // Direct JOINs for the non-agg GROUP BY path
+        assertTrue(sql.matches("(?s).*JOIN\\s+result_organization\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
+                "Must JOIN result_organization");
+        assertTrue(sql.matches("(?s).*JOIN\\s+organization\\s+\\w+\\s+ON\\s+\\w+\\.organization=\\w+\\.id.*"),
+                "Must JOIN organization");
+        // Non-root filter becomes EXISTS, not another JOIN
+        assertTrue(sql.matches("(?s).*EXISTS\\s*\\(SELECT 1 FROM result_organization.*JOIN organization.*country!=\\?.*\\).*"),
+                "Non-root filter must use EXISTS subquery");
+        // Root-level filters are direct predicates
+        assertTrue(sql.contains("r0.type=?"), "type filter must be a direct predicate");
+        assertTrue(sql.contains("r0.year>?"), "year filter must be a direct predicate");
+        // GROUP BY country directly
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.country.*"), "GROUP BY on country column");
+        // LIMIT
+        assertTrue(sql.contains("LIMIT 30"), "LIMIT must be present");
+        // Parameters: type, year, country (EXISTS param order)
+        assertEquals(3, params.size(), "Three bound parameters expected");
     }
 }

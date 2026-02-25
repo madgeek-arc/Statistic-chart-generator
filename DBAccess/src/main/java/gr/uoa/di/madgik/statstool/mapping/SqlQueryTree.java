@@ -146,7 +146,9 @@ public class SqlQueryTree {
         List<String> seen = new ArrayList<>();
         List<OrderedSelect> selects = new ArrayList<>();
         List<String> group = new ArrayList<>();
-        // Collect non-root selects per node to build derived subqueries
+        // Non-root non-aggregate selects: use direct JOIN (preserves multi-valued relationships for GROUP BY)
+        Map<Node, List<Select>> nonRootDirectSelects = new LinkedHashMap<>();
+        // Non-root aggregate selects: use derived LEFT JOIN subquery (Impala compat for scalar aggs)
         Map<Node, List<Select>> nonRootSelects = new LinkedHashMap<>();
         // Map select order -> outer expression placeholder to preserve original ordering
         Map<Integer, String> outerExprByOrder = new HashMap<>();
@@ -170,8 +172,11 @@ public class SqlQueryTree {
                                 selects.add(new OrderedSelect(select.getOrder(), agg + "(" + expr + ")"));
                             }
                         }
+                    } else if (select.getAggregate() == null) {
+                        // Non-root non-aggregate: direct JOIN, column used in SELECT and GROUP BY
+                        nonRootDirectSelects.computeIfAbsent(nd, k -> new ArrayList<>()).add(select);
                     } else {
-                        // Defer non-root fields to derived subqueries
+                        // Non-root aggregate: derived LEFT JOIN subquery (Impala compat)
                         nonRootSelects.computeIfAbsent(nd, k -> new ArrayList<>()).add(select);
                     }
                 }
@@ -181,6 +186,36 @@ public class SqlQueryTree {
                 if (!seen.contains(entry.getValue().node.alias)) {
                     stack.push(entry.getValue().node);
                 }
+            }
+        }
+
+        // Build direct JOINs for non-root non-aggregate selects (GROUP BY columns)
+        StringBuilder directJoins = new StringBuilder();
+        Set<Node> directJoinedNodes = new LinkedHashSet<>();
+        for (Map.Entry<Node, List<Select>> e : nonRootDirectSelects.entrySet()) {
+            Node nd = e.getKey();
+            List<Node> path = new ArrayList<>();
+            Node cur = nd;
+            while (cur != null && cur != this.root) {
+                path.add(cur);
+                cur = cur.parent;
+            }
+            Collections.reverse(path);
+            if (path.isEmpty()) continue;
+
+            for (int i = 0; i < path.size(); i++) {
+                Node node = path.get(i);
+                if (directJoinedNodes.add(node)) {
+                    Node parentNode = (i == 0) ? this.root : path.get(i - 1);
+                    directJoins.append("JOIN ").append(node.table).append(" ").append(node.alias)
+                               .append(" ON ").append(parentNode.alias).append(".").append(node.parentJoinFrom)
+                               .append("=").append(node.alias).append(".").append(node.parentJoinTo)
+                               .append(" ");
+                }
+            }
+            for (Select s : e.getValue()) {
+                selects.add(new OrderedSelect(s.getOrder(), s.getField()));
+                if (!group.contains(s.getField())) group.add(s.getField());
             }
         }
 
@@ -294,8 +329,9 @@ public class SqlQueryTree {
                 query.append(", ").append(select.select);
             }
         }
-        // Main FROM on root table only, then join deriveds
+        // Main FROM on root table, then direct JOINs (non-agg non-root), then derived LEFT JOINs (agg non-root)
         query.append(" FROM ").append(this.root.table).append(" ").append(this.root.alias).append(" ");
+        query.append(directJoins);
         query.append(joins);
 
         List<String> op = new ArrayList<>();
