@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: statistic-chart-generator
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stats-config
+  namespace: statistic-chart-generator
+data:
+  # Override application properties here.
+  # The app reads config from /usr/local/app/config/ at runtime.
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: statistic-chart-generator
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statistic-chart-generator
+  namespace: statistic-chart-generator
+  labels:
+    app: statistic-chart-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statistic-chart-generator
+  template:
+    metadata:
+      labels:
+        app: statistic-chart-generator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/prometheus"
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: statistic-chart-generator
+          image: your-dockerhub-username/statistic-chart-generator:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: app-config
+              mountPath: /usr/local/app/config
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: app-config
+          configMap:
+            name: stats-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statistic-chart-generator
+  namespace: statistic-chart-generator
+  labels:
+    app: statistic-chart-generator
+spec:
+  selector:
+    app: statistic-chart-generator
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
