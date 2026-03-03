@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKER_IMAGE           = "your-dockerhub-username/statistic-chart-generator"
+        DOCKER_IMAGE           = "docker-registry.openaire.eu/stats-tool/statistic-chart-generator"
         DOCKER_TAG             = "${env.BUILD_NUMBER}"
     }
 
@@ -46,7 +46,7 @@ pipeline {
             steps {
                 sh """
                     echo "${DOCKER_HUB_CREDENTIALS_PSW}" | \
-                        docker login -u "${DOCKER_HUB_CREDENTIALS_USR}" --password-stdin
+                        docker login docker-registry.openaire.eu -u "${DOCKER_HUB_CREDENTIALS_USR}" --password-stdin
                     docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                     docker push ${DOCKER_IMAGE}:latest
                 """
@@ -76,7 +76,7 @@ pipeline {
 
     post {
         always {
-            sh 'docker logout'
+            sh 'docker logout docker-registry.openaire.eu'
             sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest || true"
         }
         failure {
