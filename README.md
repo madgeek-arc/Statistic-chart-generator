@@ -11,13 +11,13 @@ A tool for the generation of various statistic charts.
 
 ### Quick Start
 
-1. **Create a `config/` directory** next to `docker-compose.yml` and place your `application.yml` inside it. This file is bind-mounted read-only into the container and must contain at minimum your datasource and Redis configuration. Example:
+1. **Create a `config/` directory** next to `docker-compose.yml` and place your `application.yml` inside it. This file is bind-mounted read-only into the container and must contain at minimum your datasource configuration. Example:
 
    ```yaml
    spring:
      datasources:
        - id: monitor.public
-         url: jdbc:postgresql://postgres:5432/monitor
+         url: jdbc:postgresql://your-postgres-host:5432/monitor
          driver-class-name: org.postgresql.Driver
          username: dnet
          password: dnetPwd
@@ -26,22 +26,9 @@ A tool for the generation of various statistic charts.
          driver-class-name: org.hsqldb.jdbcDriver
          username: sa
          password:
-     redis:
-       host: redis
-       port: 6379
-       password: redisPassword
    ```
 
-2. **Create a `.env` file** to override default credentials:
-
-   ```env
-   POSTGRES_DB=monitor
-   POSTGRES_USER=dnet
-   POSTGRES_PASSWORD=dnetPwd
-   REDIS_PASSWORD=redisPassword
-   ```
-
-3. **Start the stack:**
+2. **Start the stack:**
 
    ```bash
    docker compose up -d
@@ -58,14 +45,6 @@ A tool for the generation of various statistic charts.
 | `hsqldb-cache` (named) | Persistent HSQLDB cache database (`/tmp/cache`) |
 | `postgres-data` (named) | PostgreSQL data directory |
 | `redis-data` (named) | Redis persistence |
-
-### Services
-
-| Service | Image | Port |
-|---|---|---|
-| `stats-app` | `docker-registry.openaire.eu/stats-tool/statistic-chart-generator:latest` | 8080 |
-| `postgres` | `postgres:16-alpine` | (internal) |
-| `redis` | `redis:7-alpine` | (internal) |
 
 ### Building the image locally
 
