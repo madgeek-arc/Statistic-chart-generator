@@ -12,7 +12,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.Reques
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
-import org.json.simple.JSONObject;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
@@ -38,12 +39,14 @@ public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
     private SupportedDiagramsService supportedDiagramsService;
+    private final RestTemplate restTemplate;
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService, RestTemplate restTemplate) {
         this.requestBodyHandler = requestBodyHandler;
         this.supportedDiagramsService = supportedDiagramsService;
+        this.restTemplate = restTemplate;
     }
 
     @GetMapping
@@ -131,17 +134,16 @@ public class ChartDataFormatterRestController {
     @PostMapping( path = "/shorten",
                 consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JSONObject> shortenChartUrl(@RequestBody ShortenUrlInfo request) {
+    public @ResponseBody ResponseEntity<Map<String, String>> shortenChartUrl(@RequestBody ShortenUrlInfo request) {
 
         String url = request.getUrlToShorten();
         String getUrl = "https://tinyurl.com/api-create.php?url="+url;
 
-        RestTemplate rt = new RestTemplate();
         String shortenedUrl = null;
-        JSONObject response = new JSONObject();
+        Map<String, String> response = new HashMap<>();
         try {
             URI getUri = new URI(getUrl);
-            ResponseEntity<String> responseEntity =  rt.getForEntity(getUri,String.class);
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(getUri, String.class);
             shortenedUrl = responseEntity.getBody().toString();
             log.debug(shortenedUrl);
 
