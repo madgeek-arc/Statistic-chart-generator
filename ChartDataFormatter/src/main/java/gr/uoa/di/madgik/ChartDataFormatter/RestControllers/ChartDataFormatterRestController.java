@@ -39,12 +39,14 @@ public class ChartDataFormatterRestController {
 
     private RequestBodyHandler requestBodyHandler;
     private SupportedDiagramsService supportedDiagramsService;
+    private final RestTemplate restTemplate;
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService, RestTemplate restTemplate) {
         this.requestBodyHandler = requestBodyHandler;
         this.supportedDiagramsService = supportedDiagramsService;
+        this.restTemplate = restTemplate;
     }
 
     @GetMapping
@@ -137,12 +139,11 @@ public class ChartDataFormatterRestController {
         String url = request.getUrlToShorten();
         String getUrl = "https://tinyurl.com/api-create.php?url="+url;
 
-        RestTemplate rt = new RestTemplate();
         String shortenedUrl = null;
         Map<String, String> response = new HashMap<>();
         try {
             URI getUri = new URI(getUrl);
-            ResponseEntity<String> responseEntity =  rt.getForEntity(getUri,String.class);
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(getUri, String.class);
             shortenedUrl = responseEntity.getBody().toString();
             log.debug(shortenedUrl);
 
