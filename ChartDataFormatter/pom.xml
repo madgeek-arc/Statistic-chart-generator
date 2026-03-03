@@ -19,6 +19,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
         <byte-buddy.version>1.17.5</byte-buddy.version>
+        <!-- CVE-2025-11226: ACE via logback.xml condition injection; fixed in 1.5.19 -->
+        <logback.version>1.5.32</logback.version>
     </properties>
 
     <dependencies>

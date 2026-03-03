@@ -18,6 +18,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
+        <!-- CVE-2025-11226: ACE via logback.xml condition injection; fixed in 1.5.19 -->
+        <logback.version>1.5.32</logback.version>
     </properties>
 
     <dependencies>
@@ -45,6 +47,15 @@
             <groupId>gr.uoa.di.madgik</groupId>
             <artifactId>Statistic-chart-generator-DBAccess</artifactId>
             <version>${project.version}</version>
+            <exclusions>
+                <!-- hive-jdbc standalone is shaded into the DBAccess JAR (with SLF4J
+                     stripped). Exclude it here so the raw standalone JAR — which bundles
+                     a conflicting SLF4J NOPLoggerFactory — never lands in WEB-INF/lib. -->
+                <exclusion>
+                    <groupId>org.apache.hive</groupId>
+                    <artifactId>hive-jdbc</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 

@@ -38,21 +38,14 @@
   <!-- Apache Hive JDBC driver — connects to Impala via HiveServer2 Thrift protocol -->
   <!-- Configure datasources with: url=jdbc:hive2://host:21050/db;auth=noSasl -->
   <!--                              driver-class-name=org.apache.hive.jdbc.HiveDriver -->
-  <!-- hive-service, hadoop-common, and libthrift come in transitively at safe versions -->
+  <!-- hive-jdbc 4.0.1 standalone: self-contained shaded JAR with Thrift, Hadoop stubs, -->
+  <!-- and Hive service-rpc bundled (Thrift relocated to org.apache.hive.org.apache.thrift). -->
+  <!-- The plain hive-jdbc JAR is a thin artifact with no published compile dependencies. -->
   <dependency>
     <groupId>org.apache.hive</groupId>
     <artifactId>hive-jdbc</artifactId>
     <version>4.0.1</version>
-    <exclusions>
-      <exclusion><groupId>org.eclipse.jetty</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>javax.servlet</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>org.slf4j</groupId><artifactId>slf4j-log4j12</artifactId></exclusion>
-      <exclusion><groupId>log4j</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>commons-logging</groupId><artifactId>commons-logging</artifactId></exclusion>
-      <exclusion><groupId>jdk.tools</groupId><artifactId>jdk.tools</artifactId></exclusion>
-      <exclusion><groupId>org.mortbay.jetty</groupId><artifactId>*</artifactId></exclusion>
-      <exclusion><groupId>tomcat</groupId><artifactId>*</artifactId></exclusion>
-    </exclusions>
+    <classifier>standalone</classifier>
   </dependency>
 
   <!-- Groovy (modern, Java 17–compatible) -->
@@ -123,6 +116,10 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <byte-buddy.version>1.17.5</byte-buddy.version>
+        <!-- CVE-2025-49146: channel-binding bypass in 42.7.4–42.7.6; fixed in 42.7.7 -->
+        <postgresql.version>42.7.10</postgresql.version>
+        <!-- CVE-2025-11226: ACE via logback.xml condition injection; fixed in 1.5.19 -->
+        <logback.version>1.5.32</logback.version>
     </properties>
 
     <build>
@@ -140,6 +137,53 @@
                 <directory>src/main/resources</directory>
             </resource>
         </resources>
+        <plugins>
+            <!--
+                hive-jdbc-4.0.1-standalone.jar bundles its own SLF4J implementation
+                (NOPLoggerFactory) which conflicts with Spring Boot's Logback.
+                We shade hive-jdbc into the DBAccess JAR here, stripping the bundled
+                SLF4J so Spring Boot's LoggerFactory wins. The Application module
+                must also exclude org.apache.hive:hive-jdbc from this module's
+                transitives so the raw standalone JAR never lands in WEB-INF/lib.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <artifactSet>
+                                <includes>
+                                    <include>org.apache.hive:hive-jdbc</include>
+                                </includes>
+                            </artifactSet>
+                            <filters>
+                                <filter>
+                                    <artifact>org.apache.hive:hive-jdbc</artifact>
+                                    <excludes>
+                                        <!-- Strip the bundled SLF4J implementation so
+                                             Spring Boot's Logback/SLF4J wins -->
+                                        <exclude>org/slf4j/**</exclude>
+                                        <!-- Strip all javax.* service-provider registrations
+                                             (StAX XMLEventFactory/XMLInputFactory/XMLOutputFactory,
+                                             etc.) — Hive's shaded Woodstox implementations are
+                                             not on the classpath and cause FactoryConfigurationError.
+                                             The JDK's built-in implementations are used instead. -->
+                                        <exclude>META-INF/services/javax.*</exclude>
+                                        <exclude>META-INF/services/org.slf4j*</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
 </project>
