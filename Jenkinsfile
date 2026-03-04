@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY_CREDENTIALS = credentials('openaire-docker-registry')
+        REGISTRY_CREDENTIALS = credentials('openaire-docker-registry-lempesis')
         DOCKER_IMAGE         = "docker-registry.openaire.eu/stats-tool/statistic-chart-generator"
         DOCKER_TAG           = "${env.BUILD_NUMBER}"
     }
