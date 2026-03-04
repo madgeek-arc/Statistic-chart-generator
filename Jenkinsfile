@@ -44,12 +44,14 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                sh """
-                    echo "${REGISTRY_CREDENTIALS_PSW}" | \
-                        docker login docker-registry.openaire.eu -u "${REGISTRY_CREDENTIALS_USR}" --password-stdin
-                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    docker push ${DOCKER_IMAGE}:latest
-                """
+                // Single-quoted shell string: variables resolved by the shell,
+                // not Groovy — prevents secret interpolation into the Groovy layer.
+                sh '''
+                    echo "$REGISTRY_CREDENTIALS_PSW" | \
+                        docker login docker-registry.openaire.eu -u "$REGISTRY_CREDENTIALS_USR" --password-stdin
+                    docker push $DOCKER_IMAGE:$DOCKER_TAG
+                    docker push $DOCKER_IMAGE:latest
+                '''
             }
             post {
                 always {
@@ -72,10 +74,14 @@ pipeline {
 
         stage('Git Tag') {
             steps {
-                sh """
-                    git tag build-${DOCKER_TAG}
-                    git push origin build-${DOCKER_TAG}
-                """
+                withCredentials([usernamePassword(credentialsId: 'github-antleb',
+                                                  usernameVariable: 'GH_USER',
+                                                  passwordVariable: 'GH_TOKEN')]) {
+                    sh '''
+                        git tag build-$DOCKER_TAG
+                        git push https://$GH_USER:$GH_TOKEN@github.com/madgeek-arc/Statistic-chart-generator.git build-$DOCKER_TAG
+                    '''
+                }
             }
         }
     }
