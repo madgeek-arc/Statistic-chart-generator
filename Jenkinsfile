@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKER_IMAGE           = "docker-registry.openaire.eu/stats-tool/statistic-chart-generator"
-        DOCKER_TAG             = "${env.BUILD_NUMBER}"
+        REGISTRY_CREDENTIALS = credentials('openaire-docker-registry')
+        DOCKER_IMAGE         = "docker-registry.openaire.eu/stats-tool/statistic-chart-generator"
+        DOCKER_TAG           = "${env.BUILD_NUMBER}"
     }
 
     tools {
@@ -45,11 +45,17 @@ pipeline {
         stage('Docker Push') {
             steps {
                 sh """
-                    echo "${DOCKER_HUB_CREDENTIALS_PSW}" | \
-                        docker login docker-registry.openaire.eu -u "${DOCKER_HUB_CREDENTIALS_USR}" --password-stdin
+                    echo "${REGISTRY_CREDENTIALS_PSW}" | \
+                        docker login docker-registry.openaire.eu -u "${REGISTRY_CREDENTIALS_USR}" --password-stdin
                     docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                     docker push ${DOCKER_IMAGE}:latest
                 """
+            }
+            post {
+                always {
+                    sh 'docker logout docker-registry.openaire.eu'
+                    sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest || true"
+                }
             }
         }
 
@@ -75,10 +81,6 @@ pipeline {
     }
 
     post {
-        always {
-            sh 'docker logout docker-registry.openaire.eu'
-            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest || true"
-        }
         failure {
             echo 'Pipeline failed.'
         }
