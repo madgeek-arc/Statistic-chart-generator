@@ -21,6 +21,11 @@ A tool for the generation of various statistic charts.
          driver-class-name: org.postgresql.Driver
          username: dnet
          password: dnetPwd
+       - id: monitor_impala.public
+         url: jdbc:hive2://your-impala-host:21050/monitor;auth=noSasl
+         driver-class-name: org.apache.hive.jdbc.HiveDriver
+         username:
+         password:
        - id: cache
          url: jdbc:hsqldb:file:/tmp/cache
          driver-class-name: org.hsqldb.jdbcDriver
@@ -34,7 +39,7 @@ A tool for the generation of various statistic charts.
    docker compose up -d
    ```
 
-   The app will be available at `http://localhost:8080`. PostgreSQL and Redis must pass their healthchecks before the app starts.
+   The app will be available at `http://localhost:8080`.
 
 ### Volumes
 
@@ -43,8 +48,6 @@ A tool for the generation of various statistic charts.
 | `./config` (bind, read-only) | External configuration (`application.yml`, `logback.xml`) |
 | `logs` (named) | Application log files written by the app |
 | `hsqldb-cache` (named) | Persistent HSQLDB cache database (`/tmp/cache`) |
-| `postgres-data` (named) | PostgreSQL data directory |
-| `redis-data` (named) | Redis persistence |
 
 ### Building the image locally
 
@@ -62,6 +65,33 @@ The tool responsible of giving the specifications for the generated statistic ch
 
 
 ## Impala Compatibility Notes
+
+### JDBC Driver
+
+Impala is accessed via the **Apache Hive JDBC driver** (`org.apache.hive.jdbc.HiveDriver`), connecting over the HiveServer2 Thrift protocol. The Simba/Cloudera JDBC driver was evaluated but dropped due to incompatibility with CTEs and `?` parameter binding.
+
+The driver is bundled as `hive-jdbc-4.0.1-standalone` (shaded into the DBAccess JAR). No separate driver installation is needed.
+
+Connection URL format:
+```
+jdbc:hive2://<host>:<port>/<database>;auth=noSasl
+```
+
+- **Port**: typically `21050` (Impala HiveServer2)
+- **`auth=noSasl`**: required to skip Kerberos negotiation when connecting without authentication
+
+Example datasource configuration in `application.yml`:
+```yaml
+spring:
+  datasources:
+    - id: monitor_impala.public
+      url: jdbc:hive2://your-impala-host:21050/monitor;auth=noSasl
+      driver-class-name: org.apache.hive.jdbc.HiveDriver
+      username:
+      password:
+```
+
+### SQL Generation
 
 This project’s SQL generator (module `DBAccess`) has been updated to be compatible with Apache Impala. Impala does not allow scalar subqueries in the `SELECT` list (and also not in `GROUP BY` or `ORDER BY`).
 
