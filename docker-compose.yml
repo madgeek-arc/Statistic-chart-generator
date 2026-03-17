@@ -3,13 +3,12 @@ services:
   stats-app:
     image: docker-registry.openaire.eu/stats-tool/statistic-chart-generator:latest
     ports:
-      - "8080:8080"
+      - "8090:8090"
     volumes:
       - ./config:/usr/local/app/config:ro
-      - logs:/usr/local/app/logs
+      - ./logs:/usr/local/app/logs
       - hsqldb-cache:/tmp/cache
     restart: unless-stopped
 
 volumes:
-  logs:
   hsqldb-cache:
