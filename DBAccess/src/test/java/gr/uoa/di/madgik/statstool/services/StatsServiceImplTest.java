@@ -192,6 +192,43 @@ public class StatsServiceImplTest {
     }
 
     @Test
+    void stackedMode_usesKeysCte_toAlignDisjointXaxisValues() throws Exception {
+        // Regression: stacked charts whose queries return disjoint x-axis values (e.g. each
+        // series filters a different category) previously produced only the categories present in
+        // q1. The fix adds a "keys" CTE from UNION ALL of all x columns, and joins every query to
+        // it, so all categories appear even when individual queries return non-overlapping x values.
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+        Query q3 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), eq("stacked"))).thenReturn("SELECT 10, 'Open Access'");
+        when(mapper.map(eq(q2), anyList(), eq("stacked"))).thenReturn("SELECT 5,  'Embargo'");
+        when(mapper.map(eq(q3), anyList(), eq("stacked"))).thenReturn("SELECT 3,  'Restricted'");
+
+        Result merged = new Result();
+        merged.setRows(new ArrayList<>());
+        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
+
+        statsService.query(Arrays.asList(q1, q2, q3), "stacked");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+        String sql = sqlCaptor.getValue();
+
+        // Must contain the keys CTE
+        assertTrue(sql.contains("keys AS ("), "Stacked mode must include a 'keys' CTE to collect all x values");
+        // keys CTE must union all individual CTEs
+        assertTrue(sql.contains("FROM q1") && sql.contains("FROM q2") && sql.contains("FROM q3"),
+                "keys CTE must include x values from all CTEs");
+        assertTrue(sql.toUpperCase().contains("UNION ALL"), "keys CTE must use UNION ALL to merge x values");
+        // Final FROM must drive from keys, not q1
+        assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, not q1");
+        assertTrue(sql.contains("LEFT JOIN q2") && sql.contains("LEFT JOIN q3"),
+                "All series must be LEFT JOINed to keys");
+    }
+
+    @Test
     void mergedPath_yaxisOrderBy_translatesTo1Desc() throws Exception {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);

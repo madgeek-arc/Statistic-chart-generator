@@ -138,28 +138,76 @@ public class StatsServiceImpl implements StatsService {
                     if (params != null) mergedParameters.addAll(params);
                 }
 
-                // q1 drives the result set via LEFT JOIN on all x columns.
                 int n = individualSqls.size();
-                StringBuilder fromJoins = new StringBuilder("FROM q1");
-                for (int i = 2; i <= n; i++) {
-                    fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
-                    for (int xi = 1; xi <= xCount; xi++) {
-                        if (xi > 1) fromJoins.append(" AND ");
-                        fromJoins.append("q").append(i).append(".x").append(xi)
-                                 .append(" = q1.x").append(xi);
-                    }
-                }
+                StringBuilder selectT = new StringBuilder();
 
-                // Build t CTE: all x columns from q1, then y1..yn
-                StringBuilder selectT = new StringBuilder(", t AS (SELECT ");
-                for (int xi = 1; xi <= xCount; xi++) {
-                    if (xi > 1) selectT.append(", ");
-                    selectT.append("q1.x").append(xi).append(" AS x").append(xi);
+                if (stackedOrder) {
+                    // Stacked mode: queries may return disjoint x-axis values (e.g. each series filters
+                    // a different category). Build a "keys" CTE with the UNION of all x values so every
+                    // category appears on the x-axis, then LEFT JOIN each query to it.
+                    cteSql.append(", keys AS (SELECT ");
+                    for (int xi = 1; xi <= xCount; xi++) {
+                        if (xi > 1) cteSql.append(", ");
+                        cteSql.append("x").append(xi);
+                    }
+                    cteSql.append(" FROM (");
+                    for (int i = 1; i <= n; i++) {
+                        if (i > 1) cteSql.append(" UNION ALL ");
+                        cteSql.append("SELECT ");
+                        for (int xi = 1; xi <= xCount; xi++) {
+                            if (xi > 1) cteSql.append(", ");
+                            cteSql.append("x").append(xi);
+                        }
+                        cteSql.append(" FROM q").append(i);
+                    }
+                    cteSql.append(") all_keys GROUP BY ");
+                    for (int xi = 1; xi <= xCount; xi++) {
+                        if (xi > 1) cteSql.append(", ");
+                        cteSql.append("x").append(xi);
+                    }
+                    cteSql.append(")");
+
+                    StringBuilder fromJoins = new StringBuilder("FROM keys");
+                    for (int i = 1; i <= n; i++) {
+                        fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                        for (int xi = 1; xi <= xCount; xi++) {
+                            if (xi > 1) fromJoins.append(" AND ");
+                            fromJoins.append("q").append(i).append(".x").append(xi)
+                                     .append(" = keys.x").append(xi);
+                        }
+                    }
+
+                    selectT.append(", t AS (SELECT ");
+                    for (int xi = 1; xi <= xCount; xi++) {
+                        if (xi > 1) selectT.append(", ");
+                        selectT.append("keys.x").append(xi).append(" AS x").append(xi);
+                    }
+                    for (int i = 1; i <= n; i++) {
+                        selectT.append(", q").append(i).append(".y AS y").append(i);
+                    }
+                    selectT.append(" ").append(fromJoins).append(")");
+                } else {
+                    // Non-stacked mode: q1 drives the x-axis (defines top-N via its ORDER BY + LIMIT).
+                    StringBuilder fromJoins = new StringBuilder("FROM q1");
+                    for (int i = 2; i <= n; i++) {
+                        fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                        for (int xi = 1; xi <= xCount; xi++) {
+                            if (xi > 1) fromJoins.append(" AND ");
+                            fromJoins.append("q").append(i).append(".x").append(xi)
+                                     .append(" = q1.x").append(xi);
+                        }
+                    }
+
+                    selectT.append(", t AS (SELECT ");
+                    for (int xi = 1; xi <= xCount; xi++) {
+                        if (xi > 1) selectT.append(", ");
+                        selectT.append("q1.x").append(xi).append(" AS x").append(xi);
+                    }
+                    for (int i = 1; i <= n; i++) {
+                        selectT.append(", q").append(i).append(".y AS y").append(i);
+                    }
+                    selectT.append(" ").append(fromJoins).append(")");
                 }
-                for (int i = 1; i <= n; i++) {
-                    selectT.append(", q").append(i).append(".y AS y").append(i);
-                }
-                selectT.append(" ").append(fromJoins).append(")");
 
                 // Final SELECT: y1..yn, x1..xm FROM t
                 StringBuilder finalSelect = new StringBuilder(" SELECT ");
