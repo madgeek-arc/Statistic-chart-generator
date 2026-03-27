@@ -567,4 +567,38 @@ public class SqlQueryTreeTest {
         // Parameters: type, year, country (EXISTS param order)
         assertEquals(3, params.size(), "Three bound parameters expected");
     }
+
+    @Test
+    public void entityFilter_notDuplicated_whenEntityNameDiffersFromTableName() {
+        // Regression: when entity logical name ("publication") differs from SQL table name ("result"),
+        // addEntityFilters was called with path=entityName once (size-1 branch) and path=tableName
+        // once (size-2 branch), generating two different dedup keys and adding the filter twice.
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("publication.id", new Field("result", "id", "int"));
+        pc.fields.put("publication.year", new Field("result", "year", "int"));
+        pc.fields.put("publication.bestlicence", new Field("result", "bestlicence", "text"));
+
+        Filter entityFilter = new Filter("type", "=", Collections.singletonList("publication"), "text");
+        pc.tables.put("publication", new Table("result", "id", Collections.singletonList(entityFilter)));
+
+        FilterGroup fg = new FilterGroup(Collections.singletonList(
+                new Filter("publication.year", ">", Collections.singletonList("2020"), "int")), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(
+                        new Select("publication.id", "count", 1),
+                        new Select("publication.bestlicence", null, 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        // Entity filter must appear exactly once (not duplicated due to key mismatch)
+        int occurrences = 0;
+        int idx = 0;
+        while ((idx = sql.indexOf("r0.type=?", idx)) != -1) { occurrences++; idx++; }
+        assertEquals(1, occurrences,
+                "Entity filter must appear exactly once even when entity name differs from table name; got: " + sql);
+    }
 }

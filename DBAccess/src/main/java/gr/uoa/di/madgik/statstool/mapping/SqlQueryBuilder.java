@@ -85,7 +85,7 @@ public class SqlQueryBuilder {
         List<String> fldPath = new ArrayList<>(Arrays.asList(field.split("\\.")));
         if (fldPath.size() == 1) {
             path = profileConfiguration.tables.get(fldPath.get(0)).getTable() + "." + profileConfiguration.tables.get(fldPath.get(0)).getKey();
-            addEntityFilters(fldPath.get(0), fldPath.get(0));
+            addEntityFilters(fldPath.get(0), profileConfiguration.tables.get(fldPath.get(0)).getTable());
         } else {
             for (int i = 0; i < fldPath.size() - 2; i++) {
                 Table table1 = profileConfiguration.tables.get(fldPath.get(i));
