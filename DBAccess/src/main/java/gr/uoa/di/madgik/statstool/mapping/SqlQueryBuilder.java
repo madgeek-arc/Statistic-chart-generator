@@ -2,7 +2,9 @@ package gr.uoa.di.madgik.statstool.mapping;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import gr.uoa.di.madgik.statstool.domain.Filter;
 import gr.uoa.di.madgik.statstool.domain.FilterGroup;
@@ -22,6 +24,7 @@ public class SqlQueryBuilder {
     private final List<Select> mappedSelects = new ArrayList<>();
     private final List<FilterGroup> mappedFilters = new ArrayList<>();
     private final List<Filter> entityFilters = new ArrayList<>();
+    private final Set<String> entityFiltersSeen = new HashSet<>();
 
     public SqlQueryBuilder(Query query, ProfileConfiguration profileConfiguration) {
         this.query = query;
@@ -67,6 +70,8 @@ public class SqlQueryBuilder {
     }
 
     private void addEntityFilters(String entity, String path) {
+        String key = entity + ":" + path;
+        if (!entityFiltersSeen.add(key)) return;
         List<Filter> filters = profileConfiguration.tables.get(entity).getFilters();
         if (filters != null) {
             for (Filter filter : filters) {

@@ -453,7 +453,10 @@ public class SqlQueryTree {
             if ("OR".equalsIgnoreCase(filterGroup.getOp())) {
                 // Rewrite OR of (possibly) subqueries into one EXISTS with UNION ALL of rid values.
                 // Root-level filters (no hops) are collected as simple predicates and combined with OR.
+                // Hop-based filters with a single branch use a direct correlated EXISTS (no derived table).
                 List<String> unionBranches = new ArrayList<>();
+                // Parallel metadata for single-branch optimisation: [fromClause, corrCondition, predicate]
+                List<String[]> hopBranchMeta = new ArrayList<>();
                 List<String> rootOrPredicates = new ArrayList<>();
                 String correlationField = null; // r0.<correlationField>
 
@@ -484,7 +487,6 @@ public class SqlQueryTree {
                     }
                     String targetColumn = fldPath.get(fldPath.size() - 1);
 
-                    StringBuilder branch = new StringBuilder();
                     if (hops.isEmpty()) {
                         // Root-level: emit a plain predicate to be combined with OR — no EXISTS needed
                         String qualifiedCol = this.root.alias + "." + targetColumn;
@@ -496,26 +498,28 @@ public class SqlQueryTree {
                         Hop h0 = hops.get(0);
                         if (correlationField == null) correlationField = h0.fromField;
                         String lastAlias = "s" + (hops.size() - 1);
-                        // Build FROM/JOIN chain starting with s0 = first toTable
-                        branch.append("SELECT s0.").append(h0.toField).append(" AS rid FROM ")
-                              .append(h0.toTable).append(" s0 ");
+                        // Build the FROM/JOIN chain (shared by both single-branch and UNION ALL forms)
+                        StringBuilder fromClause = new StringBuilder();
+                        fromClause.append(h0.toTable).append(" s0 ");
                         for (int i = 1; i < hops.size(); i++) {
                             Hop hi = hops.get(i);
                             String prevAlias = "s" + (i - 1);
                             String curAlias = "s" + i;
-                            branch.append("JOIN ")
-                                  .append(hi.toTable).append(" ").append(curAlias)
-                                  .append(" ON ")
-                                  .append(prevAlias).append(".").append(hi.fromField)
-                                  .append("=")
-                                  .append(curAlias).append(".").append(hi.toField)
-                                  .append(" ");
+                            fromClause.append("JOIN ")
+                                      .append(hi.toTable).append(" ").append(curAlias)
+                                      .append(" ON ")
+                                      .append(prevAlias).append(".").append(hi.fromField)
+                                      .append("=")
+                                      .append(curAlias).append(".").append(hi.toField)
+                                      .append(" ");
                         }
                         String qualifiedCol = lastAlias + "." + targetColumn;
                         String pred = buildPredicate.apply(qualifiedCol, filter);
                         if (pred != null) {
-                            branch.append("WHERE ").append(pred);
-                            unionBranches.add(branch.toString());
+                            String corrCondition = this.root.alias + "." + h0.fromField + "=s0." + h0.toField;
+                            hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred});
+                            // Also build the UNION ALL branch string (used when there are multiple branches)
+                            unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE " + pred);
                         }
                     }
                 }
@@ -523,10 +527,13 @@ public class SqlQueryTree {
                 if (!rootOrPredicates.isEmpty()) {
                     groupFilters.add("(" + String.join(" OR ", rootOrPredicates) + ")");
                 }
-                if (!unionBranches.isEmpty()) {
+                if (hopBranchMeta.size() == 1) {
+                    // Single hop branch: emit a direct correlated EXISTS (no derived table wrapper)
+                    String[] m = hopBranchMeta.get(0);
+                    groupFilters.add("EXISTS (SELECT 1 FROM " + m[0] + "WHERE " + m[1] + " AND " + m[2] + ")");
+                } else if (hopBranchMeta.size() > 1) {
                     String corrField = (correlationField != null) ? correlationField : "id";
-                    String exists = "EXISTS (SELECT 1 FROM (" + String.join(" UNION ALL ", unionBranches) + ") u WHERE u.rid = " + this.root.alias + "." + corrField + ")";
-                    groupFilters.add(exists);
+                    groupFilters.add("EXISTS (SELECT 1 FROM (" + String.join(" UNION ALL ", unionBranches) + ") u WHERE u.rid = " + this.root.alias + "." + corrField + ")");
                 }
             } else {
                 // Default behavior (mostly AND): build simple predicates or EXISTS per filter

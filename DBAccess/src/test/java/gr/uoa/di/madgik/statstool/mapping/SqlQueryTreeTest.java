@@ -264,8 +264,33 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void orFilterGroup_singleHop_generatesDirect_correlatedExists() {
+        // Single hop-based filter in an OR group must emit a direct correlated EXISTS,
+        // not a derived-table wrapper (which would be: EXISTS (SELECT 1 FROM (SELECT rid ...) u WHERE u.rid=...)).
+        ProfileConfiguration pc = buildProfile();
+
+        Filter f = new Filter("result.project_results.value", "=", Collections.singletonList("5"), "int");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "OR");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("EXISTS"),       "Must generate EXISTS");
+        assertFalse(sql.contains("UNION ALL"),   "Single-branch OR must not generate UNION ALL");
+        assertFalse(sql.contains("AS rid"),      "Single-branch OR must not generate derived table with rid alias");
+        assertTrue(sql.matches("(?s).*EXISTS\\s*\\(SELECT 1 FROM project_results s0 WHERE r0\\.id=s0\\.result_id AND s0\\.value=\\?\\).*"),
+                "Must generate direct correlated EXISTS with correlation and predicate in WHERE");
+        assertEquals(1, params.size());
+        assertEquals(5, params.get(0));
+    }
+
+    @Test
     public void orFilterGroup_withHops_generatesExistsWithUnionAll() {
-        // OR group whose filters require a JOIN hop must still use EXISTS+UNION ALL.
+        // Multiple hop-based filters in an OR group must use EXISTS+UNION ALL.
         ProfileConfiguration pc = buildProfile();
 
         Filter f1 = new Filter("result.project_results.value", "=", Collections.singletonList("5"),  "int");
@@ -280,7 +305,7 @@ public class SqlQueryTreeTest {
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
         assertTrue(sql.contains("EXISTS"),    "Hop-based OR must still use EXISTS");
-        assertTrue(sql.contains("UNION ALL"), "Hop-based OR must still use UNION ALL");
+        assertTrue(sql.contains("UNION ALL"), "Multiple-branch OR must use UNION ALL");
         assertEquals(2, params.size());
         assertEquals(5,  params.get(0));
         assertEquals(10, params.get(1));
@@ -428,6 +453,39 @@ public class SqlQueryTreeTest {
 
         assertTrue(sql.contains("lower(r0.type) LIKE CONCAT('%', ?)"), "Must generate suffix LIKE predicate");
         assertEquals("access", params.get(0));
+    }
+
+    @Test
+    public void entityFilter_notDuplicated_acrossMultipleFieldPaths() {
+        // Regression: addEntityFilters() was called once per select/filter field that traverses the
+        // root entity, causing the entity table-filter (e.g. type='publication') to appear N times.
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        // Give the root entity a table-level filter (e.g. type='publication')
+        Filter entityFilter = new Filter("type", "=", Collections.singletonList("publication"), "text");
+        pc.tables.put("result", new Table("result", "id", Collections.singletonList(entityFilter)));
+
+        // Two selects + two filter groups referencing the root entity — entity filter must appear once
+        FilterGroup fg = new FilterGroup(Collections.singletonList(
+                new Filter("result.type", "=", Collections.singletonList("Software"), "text")), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.project_results.category", null, 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        // Count occurrences of the entity filter predicate in the WHERE clause
+        int occurrences = 0;
+        int idx = 0;
+        while ((idx = sql.indexOf("r0.type=?", idx)) != -1) { occurrences++; idx++; }
+        assertEquals(2, occurrences,
+                "Entity filter 'type' must appear exactly twice: once as entity filter, once as explicit filter");
     }
 
     @Test
