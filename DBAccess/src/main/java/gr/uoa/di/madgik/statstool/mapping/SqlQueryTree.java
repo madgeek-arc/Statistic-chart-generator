@@ -387,7 +387,13 @@ public class SqlQueryTree {
                     }
                 }
             } else {
-                query.append(" 1 DESC ");
+                // Order by the first non-grouping (aggregate) expression descending
+                String aggExpr = selects.stream()
+                        .filter(os -> !group.contains(os.select))
+                        .findFirst()
+                        .map(os -> os.select)
+                        .orElse(selects.get(0).select);
+                query.append(aggExpr).append(" DESC");
             }
         }
 
@@ -408,45 +414,47 @@ public class SqlQueryTree {
             java.util.function.BiFunction<String, Filter, String> buildPredicate = (qualifiedCol, f) -> {
                 switch (f.getType()) {
                     case "=":
-                    case "!=":
+                    case "!=": {
+                        List<String> vals = f.getValues();
+                        if (vals.size() == 1) {
+                            parameters.add(mapType(vals.get(0), f.getDatatype()));
+                            return qualifiedCol + f.getType() + "?";
+                        }
+                        // Multiple values: use IN / NOT IN
+                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), "?")) + ")";
+                        for (String value : vals) {
+                            parameters.add(mapType(value, f.getDatatype()));
+                        }
+                        return qualifiedCol + ("!=".equals(f.getType()) ? " NOT IN " : " IN ") + placeholder;
+                    }
                     case ">":
                     case ">=":
                     case "<":
                     case "<=":
-                        for (String value : f.getValues()) {
-                            parameters.add(mapType(value, f.getDatatype()));
-                            return qualifiedCol + f.getType() + "?";
-                        }
-                        break;
+                        parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
+                        return qualifiedCol + f.getType() + "?";
                     case "between":
                         parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
                         parameters.add(mapType(f.getValues().get(1), f.getDatatype()));
                         return qualifiedCol + " BETWEEN ? AND ?";
                     case "contains":
-                        for (String value : f.getValues()) {
-                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                            return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
-                        }
-                        break;
+                        parameters.add(mapType(f.getValues().get(0).toLowerCase(), f.getDatatype()));
+                        return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
                     case "starts_with":
-                        for (String value : f.getValues()) {
-                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                            return "lower(" + qualifiedCol + ") LIKE CONCAT(?, '%')";
-                        }
-                        break;
+                        parameters.add(mapType(f.getValues().get(0).toLowerCase(), f.getDatatype()));
+                        return "lower(" + qualifiedCol + ") LIKE CONCAT(?, '%')";
                     case "ends_with":
-                        for (String value : f.getValues()) {
-                            parameters.add(mapType(value.toLowerCase(), f.getDatatype()));
-                            return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
-                        }
-                        break;
+                        parameters.add(mapType(f.getValues().get(0).toLowerCase(), f.getDatatype()));
+                        return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
                 }
                 return null;
             };
 
             if ("OR".equalsIgnoreCase(filterGroup.getOp())) {
-                // Rewrite OR of (possibly) subqueries into one EXISTS with UNION ALL of rid values
+                // Rewrite OR of (possibly) subqueries into one EXISTS with UNION ALL of rid values.
+                // Root-level filters (no hops) are collected as simple predicates and combined with OR.
                 List<String> unionBranches = new ArrayList<>();
+                List<String> rootOrPredicates = new ArrayList<>();
                 String correlationField = null; // r0.<correlationField>
 
                 for (Filter filter : filterGroup.getGroupFilters()) {
@@ -478,16 +486,11 @@ public class SqlQueryTree {
 
                     StringBuilder branch = new StringBuilder();
                     if (hops.isEmpty()) {
-                        // Root-level: select root ids from the root table applying predicate
-                        String rootKey = "id"; // default key
-                        String alias = "t0";
-                        String qualifiedCol = alias + "." + targetColumn;
+                        // Root-level: emit a plain predicate to be combined with OR — no EXISTS needed
+                        String qualifiedCol = this.root.alias + "." + targetColumn;
                         String pred = buildPredicate.apply(qualifiedCol, filter);
                         if (pred != null) {
-                            branch.append("SELECT ").append(alias).append(".").append(rootKey)
-                                  .append(" AS rid FROM ").append(this.root.table).append(" ").append(alias)
-                                  .append(" WHERE ").append(pred);
-                            unionBranches.add(branch.toString());
+                            rootOrPredicates.add(pred);
                         }
                     } else {
                         Hop h0 = hops.get(0);
@@ -517,6 +520,9 @@ public class SqlQueryTree {
                     }
                 }
 
+                if (!rootOrPredicates.isEmpty()) {
+                    groupFilters.add("(" + String.join(" OR ", rootOrPredicates) + ")");
+                }
                 if (!unionBranches.isEmpty()) {
                     String corrField = (correlationField != null) ? correlationField : "id";
                     String exists = "EXISTS (SELECT 1 FROM (" + String.join(" UNION ALL ", unionBranches) + ") u WHERE u.rid = " + this.root.alias + "." + corrField + ")";
@@ -612,8 +618,9 @@ public class SqlQueryTree {
                 return Integer.parseInt(value);
             case "float":
                 return Float.parseFloat(value);
+            default:
+                return value;
         }
-        return null;
     }
 
 }

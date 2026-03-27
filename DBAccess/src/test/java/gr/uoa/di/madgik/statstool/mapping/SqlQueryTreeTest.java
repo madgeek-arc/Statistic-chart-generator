@@ -233,6 +233,229 @@ public class SqlQueryTreeTest {
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
 
+    // ── Bug-fix coverage ──────────────────────────────────────────────────────
+
+    @Test
+    public void orFilterGroup_rootLevel_generatesSimpleOrPredicate_notExists() {
+        // Regression: OR group whose fields are all on the root table must emit
+        // (col = ? OR col = ?) — not an EXISTS+UNION ALL that references t0.id.
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f1 = new Filter("result.type", "=", Collections.singletonList("Software"), "text");
+        Filter f2 = new Filter("result.type", "=", Collections.singletonList("Dataset"),  "text");
+        FilterGroup fg = new FilterGroup(Arrays.asList(f1, f2), "OR");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("EXISTS"),       "Root-level OR must not generate EXISTS");
+        assertFalse(sql.contains("UNION ALL"),    "Root-level OR must not generate UNION ALL");
+        assertTrue(sql.contains("r0.type=?"),     "Both OR predicates must reference root alias");
+        assertTrue(sql.matches("(?s).*\\(r0\\.type=\\?.*OR.*r0\\.type=\\?\\).*"),
+                "Predicates must be wrapped in parentheses and joined with OR");
+        assertEquals(2, params.size(), "Two parameters must be bound");
+        assertEquals("Software", params.get(0));
+        assertEquals("Dataset",  params.get(1));
+    }
+
+    @Test
+    public void orFilterGroup_withHops_generatesExistsWithUnionAll() {
+        // OR group whose filters require a JOIN hop must still use EXISTS+UNION ALL.
+        ProfileConfiguration pc = buildProfile();
+
+        Filter f1 = new Filter("result.project_results.value", "=", Collections.singletonList("5"),  "int");
+        Filter f2 = new Filter("result.project_results.value", "=", Collections.singletonList("10"), "int");
+        FilterGroup fg = new FilterGroup(Arrays.asList(f1, f2), "OR");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("EXISTS"),    "Hop-based OR must still use EXISTS");
+        assertTrue(sql.contains("UNION ALL"), "Hop-based OR must still use UNION ALL");
+        assertEquals(2, params.size());
+        assertEquals(5,  params.get(0));
+        assertEquals(10, params.get(1));
+    }
+
+    @Test
+    public void equalFilter_multipleValues_generatesInClause() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "=", Arrays.asList("Software", "Dataset", "Other"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type IN (?, ?, ?)"), "Multiple values for '=' must produce IN clause");
+        assertEquals(3, params.size());
+        assertEquals("Software", params.get(0));
+        assertEquals("Dataset",  params.get(1));
+        assertEquals("Other",    params.get(2));
+    }
+
+    @Test
+    public void notEqualFilter_multipleValues_generatesNotInClause() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "!=", Arrays.asList("Software", "Dataset"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type NOT IN (?, ?)"), "Multiple values for '!=' must produce NOT IN clause");
+        assertEquals(2, params.size());
+        assertEquals("Software", params.get(0));
+        assertEquals("Dataset",  params.get(1));
+    }
+
+    @Test
+    public void orderByYaxis_usesAggregateExpression_notPosition() {
+        // When orderBy != "xaxis", ORDER BY must use the aggregate expression, not '1'.
+        ProfileConfiguration pc = buildProfile();
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "sum", 1),
+                        new Select("result.project_results.category", null, 2)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, "yaxis");
+
+        assertFalse(sql.toUpperCase().contains("ORDER BY 1"),   "Must not use positional ORDER BY");
+        assertTrue(sql.matches("(?is).*ORDER\\s+BY\\s+sum\\(r0\\.id\\)\\s+DESC.*"),
+                "Must ORDER BY the aggregate expression descending");
+    }
+
+    // ── Filter type coverage ──────────────────────────────────────────────────
+
+    @Test
+    public void betweenFilter_generatesBetweenPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.year", new Field("result", "year", "int"));
+
+        Filter f = new Filter("result.year", "between", Arrays.asList("2019", "2023"), "int");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.year BETWEEN ? AND ?"), "Must generate BETWEEN predicate");
+        assertEquals(2, params.size());
+        assertEquals(2019, params.get(0));
+        assertEquals(2023, params.get(1));
+    }
+
+    @Test
+    public void containsFilter_generatesLikePredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "contains", Collections.singletonList("Open"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("lower(r0.type) LIKE CONCAT('%', ?, '%')"), "Must generate LIKE predicate for contains");
+        assertEquals(1, params.size());
+        assertEquals("open", params.get(0), "Value must be lowercased");
+    }
+
+    @Test
+    public void startsWithFilter_generatesLikePredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "starts_with", Collections.singletonList("Open"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("lower(r0.type) LIKE CONCAT(?, '%')"), "Must generate prefix LIKE predicate");
+        assertEquals("open", params.get(0));
+    }
+
+    @Test
+    public void endsWithFilter_generatesLikePredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "ends_with", Collections.singletonList("Access"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("lower(r0.type) LIKE CONCAT('%', ?)"), "Must generate suffix LIKE predicate");
+        assertEquals("access", params.get(0));
+    }
+
+    @Test
+    public void multipleFilterGroups_joinedWithAnd() {
+        // Two AND filter groups must be joined by AND between them in the WHERE clause.
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+        pc.fields.put("result.year", new Field("result", "year", "int"));
+
+        FilterGroup g1 = new FilterGroup(Collections.singletonList(
+                new Filter("result.type", "=", Collections.singletonList("Software"), "text")), "AND");
+        FilterGroup g2 = new FilterGroup(Collections.singletonList(
+                new Filter("result.year", ">", Collections.singletonList("2020"), "int")), "AND");
+
+        Query apiQuery = new Query(null, null, Arrays.asList(g1, g2),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.matches("(?s).*r0\\.type=\\?.*AND.*r0\\.year>\\?.*"),
+                "Two filter groups must be joined with AND");
+        assertEquals(2, params.size());
+        assertEquals("Software", params.get(0));
+        assertEquals(2020, params.get(1));
+    }
+
     @Test
     public void countDistinct_withNonRootNonAggGroupBy_andExistsFilter_matchesOldBehavior() {
         ProfileConfiguration pc = buildProfile();
