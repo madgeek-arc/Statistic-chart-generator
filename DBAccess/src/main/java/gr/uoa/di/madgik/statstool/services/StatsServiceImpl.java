@@ -118,7 +118,9 @@ public class StatsServiceImpl implements StatsService {
                 // For "stacked" ordering all CTEs run unlimited (the outer query decides top-N by
                 // combined sum). Otherwise q1 keeps its ORDER BY + LIMIT so it defines the top-N
                 // and secondary CTEs are stripped so they return all rows for the LEFT JOIN.
-                boolean stackedOrder = "stacked".equals(orderBy);
+                // Null orderBy also uses the keys-CTE approach so that queries with disjoint
+                // x-axis values (e.g. stacked categorical charts) all appear on the x-axis.
+                boolean stackedOrder = "stacked".equals(orderBy) || orderBy == null;
                 StringBuilder cteColumns = new StringBuilder("(y");
                 for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
                 cteColumns.append(")");
