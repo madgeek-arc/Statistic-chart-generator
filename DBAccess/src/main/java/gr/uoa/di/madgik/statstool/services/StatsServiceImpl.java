@@ -120,7 +120,9 @@ public class StatsServiceImpl implements StatsService {
                 // and secondary CTEs are stripped so they return all rows for the LEFT JOIN.
                 // Null orderBy also uses the keys-CTE approach so that queries with disjoint
                 // x-axis values (e.g. stacked categorical charts) all appear on the x-axis.
-                boolean stackedOrder = "stacked".equals(orderBy) || orderBy == null;
+                // "pinned" also uses the keys-CTE so that q1's x-values are always present,
+                // then sorts q1-present rows first and the rest by combined sum DESC.
+                boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || orderBy == null;
                 StringBuilder cteColumns = new StringBuilder("(y");
                 for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
                 cteColumns.append(")");
@@ -221,12 +223,19 @@ public class StatsServiceImpl implements StatsService {
                 finalSelect.append(" FROM t");
 
                 String finalSql = cteSql.toString() + selectT + finalSelect.toString();
-                // xaxis/null → ORDER BY x1
+                // xaxis/null → ORDER BY x1 (alphabetical)
                 // stacked    → ORDER BY COALESCE(y1,0)+COALESCE(y2,0)+...+COALESCE(yn,0) DESC
+                // pinned     → ORDER BY CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE sum DESC
+                //              (q1's x-values appear first, remainder sorted by combined sum)
                 // yaxis/else → ORDER BY 1 DESC  (first y column)
                 String effectiveOrderBy;
                 if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
                     effectiveOrderBy = "x1";
+                } else if ("pinned".equals(orderBy)) {
+                    StringBuilder pinnedOrder = new StringBuilder("CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE(y1,0)");
+                    for (int i = 2; i <= n; i++) pinnedOrder.append("+COALESCE(y").append(i).append(",0)");
+                    pinnedOrder.append(" DESC");
+                    effectiveOrderBy = pinnedOrder.toString();
                 } else if (stackedOrder) {
                     StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
                     for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");

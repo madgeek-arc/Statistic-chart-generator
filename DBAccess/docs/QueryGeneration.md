@@ -76,9 +76,12 @@ Builds a merged CTE SQL. The merge mode is determined by `orderBy`:
 | `null` | `true` | `keys` CTE (union of all queries) | `x1` (alphabetical) |
 | `"xaxis"` | `false` | `q1` LEFT JOIN | `x1` |
 | `"stacked"` | `true` | `keys` CTE | `COALESCE(y1,0)+…+COALESCE(yn,0) DESC` |
+| `"pinned"` | `true` | `keys` CTE | `CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE sum DESC` |
 | `"yaxis"` / anything else | `false` | `q1` LEFT JOIN | `1 DESC` (first y column) |
 
-#### `stackedOrder = false` (xaxis / yaxis)
+**`"pinned"` use case:** q1 contains a fixed reference set (e.g. `country='Ireland'`) that must always appear in the output regardless of rank, followed by the remaining x-values (e.g. all other countries) sorted by combined sum descending. Because `stackedOrder=true`, the `keys` CTE unions x-values from all queries so q1's entries are guaranteed to appear. The `CASE WHEN y1 IS NOT NULL` expression sorts rows where q1 has data to position 0 (front), while rows present only in q2…qN sort to position 1 (back) ordered by combined sum.
+
+#### `stackedOrder = false` (`"xaxis"` / `"yaxis"` / anything else)
 
 ```sql
 WITH q1(y, x1) AS (<sql1 with ORDER BY+LIMIT>),
@@ -99,7 +102,7 @@ ORDER BY <x1 | 1 DESC>
 
 **q1 defines the x-axis.** Its ORDER BY and LIMIT are preserved so it acts as the top-N anchor. q2…qN have their ORDER BY stripped and contribute their y-values for whatever x values q1 produced.
 
-#### `stackedOrder = true` (null / stacked)
+#### `stackedOrder = true` (`null` / `"stacked"` / `"pinned"`)
 
 ```sql
 WITH q1(y, x1) AS (<sql1 stripped of ORDER BY>),

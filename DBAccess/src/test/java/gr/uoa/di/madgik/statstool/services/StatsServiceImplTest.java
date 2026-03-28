@@ -229,6 +229,40 @@ public class StatsServiceImplTest {
     }
 
     @Test
+    void pinnedMode_usesKeysCte_andOrdersByQ1PresenceFirst() throws Exception {
+        // "pinned" mode: q1 contains a fixed reference (e.g. Ireland); q2 contains the rest.
+        // The keys CTE guarantees q1's x-values always appear, and the ORDER BY puts rows
+        // where y1 IS NOT NULL (q1's entries) before the rest, which are sorted by combined sum DESC.
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), eq("pinned"))).thenReturn("SELECT 10, 'Ireland'");
+        when(mapper.map(eq(q2), anyList(), eq("pinned"))).thenReturn("SELECT 20, 'Germany'");
+
+        Result merged = new Result();
+        merged.setRows(new ArrayList<>());
+        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
+
+        statsService.query(Arrays.asList(q1, q2), "pinned");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+        String sql = sqlCaptor.getValue();
+
+        // Must use keys CTE (stackedOrder=true)
+        assertTrue(sql.contains("keys AS ("), "Pinned mode must use keys CTE, got: " + sql);
+        assertTrue(sql.toUpperCase().contains("UNION ALL"), "keys CTE must UNION ALL queries, got: " + sql);
+        assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, got: " + sql);
+
+        // ORDER BY must pin y1-present rows first, then sort by sum
+        assertTrue(sql.contains("CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END"),
+                "Pinned mode must pin y1-present rows first, got: " + sql);
+        assertTrue(sql.contains("COALESCE(y1,0)+COALESCE(y2,0)"),
+                "Pinned mode must sort remainder by combined sum, got: " + sql);
+    }
+
+    @Test
     void mergedPath_yaxisOrderBy_translatesTo1Desc() throws Exception {
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
