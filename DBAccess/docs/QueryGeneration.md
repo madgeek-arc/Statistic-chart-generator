@@ -250,7 +250,14 @@ Each filter in the group is processed individually:
   r0.year >= ?
   ```
 
-- **Hop-based filter** (e.g. filter on `result_refereed.refereed`):
+- **Single-hop filter on a directly-joined table** (i.e. the target table is already JOINed for a GROUP BY SELECT field):
+  The predicate is applied **inline** on the existing JOIN alias:
+  ```sql
+  d1.type != ?
+  ```
+  Using `EXISTS` here would be incorrect: `EXISTS (SELECT 1 FROM t WHERE corr AND col != 'X')` is `TRUE` whenever *any* row doesn't match, so excluded values would still appear in the GROUP BY via the direct JOIN. Applying the filter directly on the alias correctly excludes those rows.
+
+- **Single-hop filter on a non-directly-joined table** (e.g. filter on `result_refereed.refereed`):
   ```sql
   EXISTS (
     SELECT 1 FROM result_refereed s0
