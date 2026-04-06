@@ -569,6 +569,44 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void andFilter_onDirectJoinField_appliesInlineNotExists() {
+        // Regression: when a filter targets the same field that is also a GROUP BY SELECT dimension
+        // (i.e. a single-hop non-aggregate field), the predicate must be applied directly on the
+        // JOIN alias (e.g. d1.type != ?) rather than as EXISTS(...type != ?).
+        // EXISTS semantics are wrong here: EXISTS(type != 'Other') is TRUE if ANY datasource row
+        // is not 'Other', which still allows 'Other' rows through the GROUP BY.
+        ProfileConfiguration pc = buildProfile();
+        pc.tables.put("datasource", new Table("datasource", "id", null));
+        pc.fields.put("datasource.type", new Field("datasource", "type", "text"));
+        pc.relations.put("result.datasource", Collections.singletonList(
+                new Join("result", "id", "datasource", "result_id")));
+
+        Filter typeFilter = new Filter("result.datasource.type", "!=",
+                Collections.singletonList("Other"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(typeFilter), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.datasource.type", null, 2)
+                ),
+                "result", "test", 20, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL andFilter_onDirectJoinField_appliesInlineNotExists: \n" + sql);
+
+        // Filter must NOT use EXISTS
+        assertFalse(sql.toUpperCase().contains("EXISTS"),
+                "Filter on a directly-joined GROUP BY field must not use EXISTS; got: " + sql);
+        // Filter must be a direct predicate on the join alias
+        assertTrue(sql.matches("(?s).*WHERE.*\\.type!=\\?.*"),
+                "Filter must appear as alias.type!=? in WHERE; got: " + sql);
+        assertEquals(1, params.size(), "One bound parameter expected");
+        assertEquals("Other", params.get(0));
+    }
+
+    @Test
     public void entityFilter_notDuplicated_whenEntityNameDiffersFromTableName() {
         // Regression: when entity logical name ("publication") differs from SQL table name ("result"),
         // addEntityFilters was called with path=entityName once (size-1 branch) and path=tableName

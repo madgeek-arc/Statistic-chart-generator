@@ -192,6 +192,10 @@ public class SqlQueryTree {
         // Build direct JOINs for non-root non-aggregate selects (GROUP BY columns)
         StringBuilder directJoins = new StringBuilder();
         Set<Node> directJoinedNodes = new LinkedHashSet<>();
+        // Map table name → direct-join alias so AND filters on the same path skip EXISTS and apply inline.
+        // This ensures e.g. "datasource.type != 'Other'" is applied as WHERE d1.type != 'Other' rather than
+        // EXISTS(...type != 'Other'), which would still allow 'Other' rows through the GROUP BY.
+        Map<String, String> directJoinTableToAlias = new LinkedHashMap<>();
         for (Map.Entry<Node, List<Select>> e : nonRootDirectSelects.entrySet()) {
             Node nd = e.getKey();
             List<Node> path = new ArrayList<>();
@@ -211,6 +215,7 @@ public class SqlQueryTree {
                                .append(" ON ").append(parentNode.alias).append(".").append(node.parentJoinFrom)
                                .append("=").append(node.alias).append(".").append(node.parentJoinTo)
                                .append(" ");
+                    directJoinTableToAlias.put(node.table, node.alias);
                 }
             }
             for (Select s : e.getValue()) {
@@ -335,7 +340,7 @@ public class SqlQueryTree {
         query.append(joins);
 
         List<String> op = new ArrayList<>();
-        List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op);
+        List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op, directJoinTableToAlias);
         if (!allTheFilters.isEmpty()) {
             query.append("WHERE ");
             first = true;
@@ -405,7 +410,8 @@ public class SqlQueryTree {
         return query.toString();
     }
 
-    private List<List<String>> mapFilters(List<FilterGroup> filterGroups, List<Object> parameters, List<String> op) {
+    private List<List<String>> mapFilters(List<FilterGroup> filterGroups, List<Object> parameters, List<String> op,
+                                          Map<String, String> directJoinTableToAlias) {
         List<List<String>> mappedFilters = new ArrayList<>();
         for (FilterGroup filterGroup : filterGroups) {
             List<String> groupFilters = new ArrayList<>();
@@ -571,39 +577,49 @@ public class SqlQueryTree {
                         String predicate = buildPredicate.apply(qualifiedCol, filter);
                         if (predicate != null) groupFilters.add(predicate);
                     } else {
-                        // Build EXISTS subquery with its own aliases
-                        StringBuilder exists = new StringBuilder();
-                        exists.append("EXISTS (SELECT 1 FROM ");
-                        String firstAlias = "s0";
-                        // First hop determines the starting table in subquery
+                        // If the filter's table is already directly JOINed (because it is also a GROUP BY
+                        // SELECT field), apply the predicate inline on that alias instead of EXISTS.
+                        // EXISTS(...type != 'Other') would still allow 'Other' rows through the GROUP BY
+                        // because it only tests at the result level, not at the expanded-row level.
                         Hop h0 = hops.get(0);
-                        exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
-                        for (int i = 1; i < hops.size(); i++) {
-                            Hop hi = hops.get(i);
-                            String prevAlias = "s" + (i - 1);
-                            String curAlias = "s" + i;
-                            exists.append("JOIN ")
-                                  .append(hi.toTable).append(" ").append(curAlias)
-                                  .append(" ON ")
-                                  .append(prevAlias).append(".").append(hi.fromField)
+                        String directAlias = directJoinTableToAlias.get(h0.toTable);
+                        if (directAlias != null && hops.size() == 1) {
+                            String qualifiedCol = directAlias + "." + targetColumn;
+                            String pred = buildPredicate.apply(qualifiedCol, filter);
+                            if (pred != null) groupFilters.add(pred);
+                        } else {
+                            // Build EXISTS subquery with its own aliases
+                            StringBuilder exists = new StringBuilder();
+                            exists.append("EXISTS (SELECT 1 FROM ");
+                            String firstAlias = "s0";
+                            exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
+                            for (int i = 1; i < hops.size(); i++) {
+                                Hop hi = hops.get(i);
+                                String prevAlias = "s" + (i - 1);
+                                String curAlias = "s" + i;
+                                exists.append("JOIN ")
+                                      .append(hi.toTable).append(" ").append(curAlias)
+                                      .append(" ON ")
+                                      .append(prevAlias).append(".").append(hi.fromField)
+                                      .append("=")
+                                      .append(curAlias).append(".").append(hi.toField)
+                                      .append(" ");
+                            }
+                            // WHERE correlation to root
+                            exists.append("WHERE ")
+                                  .append(this.root.alias).append(".").append(h0.fromField)
                                   .append("=")
-                                  .append(curAlias).append(".").append(hi.toField)
-                                  .append(" ");
+                                  .append(firstAlias).append(".").append(h0.toField);
+                            // Target predicate on the last alias
+                            String lastAlias = "s" + (hops.size() - 1);
+                            String qualifiedCol = lastAlias + "." + targetColumn;
+                            String pred = buildPredicate.apply(qualifiedCol, filter);
+                            if (pred != null) {
+                                exists.append(" AND ").append(pred);
+                            }
+                            exists.append(")");
+                            groupFilters.add(exists.toString());
                         }
-                        // WHERE correlation to root
-                        exists.append("WHERE ")
-                              .append(this.root.alias).append(".").append(h0.fromField)
-                              .append("=")
-                              .append(firstAlias).append(".").append(h0.toField);
-                        // Target predicate on the last alias
-                        String lastAlias = "s" + (hops.size() - 1);
-                        String qualifiedCol = lastAlias + "." + targetColumn;
-                        String pred = buildPredicate.apply(qualifiedCol, filter);
-                        if (pred != null) {
-                            exists.append(" AND ").append(pred);
-                        }
-                        exists.append(")");
-                        groupFilters.add(exists.toString());
                     }
                 }
             }
