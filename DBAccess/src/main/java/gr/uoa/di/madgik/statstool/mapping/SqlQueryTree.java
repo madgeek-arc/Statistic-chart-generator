@@ -577,13 +577,15 @@ public class SqlQueryTree {
                         String predicate = buildPredicate.apply(qualifiedCol, filter);
                         if (predicate != null) groupFilters.add(predicate);
                     } else {
-                        // If the filter's table is already directly JOINed (because it is also a GROUP BY
-                        // SELECT field), apply the predicate inline on that alias instead of EXISTS.
-                        // EXISTS(...type != 'Other') would still allow 'Other' rows through the GROUP BY
-                        // because it only tests at the result level, not at the expanded-row level.
+                        // If the filter's final target table is already directly JOINed (because it is
+                        // also a GROUP BY SELECT field), apply the predicate inline on that alias instead
+                        // of EXISTS. EXISTS(...col != 'X') is always TRUE if any row doesn't match, so
+                        // excluded values would still appear in the GROUP BY via the direct JOIN.
+                        // This applies regardless of the number of hops — only the final table matters.
                         Hop h0 = hops.get(0);
-                        String directAlias = directJoinTableToAlias.get(h0.toTable);
-                        if (directAlias != null && hops.size() == 1) {
+                        Hop lastHop = hops.get(hops.size() - 1);
+                        String directAlias = directJoinTableToAlias.get(lastHop.toTable);
+                        if (directAlias != null) {
                             String qualifiedCol = directAlias + "." + targetColumn;
                             String pred = buildPredicate.apply(qualifiedCol, filter);
                             if (pred != null) groupFilters.add(pred);

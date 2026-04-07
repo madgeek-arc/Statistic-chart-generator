@@ -554,9 +554,11 @@ public class SqlQueryTreeTest {
                 "Must JOIN result_organization");
         assertTrue(sql.matches("(?s).*JOIN\\s+organization\\s+\\w+\\s+ON\\s+\\w+\\.organization=\\w+\\.id.*"),
                 "Must JOIN organization");
-        // Non-root filter becomes EXISTS, not another JOIN
-        assertTrue(sql.matches("(?s).*EXISTS\\s*\\(SELECT 1 FROM result_organization.*JOIN organization.*country!=\\?.*\\).*"),
-                "Non-root filter must use EXISTS subquery");
+        // Non-root filter on directly-joined table must be inline, NOT EXISTS
+        assertFalse(sql.toUpperCase().contains("EXISTS"),
+                "Filter on directly-joined GROUP BY field must not use EXISTS; got: " + sql);
+        assertTrue(sql.matches("(?s).*WHERE.*\\.country!=\\?.*"),
+                "country filter must appear as alias.country!=? in WHERE; got: " + sql);
         // Root-level filters are direct predicates
         assertTrue(sql.contains("r0.type=?"), "type filter must be a direct predicate");
         assertTrue(sql.contains("r0.year>?"), "year filter must be a direct predicate");
@@ -564,7 +566,7 @@ public class SqlQueryTreeTest {
         assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.country.*"), "GROUP BY on country column");
         // LIMIT
         assertTrue(sql.contains("LIMIT 30"), "LIMIT must be present");
-        // Parameters: type, year, country (EXISTS param order)
+        // Parameters: type, year, country (all inline)
         assertEquals(3, params.size(), "Three bound parameters expected");
     }
 
