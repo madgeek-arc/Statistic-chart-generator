@@ -306,9 +306,12 @@ public class HighChartsDataFormatter extends DataFormatter {
                 String yValue = valueToString(row.get(0));
                 String xValue = valueToString(row.get(1));
 
-                if (XtoYMapping != null)
+                // Only write non-null values. With stacked multi-query results the split rows
+                // contain ALL (x1,x2) keys, most with null y for queries that don't own that key.
+                // Writing null would overwrite a valid value already set by an earlier result.
+                if (XtoYMapping != null && row.get(0) != null)
                     XtoYMapping.put(xValue, yValue);
-                else
+                else if (XtoYMapping == null)
                     throw new DataFormationException("XtoYMapping HashMap is NULL");
             }
         }
