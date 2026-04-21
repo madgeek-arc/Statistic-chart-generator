@@ -650,6 +650,50 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void orFilter_onDirectlyJoinedTable_appliesInlineOrNotExists() {
+        // Regression: OR group whose predicates all target the same directly-joined GROUP BY table
+        // must emit (alias.col=? OR alias.col=?) inline — not EXISTS+UNION ALL.
+        // EXISTS on a directly-joined table still allows non-matching rows through the JOIN.
+        // E.g.: datasource is directly joined as d1; OR filter on datasource.type must be
+        // (d1.type=? OR d1.type=?) not EXISTS (... FROM datasource WHERE type=? UNION ALL ...).
+        ProfileConfiguration pc = buildProfile();
+        pc.tables.put("datasource", new Table("datasource", "id", null));
+        pc.fields.put("datasource.type", new Field("datasource", "type", "text"));
+        pc.fields.put("datasource.name", new Field("datasource", "name", "text"));
+        pc.relations.put("result.datasource", Collections.singletonList(
+                new Join("result", "id", "datasource", "result_id")));
+
+        Filter f1 = new Filter("result.datasource.type", "=",
+                Collections.singletonList("Institutional Repository"), "text");
+        Filter f2 = new Filter("result.datasource.type", "=",
+                Collections.singletonList("Institutional CRIS"), "text");
+        FilterGroup fg = new FilterGroup(Arrays.asList(f1, f2), "OR");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.datasource.name", null, 2)
+                ),
+                "result", "test", 60, "yaxis", false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, "yaxis");
+        System.out.println("[DEBUG_LOG] SQL orFilter_onDirectlyJoinedTable_appliesInlineOrNotExists: \n" + sql);
+
+        // Must NOT use EXISTS or UNION ALL — datasource is directly joined
+        assertFalse(sql.toUpperCase().contains("EXISTS"),
+                "OR filter on directly-joined table must not use EXISTS; got: " + sql);
+        assertFalse(sql.contains("UNION ALL"),
+                "OR filter on directly-joined table must not use UNION ALL; got: " + sql);
+        // Must emit inline OR predicates on the direct-join alias
+        assertTrue(sql.matches("(?s).*\\(\\w+\\.type=\\? OR \\w+\\.type=\\?\\).*"),
+                "OR filter must be (alias.type=? OR alias.type=?); got: " + sql);
+        assertEquals(2, params.size(), "Two bound parameters expected");
+        assertEquals("Institutional Repository", params.get(0));
+        assertEquals("Institutional CRIS", params.get(1));
+    }
+
+    @Test
     public void entityFilter_notDuplicated_whenEntityNameDiffersFromTableName() {
         // Regression: when entity logical name ("publication") differs from SQL table name ("result"),
         // addEntityFilters was called with path=entityName once (size-1 branch) and path=tableName

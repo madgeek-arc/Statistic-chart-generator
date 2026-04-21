@@ -501,31 +501,45 @@ public class SqlQueryTree {
                             rootOrPredicates.add(pred);
                         }
                     } else {
-                        Hop h0 = hops.get(0);
-                        if (correlationField == null) correlationField = h0.fromField;
-                        String lastAlias = "s" + (hops.size() - 1);
-                        // Build the FROM/JOIN chain (shared by both single-branch and UNION ALL forms)
-                        StringBuilder fromClause = new StringBuilder();
-                        fromClause.append(h0.toTable).append(" s0 ");
-                        for (int i = 1; i < hops.size(); i++) {
-                            Hop hi = hops.get(i);
-                            String prevAlias = "s" + (i - 1);
-                            String curAlias = "s" + i;
-                            fromClause.append("JOIN ")
-                                      .append(hi.toTable).append(" ").append(curAlias)
-                                      .append(" ON ")
-                                      .append(prevAlias).append(".").append(hi.fromField)
-                                      .append("=")
-                                      .append(curAlias).append(".").append(hi.toField)
-                                      .append(" ");
-                        }
-                        String qualifiedCol = lastAlias + "." + targetColumn;
-                        String pred = buildPredicate.apply(qualifiedCol, filter);
-                        if (pred != null) {
-                            String corrCondition = this.root.alias + "." + h0.fromField + "=s0." + h0.toField;
-                            hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred});
-                            // Also build the UNION ALL branch string (used when there are multiple branches)
-                            unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE " + pred);
+                        // If the last hop's target table is directly joined (it is a GROUP BY SELECT column),
+                        // apply the predicate inline on that alias — same reasoning as the AND branch:
+                        // EXISTS(...col=X) on a directly-joined table still passes rows through the JOIN that
+                        // don't satisfy the predicate, causing wrong rows in the GROUP BY output.
+                        Hop lastHop = hops.get(hops.size() - 1);
+                        String directAlias = directJoinTableToAlias.get(lastHop.toTable);
+                        if (directAlias != null) {
+                            String qualifiedCol = directAlias + "." + targetColumn;
+                            String pred = buildPredicate.apply(qualifiedCol, filter);
+                            if (pred != null) {
+                                rootOrPredicates.add(pred);
+                            }
+                        } else {
+                            Hop h0 = hops.get(0);
+                            if (correlationField == null) correlationField = h0.fromField;
+                            String lastAlias = "s" + (hops.size() - 1);
+                            // Build the FROM/JOIN chain (shared by both single-branch and UNION ALL forms)
+                            StringBuilder fromClause = new StringBuilder();
+                            fromClause.append(h0.toTable).append(" s0 ");
+                            for (int i = 1; i < hops.size(); i++) {
+                                Hop hi = hops.get(i);
+                                String prevAlias = "s" + (i - 1);
+                                String curAlias = "s" + i;
+                                fromClause.append("JOIN ")
+                                          .append(hi.toTable).append(" ").append(curAlias)
+                                          .append(" ON ")
+                                          .append(prevAlias).append(".").append(hi.fromField)
+                                          .append("=")
+                                          .append(curAlias).append(".").append(hi.toField)
+                                          .append(" ");
+                            }
+                            String qualifiedCol = lastAlias + "." + targetColumn;
+                            String pred = buildPredicate.apply(qualifiedCol, filter);
+                            if (pred != null) {
+                                String corrCondition = this.root.alias + "." + h0.fromField + "=s0." + h0.toField;
+                                hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred});
+                                // Also build the UNION ALL branch string (used when there are multiple branches)
+                                unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE " + pred);
+                            }
                         }
                     }
                 }
