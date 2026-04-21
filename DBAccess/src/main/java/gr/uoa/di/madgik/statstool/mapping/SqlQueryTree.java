@@ -582,7 +582,6 @@ public class SqlQueryTree {
                         // of EXISTS. EXISTS(...col != 'X') is always TRUE if any row doesn't match, so
                         // excluded values would still appear in the GROUP BY via the direct JOIN.
                         // This applies regardless of the number of hops — only the final table matters.
-                        Hop h0 = hops.get(0);
                         Hop lastHop = hops.get(hops.size() - 1);
                         String directAlias = directJoinTableToAlias.get(lastHop.toTable);
                         if (directAlias != null) {
@@ -590,15 +589,26 @@ public class SqlQueryTree {
                             String pred = buildPredicate.apply(qualifiedCol, filter);
                             if (pred != null) groupFilters.add(pred);
                         } else {
-                            // Build EXISTS subquery with its own aliases
-                            StringBuilder exists = new StringBuilder();
-                            exists.append("EXISTS (SELECT 1 FROM ");
-                            String firstAlias = "s0";
-                            exists.append(h0.toTable).append(" ").append(firstAlias).append(" ");
-                            for (int i = 1; i < hops.size(); i++) {
+                            // If the filter path goes through a directly-joined table before reaching
+                            // a non-joined one (e.g. result→datasource→organization where datasource
+                            // is directly joined), start the EXISTS from that alias rather than
+                            // creating a fresh alias from root. This ensures the EXISTS is anchored
+                            // to the same JOIN used in the GROUP BY.
+                            int cutoff = -1;
+                            String cutoffAlias = null;
+                            for (int i = 0; i < hops.size() - 1; i++) {
+                                String a = directJoinTableToAlias.get(hops.get(i).toTable);
+                                if (a != null) { cutoff = i; cutoffAlias = a; } else break;
+                            }
+
+                            int firstIdx = cutoff + 1;
+                            Hop firstHop = hops.get(firstIdx);
+                            StringBuilder exists = new StringBuilder("EXISTS (SELECT 1 FROM ");
+                            exists.append(firstHop.toTable).append(" s0 ");
+                            for (int i = firstIdx + 1; i < hops.size(); i++) {
                                 Hop hi = hops.get(i);
-                                String prevAlias = "s" + (i - 1);
-                                String curAlias = "s" + i;
+                                String prevAlias = "s" + (i - firstIdx - 1);
+                                String curAlias  = "s" + (i - firstIdx);
                                 exists.append("JOIN ")
                                       .append(hi.toTable).append(" ").append(curAlias)
                                       .append(" ON ")
@@ -607,18 +617,14 @@ public class SqlQueryTree {
                                       .append(curAlias).append(".").append(hi.toField)
                                       .append(" ");
                             }
-                            // WHERE correlation to root
+                            String corrBase = (cutoff >= 0) ? cutoffAlias : this.root.alias;
                             exists.append("WHERE ")
-                                  .append(this.root.alias).append(".").append(h0.fromField)
-                                  .append("=")
-                                  .append(firstAlias).append(".").append(h0.toField);
-                            // Target predicate on the last alias
-                            String lastAlias = "s" + (hops.size() - 1);
+                                  .append(corrBase).append(".").append(firstHop.fromField)
+                                  .append("=s0.").append(firstHop.toField);
+                            String lastAlias = "s" + (hops.size() - firstIdx - 1);
                             String qualifiedCol = lastAlias + "." + targetColumn;
                             String pred = buildPredicate.apply(qualifiedCol, filter);
-                            if (pred != null) {
-                                exists.append(" AND ").append(pred);
-                            }
+                            if (pred != null) exists.append(" AND ").append(pred);
                             exists.append(")");
                             groupFilters.add(exists.toString());
                         }

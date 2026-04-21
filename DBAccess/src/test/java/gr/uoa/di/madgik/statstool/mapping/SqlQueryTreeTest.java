@@ -609,6 +609,47 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void andFilter_throughDirectJoinToNonJoinedTable_usesDirectAliasForExistsCorrelation() {
+        // Regression: result.datasource.organization.country = 'GR'
+        // datasource is directly joined (it's also a GROUP BY SELECT field),
+        // organization is NOT directly joined.
+        // Expected: EXISTS (SELECT 1 FROM organization s0 WHERE d1.<fk>=s0.<pk> AND s0.country=?)
+        // NOT:      EXISTS (SELECT 1 FROM datasource s0 JOIN organization s1 ... WHERE r0.id=s0.result_id ...)
+        ProfileConfiguration pc = buildProfile();
+        pc.tables.put("datasource", new Table("datasource", "id", null));
+        pc.tables.put("organization", new Table("organization", "id", null));
+        pc.fields.put("datasource.type", new Field("datasource", "type", "text"));
+        pc.fields.put("organization.country", new Field("organization", "country", "text"));
+        pc.relations.put("result.datasource", Collections.singletonList(
+                new Join("result", "id", "datasource", "result_id")));
+        pc.relations.put("datasource.organization", Collections.singletonList(
+                new Join("datasource", "id", "organization", "datasource_id")));
+
+        Filter countryFilter = new Filter("result.datasource.organization.country", "=",
+                Collections.singletonList("GR"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(countryFilter), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.datasource.type", null, 2)
+                ),
+                "result", "test", 50, "yaxis", false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, "yaxis");
+        System.out.println("[DEBUG_LOG] SQL andFilter_throughDirectJoinToNonJoinedTable: \n" + sql);
+
+        // EXISTS must be anchored to the direct-join alias (d1), not spawn a fresh datasource alias
+        assertFalse(sql.matches("(?s).*EXISTS.*FROM datasource.*JOIN organization.*"),
+                "EXISTS must not re-join datasource; got: " + sql);
+        assertTrue(sql.matches("(?s).*EXISTS.*FROM organization\\s+s0.*WHERE.*\\.id=s0\\.datasource_id.*"),
+                "EXISTS must start from organization and correlate via d1.id; got: " + sql);
+        assertEquals(1, params.size());
+        assertEquals("GR", params.get(0));
+    }
+
+    @Test
     public void entityFilter_notDuplicated_whenEntityNameDiffersFromTableName() {
         // Regression: when entity logical name ("publication") differs from SQL table name ("result"),
         // addEntityFilters was called with path=entityName once (size-1 branch) and path=tableName
