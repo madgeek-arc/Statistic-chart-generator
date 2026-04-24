@@ -67,11 +67,18 @@ public class HighChartsDataFormatter extends DataFormatter {
                                                                   String chartName, boolean isDrilldown) throws DataFormationException {
 
         //There are no Results
-        if (result.getRows().isEmpty())
+        if (result.getRows().isEmpty()) {
+            if (chartType == null)
+                return HCScalar(result, chartName);
             return HCSingleGroupBy(result, chartType, chartName);
+        }
 
         //If there are results handle them by row size
         switch (result.getRows().get(0).size()) {
+            case 1:
+                // Scalar result: single aggregate with no GROUP BY (e.g. "numbers" KPI charts).
+                // Row is [value] — no x-axis category, just the number.
+                return HCScalar(result, chartName);
             case 2:
                 return HCSingleGroupBy(result, chartType, chartName);
             case 3:
@@ -88,6 +95,22 @@ public class HighChartsDataFormatter extends DataFormatter {
                 throw new DataFormationException("Unexpected Result Row size of: " + result.getRows().get(0).size());
         }
 
+    }
+
+    private HighChartsJsonResponse HCScalar(Result result, String chartName) {
+        ArrayList<Number> values = new ArrayList<>();
+        for (List<?> row : result.getRows())
+            values.add(parseValue(valueToString(row.get(0))));
+
+        ArrayList<AbsData> dataSeries = new ArrayList<>();
+        dataSeries.add(new ArrayOfValues(values));
+
+        ArrayList<String> names = new ArrayList<>();
+        names.add(chartName);
+        ArrayList<String> types = new ArrayList<>();
+        types.add("numbers");
+
+        return new HighChartsJsonResponse(dataSeries, new ArrayList<>(), names, types);
     }
 
     private HighChartsJsonResponse HCSingleGroupBy(Result result, SupportedChartTypes chartType, String chartName) {
