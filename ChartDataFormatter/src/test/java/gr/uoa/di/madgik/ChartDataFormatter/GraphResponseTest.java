@@ -1,10 +1,13 @@
 package gr.uoa.di.madgik.ChartDataFormatter;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -101,6 +104,44 @@ public class GraphResponseTest {
 
         // HighChartsJsonResponse response = new HighChartsDataFormatter().toJsonResponse(resultList, chartsType, chartNames);
         
+    }
+
+    @Test
+    public void scalarResult_numbersChartType_returnsValueWithNoXAxis() throws DataFormatter.DataFormationException {
+        // Regression: chart type "numbers" maps to null in SupportedChartTypes; single aggregate
+        // with no GROUP BY produces a row of size 1. Formatter must return the value, not throw.
+        Result scalar = new Result();
+        scalar.setRows(Collections.singletonList(Collections.singletonList("42350")));
+
+        List<Result> results = Collections.singletonList(scalar);
+        List<SupportedChartTypes> types = Collections.singletonList(null); // "numbers" → null
+        List<String> names = Collections.singletonList("Total Results");
+
+        HighChartsJsonResponse response = new HighChartsDataFormatter().toJsonResponse(results, types, names, false);
+
+        assertNotNull(response, "Response must not be null for scalar result");
+        assertNotNull(response.getDataSeries(), "dataSeries must not be null");
+        assertFalse(response.getDataSeries().isEmpty(), "dataSeries must not be empty");
+        assertTrue(response.getxAxis_categories() == null || response.getxAxis_categories().isEmpty(),
+                "x-axis categories must be empty for a scalar result");
+        assertTrue(response.getDataSeriesTypes().contains("numbers"),
+                "series type must be 'numbers'; got: " + response.getDataSeriesTypes());
+    }
+
+    @Test
+    public void scalarResult_emptyRows_returnsEmptySeriesWithNoXAxis() throws DataFormatter.DataFormationException {
+        // Empty result for a scalar/numbers query must return an empty series, not throw.
+        Result empty = new Result();
+        empty.setRows(new ArrayList<>());
+
+        List<Result> results = Collections.singletonList(empty);
+        List<SupportedChartTypes> types = Collections.singletonList(null);
+        List<String> names = Collections.singletonList("Total Results");
+
+        HighChartsJsonResponse response = new HighChartsDataFormatter().toJsonResponse(results, types, names, false);
+
+        assertNotNull(response, "Response must not be null for empty scalar result");
+        assertNotNull(response.getDataSeries(), "dataSeries must not be null");
     }
 
     @Test
