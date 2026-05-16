@@ -8,4 +8,8 @@ public class StatsServiceException extends Exception {
     public StatsServiceException(String s) {
         super(s);
     }
+
+    public StatsServiceException(String s, Throwable cause) {
+        super(s, cause);
+    }
 }

@@ -3,6 +3,7 @@ package gr.uoa.di.madgik.ChartDataFormatter;
 import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.SupportedDiagrams.Service.SupportedDiagramsService;
 import gr.uoa.di.madgik.ChartDataFormatter.Handlers.RequestBodyHandler;
 import gr.uoa.di.madgik.ChartDataFormatter.RestControllers.ChartDataFormatterRestController;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.NlQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -35,6 +36,9 @@ class ShortenChartUrlTest {
 
     @MockBean
     private RestTemplate restTemplate;
+
+    @MockBean
+    private NlQueryService nlQueryService;
 
     @Test
     void shortenChartUrl_success_returnsJsonWithShortUrl() throws Exception {

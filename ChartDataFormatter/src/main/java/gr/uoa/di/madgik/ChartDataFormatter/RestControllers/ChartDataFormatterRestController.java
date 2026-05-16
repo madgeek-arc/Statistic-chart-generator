@@ -9,6 +9,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.Handlers.SupportedLibraries;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ShortenUrlInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.JsonResponse;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.NlQueryService;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -40,13 +41,18 @@ public class ChartDataFormatterRestController {
     private RequestBodyHandler requestBodyHandler;
     private SupportedDiagramsService supportedDiagramsService;
     private final RestTemplate restTemplate;
+    private final NlQueryService nlQueryService;
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService, RestTemplate restTemplate) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler,
+                                            SupportedDiagramsService supportedDiagramsService,
+                                            RestTemplate restTemplate,
+                                            NlQueryService nlQueryService) {
         this.requestBodyHandler = requestBodyHandler;
         this.supportedDiagramsService = supportedDiagramsService;
         this.restTemplate = restTemplate;
+        this.nlQueryService = nlQueryService;
     }
 
     @GetMapping
@@ -159,7 +165,32 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/json",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name="json") String json){
+    public @ResponseBody ResponseEntity<JsonResponse> json(
+            @RequestParam(name="json", required=false) String json,
+            @RequestParam(name="nl", required=false) String nl,
+            @RequestParam(name="sig", required=false) String sig,
+            @RequestParam(name="profile", required=false) String profile){
+
+        if (nl != null) {
+            if (sig == null) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            }
+            try {
+                nlQueryService.verifySignature(profile, nl, sig);
+                gr.uoa.di.madgik.statstool.domain.Result result = nlQueryService.execute(profile, nl);
+                // Wrap single result in a minimal HighCharts raw response
+                gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.RawDataJsonResponse rawResponse =
+                        new gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.RawDataJsonResponse();
+                rawResponse.setData(new java.util.ArrayList<>());
+                rawResponse.getData().add(result.getRows());
+                return new ResponseEntity<>(rawResponse, HttpStatus.OK);
+            } catch (SecurityException e) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            } catch (Exception e) {
+                log.error("NL query execution failed", e);
+                return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
 
         JsonResponse responseData;
         ObjectMapper mapper = new ObjectMapper();

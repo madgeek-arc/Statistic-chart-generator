@@ -35,6 +35,21 @@ management:
                 tags:
                         application: ${spring.application.name}
 
+# NL query agent settings
+nl:
+    signing-secret: change-me-in-production
+    session-ttl-minutes: 30
+    session-cleanup-interval-ms: 60000
+    base-url: /chart/json
+
+spring:
+    ai:
+        anthropic:
+            api-key: ${ANTHROPIC_API_KEY:}
+            chat:
+                options:
+                    model: claude-sonnet-4-6
+
 # mappings filepath
 #mappings:
 #    file:

@@ -6,6 +6,7 @@ public class MappingEntity {
     private String name;
     private String from;
     private String key;
+    private String description;
     private List<MappingFilter> filters;
     private List<MappingField> fields;
     private List<String> relations;
@@ -58,5 +59,13 @@ public class MappingEntity {
 
     public void setRelations(List<String> relations) {
         this.relations = relations;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }

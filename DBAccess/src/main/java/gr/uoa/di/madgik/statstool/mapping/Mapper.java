@@ -74,21 +74,23 @@ public class Mapper {
             ObjectMapper mapper = new ObjectMapper();
             Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingFile).getURL(), Mapping.class);
             for(MappingEntity entity : mapping.getEntities()) {
+                String entityDesc = entity.getDescription() != null ? entity.getDescription() : entity.getName();
                 if(entity.getFilters() != null) {
                     List<Filter> filters = new ArrayList<>();
                     for (MappingFilter filter : entity.getFilters()) {
                         filters.add(new Filter(filter.getColumn(), filter.getType(), filter.getValues(), filter.getDatatype()));
                     }
-                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters));
+                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), filters, entityDesc));
                 } else {
-                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null));
+                    profileConfiguration.tables.put(entity.getName(), new Table(entity.getFrom(), entity.getKey(), null, entityDesc));
                 }
 
                 for(MappingField field : entity.getFields()) {
+                    String fieldDesc = field.getDescription() != null ? field.getDescription() : field.getName();
                     if(field.getSqlTable() != null) {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(field.getSqlTable(), field.getColumn(), field.getDatatype(), fieldDesc));
                     } else {
-                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype()));
+                        profileConfiguration.fields.put(entity.getName() + "." + field.getName(), new Field(entity.getFrom(), field.getColumn(), field.getDatatype(), fieldDesc));
                     }
                 }
             }
@@ -211,5 +213,10 @@ public class Mapper {
 
     public List<Profile> getProfiles() {
         return profiles;
+    }
+
+    public ProfileConfiguration getProfileConfiguration(String profile) {
+        String key = profile != null ? profile : primaryProfile;
+        return profileConfigurations.get(key);
     }
 }
