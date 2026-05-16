@@ -76,12 +76,15 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Spring AI: Claude (Anthropic). @Tool annotation is in spring-ai-core (transitive). -->
-        <!-- MCP server transport (spring-ai-starter-mcp-server-webmvc) is deferred until     -->
-        <!-- external portal access is needed — it pulls in WebFlux which breaks WebMvcTests. -->
+        <!-- Spring AI: Claude (Anthropic) + MCP server (WebMVC/SSE transport). -->
+        <!-- woodstox-core in test scope fixes WebFlux codec init in @WebMvcTest. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
         </dependency>
     </dependencies>
 

@@ -49,6 +49,11 @@ spring:
             chat:
                 options:
                     model: claude-sonnet-4-6
+        mcp:
+            server:
+                name: statistic-chart-generator
+                version: 0.0.2
+                type: SYNC
 
 # mappings filepath
 #mappings:
