@@ -33,12 +33,26 @@ public class RequestBodyHandler {
      * @return The appropriate {@link JsonResponse} depending on the value of the Library in the {@link RequestInfo}.
      * @throws RequestBodyException
      */
+    public JsonResponse handleRequest(RequestInfo requestJson, List<Result> prefetchedResults) throws RequestBodyException {
+        return format(requestJson, prefetchedResults);
+    }
+
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException {
 
         List<Result> statsServiceResults;
 
         try {
             statsServiceResults = this.statsService.query(requestJson.getChartQueries(), requestJson.getOrderBy());
+            return format(requestJson, statsServiceResults);
+        } catch (RequestBodyException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+    }
+
+    private JsonResponse format(RequestInfo requestJson, List<Result> statsServiceResults) throws RequestBodyException {
+        try {
             JsonResponse jsonResponse = null;
 
             switch (SupportedLibraries.valueOf(requestJson.getLibrary())) {

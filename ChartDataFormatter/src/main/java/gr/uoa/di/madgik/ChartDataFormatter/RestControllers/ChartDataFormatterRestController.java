@@ -77,10 +77,24 @@ public class ChartDataFormatterRestController {
         log.debug("requestJson: " + requestJson.toString());
 
         try {
-            responseData = requestBodyHandler.handleRequest(requestJson);
+            if (requestJson.isNlRequest()) {
+                if (requestJson.getSig() == null) {
+                    return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+                }
+                nlQueryService.verifySignature(requestJson.getProfile(), requestJson.getNl(), requestJson.getSig());
+                gr.uoa.di.madgik.statstool.domain.Result result = nlQueryService.execute(requestJson.getProfile(), requestJson.getNl());
+                responseData = requestBodyHandler.handleRequest(requestJson, java.util.List.of(result));
+            } else {
+                responseData = requestBodyHandler.handleRequest(requestJson);
+            }
+        } catch (SecurityException e) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
+        } catch (Exception e) {
+            log.error("NL query execution failed", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         return new ResponseEntity<>(responseData, HttpStatus.OK);
