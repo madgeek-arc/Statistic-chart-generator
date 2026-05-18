@@ -61,4 +61,43 @@ public class CacheControllerNlTest {
                         .param("profile", "openaire_stats"))
                 .andExpect(status().isBadRequest());
     }
+
+    // --- NL options cache endpoints ---
+
+    @Test
+    void dropNlOptionsCache_noLibrary_callsDropWithNull() throws Exception {
+        mockMvc.perform(get("/cache/dropNlOptionsCache"))
+                .andExpect(status().isOk());
+        verify(cacheService).dropNlOptionsCache(null);
+    }
+
+    @Test
+    void dropNlOptionsCache_withLibrary_callsDropWithLibrary() throws Exception {
+        mockMvc.perform(get("/cache/dropNlOptionsCache").param("library", "HighCharts"))
+                .andExpect(status().isOk());
+        verify(cacheService).dropNlOptionsCache("HighCharts");
+    }
+
+    @Test
+    void evictNlOptionsCache_callsEvictWithLibraryAndDesc() throws Exception {
+        mockMvc.perform(get("/cache/evictNlOptionsCache")
+                        .param("library", "HighCharts")
+                        .param("desc", "blue bar chart"))
+                .andExpect(status().isOk());
+        verify(cacheService).evictNlOptionsCache("HighCharts", "blue bar chart");
+    }
+
+    @Test
+    void evictNlOptionsCache_missingLibrary_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/cache/evictNlOptionsCache")
+                        .param("desc", "blue bar chart"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void evictNlOptionsCache_missingDesc_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/cache/evictNlOptionsCache")
+                        .param("library", "HighCharts"))
+                .andExpect(status().isBadRequest());
+    }
 }
