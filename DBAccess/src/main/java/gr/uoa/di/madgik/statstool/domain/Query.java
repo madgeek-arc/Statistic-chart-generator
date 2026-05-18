@@ -11,8 +11,12 @@ public class Query {
     private String profile;
     private int limit;
     private String orderBy;
+    private String nl;
+    private String sig;
 
     boolean useCache = true;
+
+    public boolean isNlQuery() { return nl != null && !nl.isBlank(); }
 
     public Query() {}
 
@@ -99,6 +103,12 @@ public class Query {
     public void setUseCache(boolean useCache) {
         this.useCache = useCache;
     }
+
+    public String getNl() { return nl; }
+    public void setNl(String nl) { this.nl = nl; }
+
+    public String getSig() { return sig; }
+    public void setSig(String sig) { this.sig = sig; }
 
     @Override
     public String toString() {

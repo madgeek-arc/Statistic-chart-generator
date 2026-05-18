@@ -21,12 +21,6 @@ public class RequestInfo {
     private String orderBy;
     @JsonProperty
     private boolean drilldown;
-    @JsonProperty
-    private String nl;
-    @JsonProperty
-    private String sig;
-    @JsonProperty
-    private String profile;
 
     public RequestInfo() {}
 
@@ -64,17 +58,6 @@ public class RequestInfo {
     public void setDrilldown(boolean drilldown) {
         this.drilldown = drilldown;
     }
-
-    public String getNl() { return nl; }
-    public void setNl(String nl) { this.nl = nl; }
-
-    public String getSig() { return sig; }
-    public void setSig(String sig) { this.sig = sig; }
-
-    public String getProfile() { return profile; }
-    public void setProfile(String profile) { this.profile = profile; }
-
-    public boolean isNlRequest() { return nl != null && !nl.isBlank(); }
 
     public List<SupportedChartTypes> getChartTypes(){
 

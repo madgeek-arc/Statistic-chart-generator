@@ -4,15 +4,19 @@ import gr.uoa.di.madgik.ChartDataFormatter.DataFormatter.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataRequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ChartInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.NlQueryService;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
+import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -22,28 +26,44 @@ import java.util.List;
 public class RequestBodyHandler {
 
     private StatsService statsService;
+    private final NlQueryService nlQueryService;
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public RequestBodyHandler(StatsService statsService) {
+    public RequestBodyHandler(StatsService statsService, NlQueryService nlQueryService) {
         this.statsService = statsService;
-    }
-
-    /**
-     * @param requestJson Holds the appropriate info to correctly format the queried data.
-     * @return The appropriate {@link JsonResponse} depending on the value of the Library in the {@link RequestInfo}.
-     * @throws RequestBodyException
-     */
-    public JsonResponse handleRequest(RequestInfo requestJson, List<Result> prefetchedResults) throws RequestBodyException {
-        return format(requestJson, prefetchedResults);
+        this.nlQueryService = nlQueryService;
     }
 
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException {
-
-        List<Result> statsServiceResults;
-
         try {
-            statsServiceResults = this.statsService.query(requestJson.getChartQueries(), requestJson.getOrderBy());
-            return format(requestJson, statsServiceResults);
+            List<ChartInfo> charts = requestJson.getChartsInfo();
+            List<Result> results = new ArrayList<>(Collections.nCopies(charts.size(), null));
+            List<Query> dslQueries = new ArrayList<>();
+            List<Integer> dslPositions = new ArrayList<>();
+
+            for (int i = 0; i < charts.size(); i++) {
+                Query q = charts.get(i).getQuery();
+                if (q != null && q.isNlQuery()) {
+                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getSig());
+                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl()));
+                } else {
+                    dslQueries.add(q);
+                    dslPositions.add(i);
+                }
+            }
+
+            if (!dslQueries.isEmpty()) {
+                List<Result> dslResults = statsService.query(dslQueries, requestJson.getOrderBy());
+                for (int i = 0; i < dslPositions.size(); i++) {
+                    results.set(dslPositions.get(i), dslResults.get(i));
+                }
+            }
+
+            return format(requestJson, results);
+        } catch (SecurityException e) {
+            throw new RequestBodyException("Invalid NL query signature", e, HttpStatus.FORBIDDEN);
+        } catch (StatsServiceException e) {
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
         } catch (RequestBodyException e) {
             throw e;
         } catch (Exception e) {
@@ -145,54 +165,59 @@ public class RequestBodyHandler {
     }
 
     public JsonResponse handleRawDataRequest(RawDataRequestInfo requestInfo) throws RequestBodyException {
-
-        List<Result> statsServiceResults;
-
-        for (Query q:requestInfo.getQueries())
-            log.debug("Query:" + q.getName() );
+        List<gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataSeriesInfo> seriesList = requestInfo.getSeries();
+        List<Result> results = new ArrayList<>(Collections.nCopies(seriesList.size(), null));
+        List<Query> dslQueries = new ArrayList<>();
+        List<Integer> dslPositions = new ArrayList<>();
 
         try {
-            statsServiceResults = this.statsService.query(requestInfo.getQueries(), requestInfo.getOrderBy());
+            for (int i = 0; i < seriesList.size(); i++) {
+                Query q = seriesList.get(i).getQuery();
+                if (q != null && q.isNlQuery()) {
+                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getSig());
+                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl()));
+                } else {
+                    dslQueries.add(q);
+                    dslPositions.add(i);
+                }
+            }
 
-            this.logChartInfo(requestInfo, statsServiceResults);
+            if (!dslQueries.isEmpty()) {
+                for (Query q : dslQueries) log.debug("Query:" + q.getName());
+                List<Result> dslResults = statsService.query(dslQueries, requestInfo.getOrderBy());
+                for (int i = 0; i < dslPositions.size(); i++)
+                    results.set(dslPositions.get(i), dslResults.get(i));
+            }
+
+            this.logChartInfo(requestInfo, results);
 
             if (!requestInfo.isVerbose()) {
                 RawDataJsonResponse response = new RawDataJsonResponse();
                 response.setData(new ArrayList<>());
-
-                for (Result r : statsServiceResults)
+                for (Result r : results)
                     response.getData().add(r.getRows());
-
                 return response;
             } else {
-
                 VerboseRawDataResponse response = new VerboseRawDataResponse();
                 response.setSeries(new ArrayList<>());
-
-                //for (Result r:statsServiceResults) {
-                for (int i = 0; i < statsServiceResults.size(); i++) {
-                    Result result = statsServiceResults.get(i);
+                for (int i = 0; i < results.size(); i++) {
+                    Result result = results.get(i);
                     VerboseRawDataSeries series = new VerboseRawDataSeries();
                     VerboseRawDataSerie serie = new VerboseRawDataSerie();
-
-                    serie.setQuery(requestInfo.getQueries().get(i));
+                    serie.setQuery(seriesList.get(i).getQuery());
                     serie.setRows(new ArrayList<>());
-
-                    for (List<?> row:result.getRows()) {
+                    for (List<?> row : result.getRows())
                         serie.getRows().add(new VerboseRawDataRow(row));
-                    }
-
                     series.setSeries(serie);
-
                     response.getSeries().add(series);
                 }
-
                 return response;
             }
-
+        } catch (SecurityException e) {
+            throw new RequestBodyException("Invalid NL query signature", e, HttpStatus.FORBIDDEN);
         } catch (Exception e) {
-              throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage() , e, HttpStatus.UNPROCESSABLE_ENTITY);
-          }
+            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
+        }
     }
 
     private void logChartInfo(RequestInfo requestJson, List<Result> statsServiceResults) {

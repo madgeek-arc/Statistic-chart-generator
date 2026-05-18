@@ -8,16 +8,35 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class InMemoryNlSqlCache implements NlSqlCache {
 
-    private final ConcurrentHashMap<String, QueryWithParameters> store = new ConcurrentHashMap<>();
+    private record Entry(String fingerprint, QueryWithParameters qwp) {}
+
+    private final ConcurrentHashMap<String, Entry> store = new ConcurrentHashMap<>();
 
     @Override
-    public QueryWithParameters get(String profile, String canonicalNl) {
-        return store.get(key(profile, canonicalNl));
+    public QueryWithParameters get(String profile, String canonicalNl, String schemaFingerprint) {
+        Entry entry = store.get(key(profile, canonicalNl));
+        if (entry == null || !entry.fingerprint().equals(schemaFingerprint)) return null;
+        return entry.qwp();
     }
 
     @Override
-    public void put(String profile, String canonicalNl, QueryWithParameters sqlResult) {
-        store.put(key(profile, canonicalNl), sqlResult);
+    public void put(String profile, String canonicalNl, QueryWithParameters sqlResult, String schemaFingerprint) {
+        store.put(key(profile, canonicalNl), new Entry(schemaFingerprint, sqlResult));
+    }
+
+    @Override
+    public void evict(String profile, String canonicalNl) {
+        store.remove(key(profile, canonicalNl));
+    }
+
+    @Override
+    public void drop(String profile) {
+        if (profile == null) {
+            store.clear();
+        } else {
+            String prefix = profile + "\0";
+            store.keySet().removeIf(k -> k.startsWith(prefix));
+        }
     }
 
     private String key(String profile, String canonicalNl) {

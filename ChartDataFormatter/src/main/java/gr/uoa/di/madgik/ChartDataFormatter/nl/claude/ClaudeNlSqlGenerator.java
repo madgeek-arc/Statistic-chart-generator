@@ -70,14 +70,20 @@ public class ClaudeNlSqlGenerator implements NlSqlGenerator {
         StringBuilder sb = new StringBuilder();
         for (ProfileSchema.EntityDef entity : schema.getEntities()) {
             sb.append("Entity: ").append(entity.name())
+              .append(" (SQL table: ").append(entity.sqlTable()).append(")")
               .append(" — ").append(entity.description()).append("\n");
+            if (!entity.baseConditions().isEmpty()) {
+                sb.append("  REQUIRED base conditions (always include in WHERE): ")
+                  .append(String.join(" AND ", entity.baseConditions())).append("\n");
+            }
             for (ProfileSchema.FieldDef field : entity.fields()) {
                 sb.append("  field: ").append(field.name())
                   .append(" (").append(field.datatype()).append(")")
-                  .append(" — ").append(field.description()).append("\n");
+                  .append(" — SQL: ").append(field.sqlTable()).append(".").append(field.column()).append("\n");
             }
-            if (!entity.relations().isEmpty()) {
-                sb.append("  relations: ").append(String.join(", ", entity.relations())).append("\n");
+            if (!entity.joinPaths().isEmpty()) {
+                sb.append("  joins:\n");
+                entity.joinPaths().forEach(jp -> sb.append("    ").append(jp).append("\n"));
             }
         }
         return sb.toString();

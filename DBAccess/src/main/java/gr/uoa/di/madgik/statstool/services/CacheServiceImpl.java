@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
+import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
@@ -23,6 +24,9 @@ public class CacheServiceImpl implements CacheService {
 
     @Autowired
     private StatsCache statsCache;
+
+    @Autowired
+    private NlSqlCache nlSqlCache;
 
     @Value("${statstool.cache.update.entries:5000}")
     private int numberLimit;
@@ -65,6 +69,18 @@ public class CacheServiceImpl implements CacheService {
 
     public Map<String, Object> getStats() throws Exception {
         return this.statsCache.stats();
+    }
+
+    @Override
+    public void dropNlCache(String profile) {
+        log.info("Dropping NL SQL cache for " + (profile != null ? "'" + profile + "'" : "all") + " profile(s)");
+        nlSqlCache.drop(profile);
+    }
+
+    @Override
+    public void evictNlCache(String profile, String canonicalNl) {
+        log.info("Evicting NL SQL cache entry for profile='" + profile + "'");
+        nlSqlCache.evict(profile, canonicalNl);
     }
 
     private void doUpdateCache(String profile) {

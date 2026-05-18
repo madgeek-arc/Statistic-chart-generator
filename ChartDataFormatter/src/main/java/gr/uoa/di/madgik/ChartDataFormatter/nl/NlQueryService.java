@@ -6,12 +6,12 @@ import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.SqlSafetyValidator;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
+import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
-import java.util.stream.Collectors;
+import java.util.List;
+import org.springframework.stereotype.Service;
 
 @Service
 public class NlQueryService {
@@ -21,17 +21,20 @@ public class NlQueryService {
     private final NlRequestSigner signer;
     private final StatsService statsService;
     private final Mapper mapper;
+    private final ProfileSchemaBuilder schemaBuilder;
 
     public NlQueryService(NlSqlGenerator sqlGenerator,
                           NlSqlCache nlSqlCache,
                           NlRequestSigner signer,
                           StatsService statsService,
-                          Mapper mapper) {
+                          Mapper mapper,
+                          ProfileSchemaBuilder schemaBuilder) {
         this.sqlGenerator = sqlGenerator;
         this.nlSqlCache = nlSqlCache;
         this.signer = signer;
         this.statsService = statsService;
         this.mapper = mapper;
+        this.schemaBuilder = schemaBuilder;
     }
 
     public void verifySignature(String profile, String canonicalNl, String sig) {
@@ -41,33 +44,25 @@ public class NlQueryService {
     }
 
     public Result execute(String profile, String canonicalNl) throws StatsServiceException {
-        QueryWithParameters cached = nlSqlCache.get(profile, canonicalNl);
+        ProfileConfiguration config = mapper.getProfileConfiguration(profile);
+        String fingerprint = NlSqlCache.fingerprint(config);
+
+        QueryWithParameters cached = nlSqlCache.get(profile, canonicalNl, fingerprint);
         if (cached != null) {
             return statsService.queryRaw(cached);
         }
 
-        ProfileSchema schema = buildSchema(profile);
+        ProfileSchema schema = schemaBuilder.build(profile);
         SqlResult sqlResult = sqlGenerator.generate(canonicalNl, profile, schema);
 
-        SqlSafetyValidator.validate(sqlResult.getSql(), mapper.getProfileConfiguration(profile));
+        SqlSafetyValidator.validate(sqlResult.getSql(), config);
 
         QueryWithParameters qwp = new QueryWithParameters(
                 sqlResult.getSql(),
                 new ArrayList<>(sqlResult.getParameters()),
                 profile + ".public"
         );
-        nlSqlCache.put(profile, canonicalNl, qwp);
+        nlSqlCache.put(profile, canonicalNl, qwp, fingerprint);
         return statsService.queryRaw(qwp);
-    }
-
-    private ProfileSchema buildSchema(String profile) {
-        var entities = mapper.getEntities(profile);
-        var defs = entities.values().stream().map(entity -> {
-            var fields = entity.getFields().stream()
-                    .map(f -> new ProfileSchema.FieldDef(f.getName(), f.getType(), f.getName()))
-                    .collect(Collectors.toList());
-            return new ProfileSchema.EntityDef(entity.getName(), entity.getName(), fields, entity.getRelations());
-        }).collect(Collectors.toList());
-        return new ProfileSchema(profile, defs);
     }
 }

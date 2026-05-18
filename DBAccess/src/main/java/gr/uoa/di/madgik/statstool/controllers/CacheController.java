@@ -33,4 +33,15 @@ public class CacheController {
     public Map<String, Object> getStats() throws Exception {
         return cacheService.getStats();
     }
+
+    @GetMapping("dropNlCache")
+    public void dropNlCache(@RequestParam(name = "profile", required = false) String profile) {
+        cacheService.dropNlCache(profile);
+    }
+
+    @GetMapping("evictNlCache")
+    public void evictNlCache(@RequestParam(name = "profile") String profile,
+                             @RequestParam(name = "nl") String canonicalNl) {
+        cacheService.evictNlCache(profile, canonicalNl);
+    }
 }

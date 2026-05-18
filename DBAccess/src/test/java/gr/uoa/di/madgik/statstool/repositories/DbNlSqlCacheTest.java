@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
+import org.hsqldb.jdbc.JDBCDataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -8,15 +9,20 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class InMemoryNlSqlCacheTest {
+public class DbNlSqlCacheTest {
 
     private static final String FP = "fingerprint-v1";
 
-    private InMemoryNlSqlCache cache;
+    private DbNlSqlCache cache;
 
     @BeforeEach
-    void setup() {
-        cache = new InMemoryNlSqlCache();
+    void setup() throws Exception {
+        JDBCDataSource ds = new JDBCDataSource();
+        ds.setUrl("jdbc:hsqldb:mem:nl_sql_cache_test_" + System.nanoTime() + ";hsqldb.tx=mvcc");
+        ds.setUser("sa");
+        ds.setPassword("");
+        cache = new DbNlSqlCache(ds);
+        cache.init();
     }
 
     @Test
@@ -28,31 +34,57 @@ public class InMemoryNlSqlCacheTest {
     void put_thenGet_returnsSameValue() {
         QueryWithParameters qwp = new QueryWithParameters("SELECT COUNT(*) FROM result", List.of(), "openaire.public");
         cache.put("openaire", "publications per year", qwp, FP);
+
         QueryWithParameters result = cache.get("openaire", "publications per year", FP);
         assertNotNull(result);
         assertEquals("SELECT COUNT(*) FROM result", result.getQuery());
+        assertEquals("openaire.public", result.getDbId());
+    }
+
+    @Test
+    void put_thenGet_parametersArePreserved() {
+        QueryWithParameters qwp = new QueryWithParameters(
+                "SELECT * FROM result WHERE year=?", List.of("2023"), "openaire.public");
+        cache.put("openaire", "results in 2023", qwp, FP);
+
+        List<Object> params = cache.get("openaire", "results in 2023", FP).getParameters();
+        assertEquals(1, params.size());
+        assertEquals("2023", params.get(0));
     }
 
     @Test
     void get_withDifferentFingerprint_returnsNull() {
-        QueryWithParameters qwp = new QueryWithParameters("SELECT 1", List.of(), "p");
-        cache.put("openaire", "nl", qwp, "fingerprint-v1");
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 1 FROM result", List.of(), "p"), "fingerprint-v1");
         assertNull(cache.get("openaire", "nl", "fingerprint-v2"));
     }
 
     @Test
     void get_withMatchingFingerprint_returnsValue() {
-        QueryWithParameters qwp = new QueryWithParameters("SELECT 1", List.of(), "p");
-        cache.put("openaire", "nl", qwp, "fingerprint-v1");
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 1 FROM result", List.of(), "p"), "fingerprint-v1");
         assertNotNull(cache.get("openaire", "nl", "fingerprint-v1"));
     }
 
     @Test
+    void put_updatesFingerprint() {
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 1 FROM result", List.of(), "p"), "fingerprint-v1");
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 2 FROM result", List.of(), "p"), "fingerprint-v2");
+
+        assertNull(cache.get("openaire", "nl", "fingerprint-v1"));
+        assertNotNull(cache.get("openaire", "nl", "fingerprint-v2"));
+        assertEquals("SELECT 2 FROM result", cache.get("openaire", "nl", "fingerprint-v2").getQuery());
+    }
+
+    @Test
+    void put_overwrites_previousValue() {
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 1 FROM result", List.of(), "p"), FP);
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 2 FROM result", List.of(), "p"), FP);
+        assertEquals("SELECT 2 FROM result", cache.get("openaire", "nl", FP).getQuery());
+    }
+
+    @Test
     void differentProfiles_doNotCollide() {
-        QueryWithParameters a = new QueryWithParameters("SELECT 1 FROM result", List.of(), "profile_a");
-        QueryWithParameters b = new QueryWithParameters("SELECT 2 FROM result", List.of(), "profile_b");
-        cache.put("profile_a", "same nl", a, FP);
-        cache.put("profile_b", "same nl", b, FP);
+        cache.put("profile_a", "same nl", new QueryWithParameters("SELECT 1 FROM result", List.of(), "a"), FP);
+        cache.put("profile_b", "same nl", new QueryWithParameters("SELECT 2 FROM result", List.of(), "b"), FP);
 
         assertEquals("SELECT 1 FROM result", cache.get("profile_a", "same nl", FP).getQuery());
         assertEquals("SELECT 2 FROM result", cache.get("profile_b", "same nl", FP).getQuery());
@@ -60,29 +92,11 @@ public class InMemoryNlSqlCacheTest {
 
     @Test
     void differentNlStrings_doNotCollide() {
-        QueryWithParameters a = new QueryWithParameters("SELECT 1 FROM result", List.of(), "p");
-        QueryWithParameters b = new QueryWithParameters("SELECT 2 FROM result", List.of(), "p");
-        cache.put("openaire", "query one", a, FP);
-        cache.put("openaire", "query two", b, FP);
+        cache.put("openaire", "query one", new QueryWithParameters("SELECT 1 FROM result", List.of(), "p"), FP);
+        cache.put("openaire", "query two", new QueryWithParameters("SELECT 2 FROM result", List.of(), "p"), FP);
 
         assertEquals("SELECT 1 FROM result", cache.get("openaire", "query one", FP).getQuery());
         assertEquals("SELECT 2 FROM result", cache.get("openaire", "query two", FP).getQuery());
-    }
-
-    @Test
-    void put_overwrites_previousValue() {
-        QueryWithParameters v1 = new QueryWithParameters("SELECT 1 FROM result", List.of(), "p");
-        QueryWithParameters v2 = new QueryWithParameters("SELECT 2 FROM result", List.of(), "p");
-        cache.put("openaire", "nl", v1, FP);
-        cache.put("openaire", "nl", v2, FP);
-        assertEquals("SELECT 2 FROM result", cache.get("openaire", "nl", FP).getQuery());
-    }
-
-    @Test
-    void parametersArePreserved() {
-        QueryWithParameters qwp = new QueryWithParameters("SELECT * FROM result WHERE year=?", List.of("2023"), "p");
-        cache.put("openaire", "results in 2023", qwp, FP);
-        assertEquals(List.of("2023"), cache.get("openaire", "results in 2023", FP).getParameters());
     }
 
     // --- evict ---
@@ -126,6 +140,13 @@ public class InMemoryNlSqlCacheTest {
         cache.drop(null);
         assertNull(cache.get("profile_a", "nl1", FP));
         assertNull(cache.get("profile_b", "nl2", FP));
+    }
+
+    @Test
+    void drop_withBlankString_removesAll() {
+        cache.put("openaire", "nl", new QueryWithParameters("SELECT 1", List.of(), "p"), FP);
+        cache.drop("  ");
+        assertNull(cache.get("openaire", "nl", FP));
     }
 
     @Test

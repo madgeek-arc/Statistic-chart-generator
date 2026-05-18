@@ -31,12 +31,18 @@ public class SqlSafetyValidator {
             }
         }
 
+        // Collect all known tables: entity tables + join intermediary tables
+        Set<String> knownTables = new java.util.HashSet<>();
+        profile.tables.values().forEach(t -> knownTables.add(t.getTable().toLowerCase(Locale.ROOT)));
+        profile.relations.values().forEach(joins -> joins.forEach(j -> {
+            knownTables.add(j.getFirst_table().toLowerCase(Locale.ROOT));
+            knownTables.add(j.getSecond_table().toLowerCase(Locale.ROOT));
+        }));
+
         Matcher m = TABLE_REF_PATTERN.matcher(trimmed);
         while (m.find()) {
             String referenced = m.group(1).toLowerCase(Locale.ROOT);
-            boolean found = profile.tables.values().stream()
-                    .anyMatch(t -> t.getTable().toLowerCase(Locale.ROOT).equals(referenced));
-            if (!found) {
+            if (!knownTables.contains(referenced)) {
                 throw new IllegalArgumentException(
                         "LLM-generated SQL references unknown table: " + referenced);
             }

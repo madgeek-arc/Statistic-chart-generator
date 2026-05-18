@@ -1,6 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.nl;
 
 import gr.uoa.di.madgik.ChartDataFormatter.nl.signing.NlRequestSigner;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.ProfileSchemaBuilder;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
@@ -38,7 +39,8 @@ public class NlQueryServiceTest {
         statsService = mock(StatsService.class);
         mapper = mock(Mapper.class);
 
-        service = new NlQueryService(sqlGenerator, nlSqlCache, signer, statsService, mapper);
+        service = new NlQueryService(sqlGenerator, nlSqlCache, signer, statsService, mapper,
+                new ProfileSchemaBuilder(mapper));
 
         profile = new ProfileConfiguration();
         profile.tables.put("result", new Table("result", "id", null));
@@ -72,7 +74,7 @@ public class NlQueryServiceTest {
     void execute_cacheHit_doesNotCallGenerator() throws StatsServiceException {
         QueryWithParameters cached = new QueryWithParameters(
                 "SELECT COUNT(*) FROM result", List.of(), "openaire.public");
-        when(nlSqlCache.get("openaire", "publications per year")).thenReturn(cached);
+        when(nlSqlCache.get(eq("openaire"), eq("publications per year"), anyString())).thenReturn(cached);
         when(statsService.queryRaw(cached)).thenReturn(new Result());
 
         service.execute("openaire", "publications per year");
@@ -87,7 +89,7 @@ public class NlQueryServiceTest {
         expected.setRows(List.of(List.of(42L)));
         QueryWithParameters cached = new QueryWithParameters(
                 "SELECT COUNT(*) FROM result", List.of(), "openaire.public");
-        when(nlSqlCache.get("openaire", "nl")).thenReturn(cached);
+        when(nlSqlCache.get(eq("openaire"), eq("nl"), anyString())).thenReturn(cached);
         when(statsService.queryRaw(cached)).thenReturn(expected);
 
         Result actual = service.execute("openaire", "nl");
@@ -98,7 +100,7 @@ public class NlQueryServiceTest {
 
     @Test
     void execute_cacheMiss_callsGeneratorAndCaches() throws StatsServiceException {
-        when(nlSqlCache.get(any(), any())).thenReturn(null);
+        when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
         when(sqlGenerator.generate(any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", new ArrayList<>()));
         when(statsService.queryRaw(any())).thenReturn(new Result());
@@ -107,12 +109,12 @@ public class NlQueryServiceTest {
         service.execute("openaire", "total results");
 
         verify(sqlGenerator).generate(eq("total results"), eq("openaire"), any());
-        verify(nlSqlCache).put(eq("openaire"), eq("total results"), any());
+        verify(nlSqlCache).put(eq("openaire"), eq("total results"), any(), anyString());
     }
 
     @Test
     void execute_cacheMiss_executesGeneratedSql() throws StatsServiceException {
-        when(nlSqlCache.get(any(), any())).thenReturn(null);
+        when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
         String generatedSql = "SELECT COUNT(*) FROM result";
         when(sqlGenerator.generate(any(), any(), any()))
                 .thenReturn(new SqlResult(generatedSql, List.of("publication")));
@@ -130,7 +132,7 @@ public class NlQueryServiceTest {
 
     @Test
     void execute_unsafeSql_throwsAndDoesNotCache() {
-        when(nlSqlCache.get(any(), any())).thenReturn(null);
+        when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
         when(sqlGenerator.generate(any(), any(), any()))
                 .thenReturn(new SqlResult("DROP TABLE result", new ArrayList<>()));
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
@@ -138,12 +140,12 @@ public class NlQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () ->
                 service.execute("openaire", "drop tables"));
 
-        verify(nlSqlCache, never()).put(any(), any(), any());
+        verify(nlSqlCache, never()).put(any(), any(), any(), any());
     }
 
     @Test
     void execute_unknownTableInSql_throwsAndDoesNotCache() {
-        when(nlSqlCache.get(any(), any())).thenReturn(null);
+        when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
         when(sqlGenerator.generate(any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT * FROM unknown_table", new ArrayList<>()));
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
@@ -151,6 +153,6 @@ public class NlQueryServiceTest {
         assertThrows(IllegalArgumentException.class, () ->
                 service.execute("openaire", "query unknown table"));
 
-        verify(nlSqlCache, never()).put(any(), any(), any());
+        verify(nlSqlCache, never()).put(any(), any(), any(), any());
     }
 }

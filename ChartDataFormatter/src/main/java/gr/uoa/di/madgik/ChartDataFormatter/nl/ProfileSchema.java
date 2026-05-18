@@ -5,8 +5,8 @@ import java.util.List;
 /** Stripped-down profile schema passed to NlSqlGenerator implementations. */
 public class ProfileSchema {
 
-    public record EntityDef(String name, String description, List<FieldDef> fields, List<String> relations) {}
-    public record FieldDef(String name, String datatype, String description) {}
+    public record EntityDef(String name, String description, String sqlTable, List<String> baseConditions, List<FieldDef> fields, List<String> joinPaths) {}
+    public record FieldDef(String name, String datatype, String description, String sqlTable, String column) {}
 
     private final String profileName;
     private final List<EntityDef> entities;
