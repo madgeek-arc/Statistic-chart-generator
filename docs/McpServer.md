@@ -17,7 +17,9 @@ The server uses **SSE (Server-Sent Events)** transport in SYNC mode. It is serve
 
 ---
 
-## Tools
+## SQL Tools
+
+These tools are used by the NL → SQL conversation agent (`NlMcpTools`). They allow an external LLM to build and sign a data query.
 
 ### `get_profiles()`
 
@@ -127,7 +129,7 @@ Checks that a SQL statement is safe to execute: must be a single `SELECT`, may o
 
 ### `sign_nl_query(profile, canonicalNl)`
 
-Signs the canonical NL description and returns a chart URL. Call this only when the user has confirmed the query is correct — it is the terminal step of the conversation.
+Signs the canonical NL description and returns a chart URL. Call this only when the user has confirmed the query is correct — it is the terminal step of the SQL conversation.
 
 **Arguments:**
 
@@ -142,6 +144,46 @@ Signs the canonical NL description and returns a chart URL. Call this only when 
 ```
 
 The signature is `HMAC-SHA256(signing_secret, profile + ":" + canonicalNl)`. The URL can be embedded directly in a portal page or passed to the chart data endpoints as `query.nl` + `query.sig`.
+
+---
+
+## Chart Options Tools
+
+These tools are used by the NL → chart options conversation agent (`NlOptionsMcpTools`). They allow an external LLM to iteratively design and sign chart appearance options for the target charting library.
+
+### `preview_options(optionsJson)`
+
+Validates the options JSON structure and returns it pretty-printed for the user to review.
+
+**Arguments:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `optionsJson` | string | A JSON object containing chart options for the target library |
+
+**Returns:** pretty-printed JSON string, or `"INVALID JSON: <reason>"` if the input cannot be parsed.
+
+Use this during the options conversation to show the user what options have been built so far before finalising.
+
+---
+
+### `sign_chart_options(library, canonicalDescription, optionsJson)`
+
+Validates, caches, and signs the final chart options. Call this only when the user is satisfied with the chart appearance — it is the terminal step of the options conversation.
+
+**Arguments:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `library` | string | Target charting library: `"HighCharts"`, `"eCharts"`, or `"GoogleCharts"` |
+| `canonicalDescription` | string | Concise English description of the appearance (e.g. "blue bars, red title, legend on the right") |
+| `optionsJson` | string | Final chart options JSON object |
+
+**Returns:** `"Chart options signed successfully."` or `"ERROR: Invalid JSON: <reason>"`
+
+The signature is `HMAC-SHA256(signing_secret, library + ":" + canonicalDescription)`.
+
+Once signed, the frontend passes `canonicalDescription` as `nlOptions` and the signature as `optionsSig` in the `/chart` POST body. The backend verifies the signature, looks up the options JSON in the cache, and attaches it as `chartOptions` in the response.
 
 ---
 
@@ -170,23 +212,49 @@ async with sse_client("http://localhost:8090/stats-api/sse") as (read, write):
 
 ---
 
-## Suggested agent workflow
+## Suggested agent workflows
+
+### NL → SQL workflow
 
 ```
-1. call get_profiles()          → pick or confirm the profile
-2. call get_schema(profile)     → understand entities, fields, joins
+1. call get_profiles()              → pick or confirm the profile
+2. call get_schema(profile)         → understand entities, fields, joins
 3. (optional) call get_field_values(profile, field, limit)
-                                → explore categorical field values
+                                    → explore categorical field values
 4. (optional) call validate_sql(profile, sql)
-                                → sanity-check a generated SQL fragment
+                                    → sanity-check a generated SQL fragment
 5. call sign_nl_query(profile, canonicalNl)
-                                → finalise; get the signed chart URL
+                                    → finalise; get the signed chart URL
 ```
 
 The signed URL returned in step 5 can be resolved by any of the chart data endpoints:
 - `GET /chart/json?json={"library":"HighCharts","chartsInfo":[{"type":"bar","query":{"nl":"...","sig":"...","profile":"..."}}]}`
 - `POST /chart` with the same structure as a JSON body
 - `GET /raw?json=...` / `POST /table` — same `query` structure
+
+### NL → chart options workflow
+
+```
+1. Determine the target library from context (HighCharts, eCharts, …)
+2. Iteratively build an options JSON object based on user feedback
+3. call preview_options(optionsJson)
+                                    → show the user the current options
+4. Adjust options based on user feedback; repeat from step 3 if needed
+5. call sign_chart_options(library, canonicalDescription, optionsJson)
+                                    → finalise; cache and sign the options
+```
+
+The frontend then includes in its next `/chart` POST:
+```json
+{
+  "library": "HighCharts",
+  "chartsInfo": [{ ... }],
+  "nlOptions": "<canonicalDescription>",
+  "optionsSig": "<sig>"
+}
+```
+
+The backend attaches `chartOptions: { ... }` to the chart response, which the portal uses to configure the charting library.
 
 ---
 
@@ -202,8 +270,9 @@ spring:
         type: SYNC   # tool calls execute on the calling thread
 
 nl:
-  signing-secret: change-me-in-production   # HMAC key for sign_nl_query
+  signing-secret: change-me-in-production   # HMAC key for both sign_nl_query and sign_chart_options
   base-url: /chart/json                     # prefix prepended to signed URLs
+  options-prompt-version: "1"               # bump to invalidate all cached chart options
 ```
 
-Change `signing-secret` in production. Any NL query signed with the old secret will be rejected after rotation.
+Change `signing-secret` in production. Any NL query or options signed with the old secret will be rejected after rotation. Bumping `options-prompt-version` forces all chart options to be regenerated on next use (useful after updating the options system prompt).
