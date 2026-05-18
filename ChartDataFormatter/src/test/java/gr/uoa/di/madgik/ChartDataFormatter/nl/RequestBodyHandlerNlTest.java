@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ChartI
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataRequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RawDataSeriesInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.options.NlOptionsService;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
@@ -24,13 +25,15 @@ public class RequestBodyHandlerNlTest {
 
     private StatsService statsService;
     private NlQueryService nlQueryService;
+    private NlOptionsService nlOptionsService;
     private RequestBodyHandler handler;
 
     @BeforeEach
     void setup() {
         statsService = mock(StatsService.class);
         nlQueryService = mock(NlQueryService.class);
-        handler = new RequestBodyHandler(statsService, nlQueryService);
+        nlOptionsService = mock(NlOptionsService.class);
+        handler = new RequestBodyHandler(statsService, nlQueryService, nlOptionsService);
     }
 
     private Query nlQuery(String nl, String sig, String profile) {

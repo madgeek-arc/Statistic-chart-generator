@@ -44,4 +44,15 @@ public class CacheController {
                              @RequestParam(name = "nl") String canonicalNl) {
         cacheService.evictNlCache(profile, canonicalNl);
     }
+
+    @GetMapping("dropNlOptionsCache")
+    public void dropNlOptionsCache(@RequestParam(name = "library", required = false) String library) {
+        cacheService.dropNlOptionsCache(library);
+    }
+
+    @GetMapping("evictNlOptionsCache")
+    public void evictNlOptionsCache(@RequestParam(name = "library") String library,
+                                    @RequestParam(name = "desc") String canonicalDescription) {
+        cacheService.evictNlOptionsCache(library, canonicalDescription);
+    }
 }

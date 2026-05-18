@@ -1,5 +1,7 @@
 package gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -20,6 +22,12 @@ import java.io.IOException;
 @JsonDeserialize(using=JsonResponseDeserializer.class)
 public abstract class JsonResponse {
 
+    @JsonProperty("chartOptions")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private JsonNode chartOptions;
+
+    public JsonNode getChartOptions() { return chartOptions; }
+    public void setChartOptions(JsonNode chartOptions) { this.chartOptions = chartOptions; }
 }
 
 /**

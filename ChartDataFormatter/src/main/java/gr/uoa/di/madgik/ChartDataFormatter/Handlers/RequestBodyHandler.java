@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.ResponseBody.*;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.RequestInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.JsonRepresentation.RequestBody.ChartInfo;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.NlQueryService;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.options.NlOptionsService;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.services.StatsService;
@@ -27,11 +28,15 @@ public class RequestBodyHandler {
 
     private StatsService statsService;
     private final NlQueryService nlQueryService;
+    private final NlOptionsService nlOptionsService;
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public RequestBodyHandler(StatsService statsService, NlQueryService nlQueryService) {
+    public RequestBodyHandler(StatsService statsService,
+                              NlQueryService nlQueryService,
+                              NlOptionsService nlOptionsService) {
         this.statsService = statsService;
         this.nlQueryService = nlQueryService;
+        this.nlOptionsService = nlOptionsService;
     }
 
     public JsonResponse handleRequest(RequestInfo requestJson) throws RequestBodyException {
@@ -59,7 +64,16 @@ public class RequestBodyHandler {
                 }
             }
 
-            return format(requestJson, results);
+            JsonResponse response = format(requestJson, results);
+
+            if (requestJson.getNlOptions() != null && requestJson.getOptionsSig() != null) {
+                nlOptionsService.verifySignature(requestJson.getLibrary(),
+                        requestJson.getNlOptions(), requestJson.getOptionsSig());
+                response.setChartOptions(nlOptionsService.execute(
+                        requestJson.getLibrary(), requestJson.getNlOptions()));
+            }
+
+            return response;
         } catch (SecurityException e) {
             throw new RequestBodyException("Invalid NL query signature", e, HttpStatus.FORBIDDEN);
         } catch (StatsServiceException e) {

@@ -15,4 +15,8 @@ public interface CacheService {
     void dropNlCache(String profile);
 
     void evictNlCache(String profile, String canonicalNl);
+
+    void dropNlOptionsCache(String library);
+
+    void evictNlOptionsCache(String library, String canonicalDescription);
 }

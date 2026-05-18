@@ -21,6 +21,10 @@ public class RequestInfo {
     private String orderBy;
     @JsonProperty
     private boolean drilldown;
+    @JsonProperty
+    private String nlOptions;
+    @JsonProperty
+    private String optionsSig;
 
     public RequestInfo() {}
 
@@ -58,6 +62,12 @@ public class RequestInfo {
     public void setDrilldown(boolean drilldown) {
         this.drilldown = drilldown;
     }
+
+    public String getNlOptions() { return nlOptions; }
+    public void setNlOptions(String nlOptions) { this.nlOptions = nlOptions; }
+
+    public String getOptionsSig() { return optionsSig; }
+    public void setOptionsSig(String optionsSig) { this.optionsSig = optionsSig; }
 
     public List<SupportedChartTypes> getChartTypes(){
 
