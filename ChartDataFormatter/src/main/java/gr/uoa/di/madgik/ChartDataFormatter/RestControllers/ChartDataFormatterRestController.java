@@ -165,7 +165,7 @@ public class ChartDataFormatterRestController {
     @GetMapping( path = "/json",
             produces = "application/json; charset=UTF-8")
     public @ResponseBody ResponseEntity<JsonResponse> json(
-            @RequestParam(name="json", required=false) String json){
+            @RequestParam(name="json") String json){
 
         JsonResponse responseData;
         ObjectMapper mapper = new ObjectMapper();
