@@ -21,7 +21,20 @@
         <byte-buddy.version>1.17.5</byte-buddy.version>
         <!-- CVE-2025-11226: ACE via logback.xml condition injection; fixed in 1.5.19 -->
         <logback.version>1.5.32</logback.version>
+        <spring-ai.version>1.0.0</spring-ai.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -44,6 +57,13 @@
             <artifactId>json-path</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Woodstox XML provider needed at test-time when spring-ai brings in WebFlux codecs -->
+        <dependency>
+            <groupId>com.fasterxml.woodstox</groupId>
+            <artifactId>woodstox-core</artifactId>
+            <version>6.5.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
@@ -55,6 +75,25 @@
             <artifactId>Statistic-chart-generator-DBAccess</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- Spring AI: Claude (Anthropic) + MCP server (WebMVC/SSE transport). -->
+        <!-- woodstox-core in test scope fixes WebFlux codec init in @WebMvcTest. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>spring-milestones</id>
+            <name>Spring Milestones</name>
+            <url>https://repo.spring.io/milestone</url>
+        </repository>
+    </repositories>
 
 </project>

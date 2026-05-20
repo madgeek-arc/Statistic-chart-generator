@@ -1,9 +1,12 @@
 services:
 
   stats-app:
-    image: docker-registry.openaire.eu/stats-tool/statistic-chart-generator:latest
+    image: docker-registry.openaire.eu/stats-tool/statistic-chart-generator:18
+    pull_policy: always
     ports:
       - "8090:8090"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
       - ./config:/usr/local/app/config:ro
       - ./logs:/usr/local/app/logs

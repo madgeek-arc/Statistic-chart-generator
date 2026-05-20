@@ -43,7 +43,9 @@ public class ChartDataFormatterRestController {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler, SupportedDiagramsService supportedDiagramsService, RestTemplate restTemplate) {
+    public ChartDataFormatterRestController(RequestBodyHandler requestBodyHandler,
+                                            SupportedDiagramsService supportedDiagramsService,
+                                            RestTemplate restTemplate) {
         this.requestBodyHandler = requestBodyHandler;
         this.supportedDiagramsService = supportedDiagramsService;
         this.restTemplate = restTemplate;
@@ -75,6 +77,9 @@ public class ChartDataFormatterRestController {
         } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
             return new ResponseEntity<>(e.getHttpStatus());
+        } catch (Exception e) {
+            log.error("Chart request failed", e);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
         return new ResponseEntity<>(responseData, HttpStatus.OK);
@@ -159,7 +164,8 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/json",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JsonResponse> json(@RequestParam(name="json") String json){
+    public @ResponseBody ResponseEntity<JsonResponse> json(
+            @RequestParam(name="json") String json){
 
         JsonResponse responseData;
         ObjectMapper mapper = new ObjectMapper();

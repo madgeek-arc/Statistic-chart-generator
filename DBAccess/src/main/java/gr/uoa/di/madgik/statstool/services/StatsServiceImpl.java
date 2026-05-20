@@ -350,6 +350,26 @@ public class StatsServiceImpl implements StatsService {
         return results;
     }
 
+    @Override
+    public Result queryRaw(QueryWithParameters queryWithParameters) throws StatsServiceException {
+        try {
+            String cacheKey = StatsCache.getCacheKey(queryWithParameters);
+            if (statsCache.exists(cacheKey)) {
+                log.debug("Raw query key {} in cache.", cacheKey);
+                return statsCache.get(cacheKey);
+            }
+            log.info("Executing raw query {}", queryWithParameters.getQuery());
+            TimedResult timedResult = statsRepository.executeQuery(
+                    queryWithParameters.getQuery(),
+                    queryWithParameters.getParameters(),
+                    queryWithParameters.getDbId());
+            statsCache.save(queryWithParameters, timedResult.result, timedResult.execTimeMs, timedResult.queueTimeMs);
+            return timedResult.result;
+        } catch (Exception e) {
+            throw new StatsServiceException("Raw query execution failed: " + e.getMessage(), e);
+        }
+    }
+
     private String getNamedQuery(String queryName) throws IOException {
             return namedQueryRepository.getQuery(queryName);
     }

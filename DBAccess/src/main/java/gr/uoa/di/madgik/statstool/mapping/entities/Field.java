@@ -4,11 +4,17 @@ public class Field {
     private String table;
     private String column;
     private String datatype;
+    private String description;
 
     public Field(String table, String column, String datatype) {
+        this(table, column, datatype, null);
+    }
+
+    public Field(String table, String column, String datatype, String description) {
         this.table = table;
         this.column = column;
         this.datatype = datatype;
+        this.description = description;
     }
 
     public String getTable() {
@@ -33,5 +39,13 @@ public class Field {
 
     public void setDatatype(String datatype) {
         this.datatype = datatype;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
