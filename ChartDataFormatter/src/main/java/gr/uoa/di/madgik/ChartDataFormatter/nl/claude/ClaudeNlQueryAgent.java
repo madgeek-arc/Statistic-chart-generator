@@ -79,7 +79,8 @@ public class ClaudeNlQueryAgent implements NlQueryAgent {
         return new AgentReply(response, done,
                 done ? signed.canonicalNl() : null,
                 done ? signed.sig() : null,
-                done ? signed.sql() : null);
+                done ? signed.sql() : null,
+                done ? signed.description() : null);
     }
 
     private List<Message> buildMessages(ConversationSession session) {

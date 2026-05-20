@@ -49,8 +49,8 @@ public class RequestBodyHandler {
             for (int i = 0; i < charts.size(); i++) {
                 Query q = charts.get(i).getQuery();
                 if (q != null && q.isNlQuery()) {
-                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getSig());
-                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl()));
+                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getFilters(), q.getSig());
+                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl(), q.getFilters()));
                 } else {
                     dslQueries.add(q);
                     dslPositions.add(i);
@@ -188,8 +188,8 @@ public class RequestBodyHandler {
             for (int i = 0; i < seriesList.size(); i++) {
                 Query q = seriesList.get(i).getQuery();
                 if (q != null && q.isNlQuery()) {
-                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getSig());
-                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl()));
+                    nlQueryService.verifySignature(q.getProfile(), q.getNl(), q.getFilters(), q.getSig());
+                    results.set(i, nlQueryService.execute(q.getProfile(), q.getNl(), q.getFilters()));
                 } else {
                     dslQueries.add(q);
                     dslPositions.add(i);

@@ -1,15 +1,14 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
-import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 
 import java.util.TreeMap;
 
 public interface NlSqlCache {
 
-    QueryWithParameters get(String profile, String canonicalNl, String schemaFingerprint);
+    NlCachedEntry get(String profile, String canonicalNl, String schemaFingerprint);
 
-    void put(String profile, String canonicalNl, QueryWithParameters sqlResult, String schemaFingerprint);
+    void put(String profile, String canonicalNl, NlCachedEntry entry, String schemaFingerprint);
 
     void evict(String profile, String canonicalNl);
 

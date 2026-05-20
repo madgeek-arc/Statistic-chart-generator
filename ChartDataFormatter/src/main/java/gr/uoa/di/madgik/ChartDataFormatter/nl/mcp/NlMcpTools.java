@@ -12,6 +12,7 @@ import gr.uoa.di.madgik.statstool.domain.Select;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.SqlSafetyValidator;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
+import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import org.springframework.ai.tool.annotation.Tool;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 @Component
 public class NlMcpTools {
 
-    public record SignedQuery(String url, String canonicalNl, String sig, String sql) {}
+    public record SignedQuery(String url, String canonicalNl, String sig, String sql, String description) {}
 
     private static final ThreadLocal<SignedQuery> pendingSign = new ThreadLocal<>();
 
@@ -116,17 +117,18 @@ public class NlMcpTools {
         }
 
         String fingerprint = NlSqlCache.fingerprint(mapper.getProfileConfiguration(profile));
-        nlSqlCache.put(profile, canonicalNl, new QueryWithParameters(
+        QueryWithParameters qwp = new QueryWithParameters(
                 sqlResult.getSql(),
                 new java.util.ArrayList<>(sqlResult.getParameters()),
                 profile + ".public"
-        ), fingerprint);
+        );
+        nlSqlCache.put(profile, canonicalNl, new NlCachedEntry(qwp, sqlResult.getDescription()), fingerprint);
 
         String sig = signer.sign(profile, canonicalNl);
         String url = baseUrl + "?profile=" + profile
                 + "&nl=" + java.net.URLEncoder.encode(canonicalNl, java.nio.charset.StandardCharsets.UTF_8)
                 + "&sig=" + sig;
-        pendingSign.set(new SignedQuery(url, canonicalNl, sig, sqlResult.getSql()));
+        pendingSign.set(new SignedQuery(url, canonicalNl, sig, sqlResult.getSql(), sqlResult.getDescription()));
         return url;
     }
 }

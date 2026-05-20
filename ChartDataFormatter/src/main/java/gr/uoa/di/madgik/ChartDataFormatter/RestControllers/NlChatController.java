@@ -48,11 +48,13 @@ public class NlChatController {
                 reply.isDone(),
                 reply.isDone() ? reply.getCanonicalNl() : null,
                 reply.isDone() ? reply.getSig() : null,
-                reply.isDone() ? reply.getSql() : null
+                reply.isDone() ? reply.getSql() : null,
+                reply.isDone() ? reply.getDescription() : null
         ));
     }
 
     public record ChatRequest(String sessionId, String profile, String message) {}
 
-    public record ChatResponse(String sessionId, String reply, boolean done, String canonicalNl, String sig, String sql) {}
+    public record ChatResponse(String sessionId, String reply, boolean done,
+                               String canonicalNl, String sig, String sql, String description) {}
 }

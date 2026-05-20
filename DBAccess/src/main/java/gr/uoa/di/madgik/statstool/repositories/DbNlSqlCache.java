@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
+import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.annotation.Primary;
@@ -39,25 +40,31 @@ public class DbNlSqlCache implements NlSqlCache {
             "  parameters         LONGVARCHAR," +
             "  db_id              VARCHAR(255)," +
             "  schema_fingerprint VARCHAR(64)  DEFAULT '' NOT NULL," +
+            "  description        LONGVARCHAR  DEFAULT '' NOT NULL," +
             "  created            TIMESTAMP    DEFAULT NOW() NOT NULL," +
             "  PRIMARY KEY (profile, canonical_nl)" +
             ")"
         );
-        // Migrate tables created before the schema_fingerprint column was added
         try {
             jdbcTemplate.execute(
                 "ALTER TABLE nl_sql_cache ADD COLUMN IF NOT EXISTS " +
                 "schema_fingerprint VARCHAR(64) NOT NULL DEFAULT ''"
             );
         } catch (Exception ignored) {}
+        try {
+            jdbcTemplate.execute(
+                "ALTER TABLE nl_sql_cache ADD COLUMN IF NOT EXISTS " +
+                "description LONGVARCHAR NOT NULL DEFAULT ''"
+            );
+        } catch (Exception ignored) {}
     }
 
     @Override
-    public QueryWithParameters get(String profile, String canonicalNl, String schemaFingerprint) {
+    public NlCachedEntry get(String profile, String canonicalNl, String schemaFingerprint) {
         DatasourceContext.setContext(DB);
         try {
-            List<QueryWithParameters> rows = jdbcTemplate.query(
-                "SELECT sql_query, parameters, db_id FROM nl_sql_cache " +
+            List<NlCachedEntry> rows = jdbcTemplate.query(
+                "SELECT sql_query, parameters, db_id, description FROM nl_sql_cache " +
                 "WHERE profile=? AND canonical_nl=? AND schema_fingerprint=?",
                 new Object[]{profile, canonicalNl, schemaFingerprint},
                 (rs, i) -> {
@@ -65,7 +72,9 @@ public class DbNlSqlCache implements NlSqlCache {
                         List<Object> params = rs.getString("parameters") != null
                             ? mapper.readValue(rs.getString("parameters"), new TypeReference<List<Object>>() {})
                             : List.of();
-                        return new QueryWithParameters(rs.getString("sql_query"), params, rs.getString("db_id"));
+                        QueryWithParameters qwp = new QueryWithParameters(
+                            rs.getString("sql_query"), params, rs.getString("db_id"));
+                        return new NlCachedEntry(qwp, rs.getString("description"));
                     } catch (Exception e) {
                         log.error("Error deserialising nl_sql_cache entry", e);
                         return null;
@@ -80,19 +89,21 @@ public class DbNlSqlCache implements NlSqlCache {
     }
 
     @Override
-    public void put(String profile, String canonicalNl, QueryWithParameters qwp, String schemaFingerprint) {
+    public void put(String profile, String canonicalNl, NlCachedEntry entry, String schemaFingerprint) {
         DatasourceContext.setContext(DB);
         try {
+            QueryWithParameters qwp = entry.qwp();
             String paramsJson = mapper.writeValueAsString(qwp.getParameters());
+            String description = entry.description() != null ? entry.description() : "";
             jdbcTemplate.update(
                 "MERGE INTO nl_sql_cache AS t " +
-                "USING (VALUES(?, ?, ?, ?, ?, ?)) AS v(profile, canonical_nl, sql_query, parameters, db_id, schema_fingerprint) " +
+                "USING (VALUES(?, ?, ?, ?, ?, ?, ?)) AS v(profile, canonical_nl, sql_query, parameters, db_id, schema_fingerprint, description) " +
                 "ON t.profile=v.profile AND t.canonical_nl=v.canonical_nl " +
                 "WHEN MATCHED THEN UPDATE SET t.sql_query=v.sql_query, t.parameters=v.parameters, " +
-                "  t.db_id=v.db_id, t.schema_fingerprint=v.schema_fingerprint " +
+                "  t.db_id=v.db_id, t.schema_fingerprint=v.schema_fingerprint, t.description=v.description " +
                 "WHEN NOT MATCHED THEN INSERT VALUES v.profile, v.canonical_nl, v.sql_query, " +
-                "  v.parameters, v.db_id, v.schema_fingerprint, NOW()",
-                profile, canonicalNl, qwp.getQuery(), paramsJson, qwp.getDbId(), schemaFingerprint
+                "  v.parameters, v.db_id, v.schema_fingerprint, v.description, NOW()",
+                profile, canonicalNl, qwp.getQuery(), paramsJson, qwp.getDbId(), schemaFingerprint, description
             );
         } catch (Exception e) {
             log.error("Error writing nl_sql_cache", e);

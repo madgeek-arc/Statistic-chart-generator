@@ -4,6 +4,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.nl.signing.NlRequestSigner;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.ProfileSchemaBuilder;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 import gr.uoa.di.madgik.statstool.mapping.entities.Table;
@@ -72,25 +73,27 @@ public class NlQueryServiceTest {
 
     @Test
     void execute_cacheHit_doesNotCallGenerator() throws StatsServiceException {
-        QueryWithParameters cached = new QueryWithParameters(
+        QueryWithParameters qwp = new QueryWithParameters(
                 "SELECT COUNT(*) FROM result", List.of(), "openaire.public");
+        NlCachedEntry cached = new NlCachedEntry(qwp);
         when(nlSqlCache.get(eq("openaire"), eq("publications per year"), anyString())).thenReturn(cached);
-        when(statsService.queryRaw(cached)).thenReturn(new Result());
+        when(statsService.queryRaw(qwp)).thenReturn(new Result());
 
         service.execute("openaire", "publications per year");
 
         verify(sqlGenerator, never()).generate(any(), any(), any());
-        verify(statsService).queryRaw(cached);
+        verify(statsService).queryRaw(qwp);
     }
 
     @Test
     void execute_cacheHit_returnsResultFromStatsService() throws StatsServiceException {
         Result expected = new Result();
         expected.setRows(List.of(List.of(42L)));
-        QueryWithParameters cached = new QueryWithParameters(
+        QueryWithParameters qwp = new QueryWithParameters(
                 "SELECT COUNT(*) FROM result", List.of(), "openaire.public");
+        NlCachedEntry cached = new NlCachedEntry(qwp);
         when(nlSqlCache.get(eq("openaire"), eq("nl"), anyString())).thenReturn(cached);
-        when(statsService.queryRaw(cached)).thenReturn(expected);
+        when(statsService.queryRaw(qwp)).thenReturn(expected);
 
         Result actual = service.execute("openaire", "nl");
         assertSame(expected, actual);
@@ -101,14 +104,14 @@ public class NlQueryServiceTest {
     @Test
     void execute_cacheMiss_callsGeneratorAndCaches() throws StatsServiceException {
         when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", new ArrayList<>()));
         when(statsService.queryRaw(any())).thenReturn(new Result());
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
 
         service.execute("openaire", "total results");
 
-        verify(sqlGenerator).generate(eq("total results"), eq("openaire"), any());
+        verify(sqlGenerator).generate(eq("total results"), eq("openaire"), any(), any());
         verify(nlSqlCache).put(eq("openaire"), eq("total results"), any(), anyString());
     }
 
@@ -116,7 +119,7 @@ public class NlQueryServiceTest {
     void execute_cacheMiss_executesGeneratedSql() throws StatsServiceException {
         when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
         String generatedSql = "SELECT COUNT(*) FROM result";
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult(generatedSql, List.of("publication")));
         when(statsService.queryRaw(any())).thenReturn(new Result());
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
@@ -133,7 +136,7 @@ public class NlQueryServiceTest {
     @Test
     void execute_unsafeSql_throwsAndDoesNotCache() {
         when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("DROP TABLE result", new ArrayList<>()));
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
 
@@ -146,7 +149,7 @@ public class NlQueryServiceTest {
     @Test
     void execute_unknownTableInSql_throwsAndDoesNotCache() {
         when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT * FROM unknown_table", new ArrayList<>()));
         when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
 

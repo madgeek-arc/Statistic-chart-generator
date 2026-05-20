@@ -1,6 +1,5 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
-import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -8,20 +7,20 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class InMemoryNlSqlCache implements NlSqlCache {
 
-    private record Entry(String fingerprint, QueryWithParameters qwp) {}
+    private record Entry(String fingerprint, NlCachedEntry cached) {}
 
     private final ConcurrentHashMap<String, Entry> store = new ConcurrentHashMap<>();
 
     @Override
-    public QueryWithParameters get(String profile, String canonicalNl, String schemaFingerprint) {
+    public NlCachedEntry get(String profile, String canonicalNl, String schemaFingerprint) {
         Entry entry = store.get(key(profile, canonicalNl));
         if (entry == null || !entry.fingerprint().equals(schemaFingerprint)) return null;
-        return entry.qwp();
+        return entry.cached();
     }
 
     @Override
-    public void put(String profile, String canonicalNl, QueryWithParameters sqlResult, String schemaFingerprint) {
-        store.put(key(profile, canonicalNl), new Entry(schemaFingerprint, sqlResult));
+    public void put(String profile, String canonicalNl, NlCachedEntry cached, String schemaFingerprint) {
+        store.put(key(profile, canonicalNl), new Entry(schemaFingerprint, cached));
     }
 
     @Override

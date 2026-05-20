@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.nl.SqlResult;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.signing.NlRequestSigner;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 import gr.uoa.di.madgik.statstool.mapping.entities.Table;
@@ -91,9 +92,9 @@ public class NlMcpToolsTest {
         NlMcpTools.clearSignedQuery();
         tools.signNlQuery("openaire", "total publications");
 
-        verify(nlSqlCache).put(eq("openaire"), eq("total publications"), argThat(qwp ->
-                "SELECT COUNT(*) FROM result".equals(qwp.getQuery()) &&
-                List.of("pub").equals(qwp.getParameters())
+        verify(nlSqlCache).put(eq("openaire"), eq("total publications"), argThat((NlCachedEntry e) ->
+                "SELECT COUNT(*) FROM result".equals(e.qwp().getQuery()) &&
+                List.of("pub").equals(e.qwp().getParameters())
         ), anyString());
     }
 

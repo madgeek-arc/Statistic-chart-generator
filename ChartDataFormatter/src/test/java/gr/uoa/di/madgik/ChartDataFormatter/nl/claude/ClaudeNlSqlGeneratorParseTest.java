@@ -1,5 +1,6 @@
 package gr.uoa.di.madgik.ChartDataFormatter.nl.claude;
 
+import gr.uoa.di.madgik.ChartDataFormatter.nl.ProfileSchemaBuilder;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.SqlResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,7 @@ public class ClaudeNlSqlGeneratorParseTest {
         ChatClient.Builder builder = mock(ChatClient.Builder.class);
         ChatClient client = mock(ChatClient.class);
         when(builder.build()).thenReturn(client);
-        generator = new ClaudeNlSqlGenerator(builder);
+        generator = new ClaudeNlSqlGenerator(builder, mock(ProfileSchemaBuilder.class));
     }
 
     @Test

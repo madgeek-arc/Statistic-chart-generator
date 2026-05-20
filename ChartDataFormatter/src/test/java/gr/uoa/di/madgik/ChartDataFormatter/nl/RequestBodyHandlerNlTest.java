@@ -66,12 +66,13 @@ public class RequestBodyHandlerNlTest {
     @Test
     void handleRequest_nlQuery_verifiesSignatureAndExecutes() throws Exception {
         Query q = nlQuery("publications per year", "sig", "openaire");
-        when(nlQueryService.execute("openaire", "publications per year")).thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("publications per year"), any()))
+                .thenReturn(twoColumnResult());
 
         handler.handleRequest(singleChartRequest(q));
 
-        verify(nlQueryService).verifySignature("openaire", "publications per year", "sig");
-        verify(nlQueryService).execute("openaire", "publications per year");
+        verify(nlQueryService).verifySignature(eq("openaire"), eq("publications per year"), any(), eq("sig"));
+        verify(nlQueryService).execute(eq("openaire"), eq("publications per year"), any());
         verifyNoInteractions(statsService);
     }
 
@@ -90,13 +91,13 @@ public class RequestBodyHandlerNlTest {
     void handleRequest_invalidSignature_returnsForbidden() throws Exception {
         Query q = nlQuery("publications per year", "badsig", "openaire");
         doThrow(new SecurityException("bad sig"))
-                .when(nlQueryService).verifySignature(any(), any(), any());
+                .when(nlQueryService).verifySignature(any(), any(), any(), any());
 
         RequestBodyException ex = assertThrows(RequestBodyException.class,
                 () -> handler.handleRequest(singleChartRequest(q)));
 
         assertEquals(HttpStatus.FORBIDDEN, ex.getHttpStatus());
-        verify(nlQueryService, never()).execute(any(), any());
+        verify(nlQueryService, never()).execute(any(), any(), any());
     }
 
     @Test
@@ -111,12 +112,13 @@ public class RequestBodyHandlerNlTest {
 
         RequestInfo request = new RequestInfo("HighCharts", List.of(nlChart, dslChart), null, false);
 
-        when(nlQueryService.execute("openaire", "publications per year")).thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("publications per year"), any()))
+                .thenReturn(twoColumnResult());
         when(statsService.query(any(), any())).thenReturn(List.of(twoColumnResult()));
 
         handler.handleRequest(request);
 
-        verify(nlQueryService).execute("openaire", "publications per year");
+        verify(nlQueryService).execute(eq("openaire"), eq("publications per year"), any());
         verify(statsService).query(argThat(list -> list.size() == 1), any());
     }
 
@@ -130,13 +132,15 @@ public class RequestBodyHandlerNlTest {
 
         RequestInfo request = new RequestInfo("HighCharts", List.of(c1, c2), null, false);
 
-        when(nlQueryService.execute("openaire", "publications per year")).thenReturn(twoColumnResult());
-        when(nlQueryService.execute("openaire", "datasets per year")).thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("publications per year"), any()))
+                .thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("datasets per year"), any()))
+                .thenReturn(twoColumnResult());
 
         handler.handleRequest(request);
 
-        verify(nlQueryService).execute("openaire", "publications per year");
-        verify(nlQueryService).execute("openaire", "datasets per year");
+        verify(nlQueryService).execute(eq("openaire"), eq("publications per year"), any());
+        verify(nlQueryService).execute(eq("openaire"), eq("datasets per year"), any());
         verifyNoInteractions(statsService);
     }
 
@@ -148,12 +152,13 @@ public class RequestBodyHandlerNlTest {
         RawDataRequestInfo request = new RawDataRequestInfo(
                 List.of(new RawDataSeriesInfo(q)), null, false);
 
-        when(nlQueryService.execute("openaire", "publications per year")).thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("publications per year"), any()))
+                .thenReturn(twoColumnResult());
 
         handler.handleRawDataRequest(request);
 
-        verify(nlQueryService).verifySignature("openaire", "publications per year", "sig");
-        verify(nlQueryService).execute("openaire", "publications per year");
+        verify(nlQueryService).verifySignature(eq("openaire"), eq("publications per year"), any(), eq("sig"));
+        verify(nlQueryService).execute(eq("openaire"), eq("publications per year"), any());
         verifyNoInteractions(statsService);
     }
 
@@ -178,7 +183,7 @@ public class RequestBodyHandlerNlTest {
                 List.of(new RawDataSeriesInfo(q)), null, false);
 
         doThrow(new SecurityException("bad sig"))
-                .when(nlQueryService).verifySignature(any(), any(), any());
+                .when(nlQueryService).verifySignature(any(), any(), any(), any());
 
         RequestBodyException ex = assertThrows(RequestBodyException.class,
                 () -> handler.handleRawDataRequest(request));
@@ -194,12 +199,13 @@ public class RequestBodyHandlerNlTest {
         RawDataRequestInfo request = new RawDataRequestInfo(
                 List.of(new RawDataSeriesInfo(nlQ), new RawDataSeriesInfo(dslQ)), null, false);
 
-        when(nlQueryService.execute("openaire", "publications per year")).thenReturn(twoColumnResult());
+        when(nlQueryService.execute(eq("openaire"), eq("publications per year"), any()))
+                .thenReturn(twoColumnResult());
         when(statsService.query(any(), any())).thenReturn(List.of(twoColumnResult()));
 
         handler.handleRawDataRequest(request);
 
-        verify(nlQueryService).execute("openaire", "publications per year");
+        verify(nlQueryService).execute(eq("openaire"), eq("publications per year"), any());
         verify(statsService).query(argThat(list -> list.size() == 1), any());
     }
 }
