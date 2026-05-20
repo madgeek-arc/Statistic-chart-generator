@@ -14,6 +14,10 @@ Complete reference for all JSON request and response parameters exposed by the S
 | `POST` | `/table` | `RequestInfo` (JSON body) | `JsonResponse` |
 | `GET` | `/raw?json=` | `RawDataRequestInfo` (URL-encoded JSON param) | `JsonResponse` |
 | `POST` | `/chart/shorten` | `ShortenUrlInfo` (JSON body) | `{ "shortUrl": "..." }` |
+| `POST` | `/nl/chat` | `ChatRequest` (JSON body) | `ChatResponse` |
+| `POST` | `/nl/options/chat` | `OptionsChatRequest` (JSON body) | `OptionsChatResponse` |
+| `GET` | `/nl/info` | query params: `profile`, `nl`, `sig`, `filters` (optional) | `{ "sql": "...", "description": "..." }` |
+| `POST` | `/nl/sign` | `NlSignRequest` (JSON body) + `X-Sign-Key` header | `{ "sig": "...", "canonicalFilters": "..." }` |
 
 > **Note:** The `/chart` GET endpoint returns an HTML chart viewer page — it does **not** return data JSON. The data comes from the separate `/chart/json` GET or `/chart` POST endpoint using a different JSON structure (see below).
 
@@ -85,11 +89,13 @@ Describes what data to fetch from the database.
 | `entity` | `string` | **yes** | Logical entity name as defined in the profile (e.g. `"publication"`, `"project"`, `"result"`, `"cross_country"`, `"historical_snapshots_irish"`). |
 | `profile` | `string` | no | Profile key that determines the datasource and field mappings (e.g. `"openaire_stats"`, `"ie_monitor"`). If omitted, the default profile is used. |
 | `select` | `Select[]` | no | Fields to return. Typically one aggregate field + one or more group-by fields (see [Select](#select)). |
-| `filters` | `FilterGroup[]` | no | Filter groups applied as a WHERE clause (see [FilterGroup](#filtergroup)). Multiple groups are combined with AND. |
+| `filters` | `FilterGroup[]` | no | Filter groups applied as a WHERE clause (see [FilterGroup](#filtergroup)). Multiple groups are combined with AND. For NL queries, `filters` are passed to the LLM as pre-resolved SQL conditions; the signature must cover both `nl` and `filters` (see [NL query endpoints](#nl-query-endpoints)). |
 | `parameters` | `any[]` | no | Positional parameters for named queries. Usually `[]`. |
 | `limit` | `integer` | no | Maximum number of rows to return. `0` means no limit. The merged query applies the minimum positive limit across all queries in a request. |
 | `orderBy` | `string` | no | Per-query ORDER BY passed to `SqlQueryBuilder`. Rarely used directly; the top-level `RequestInfo.orderBy` controls the outer merge order. |
 | `useCache` | `boolean` | no | Whether to use the result cache. Default `true`. |
+| `nl` | `string` | no | Canonical NL description (NL query mode). Present instead of `entity`/`select`/`filters` (see [NL query endpoints](#nl-query-endpoints)). |
+| `sig` | `string` | no | HMAC signature authorising the NL query (NL query mode). |
 
 ---
 
@@ -518,3 +524,107 @@ Response:
   ]
 }
 ```
+
+---
+
+## NL Query Endpoints
+
+### `POST /nl/chat`
+
+Multi-turn conversation agent that produces a signed canonical NL query.
+
+**Request:**
+```json
+{
+  "sessionId": "abc-123",
+  "profile": "openaire_stats",
+  "message": "I want publications per year"
+}
+```
+Omit `sessionId` on the first turn; the server creates one.
+
+**Response:**
+```json
+{
+  "sessionId": "abc-123",
+  "reply": "Should I include all result types or only publications?",
+  "done": false
+}
+```
+
+When `done: true`:
+```json
+{
+  "sessionId": "abc-123",
+  "reply": "Great! Here is your signed query URL: /chart/json?...",
+  "done": true,
+  "canonicalNl": "Number of open access publications per year",
+  "sig": "<hmac>",
+  "sql": "SELECT result.year, COUNT(DISTINCT result.id) FROM result WHERE ...",
+  "description": "Number of open-access publications grouped by year of publication"
+}
+```
+
+| Field | When | Description |
+|-------|------|-------------|
+| `canonicalNl` | `done: true` | Signed canonical NL string to embed in subsequent `/chart` requests |
+| `sig` | `done: true` | HMAC signature |
+| `sql` | `done: true` | Generated SQL (informational; do not execute directly) |
+| `description` | `done: true` | Plain-English description of what the query returns, for display in the UI |
+
+---
+
+### `GET /nl/info`
+
+Returns the SQL and description for a previously-signed NL query without executing it and without calling the LLM. Intended for populating a read-only "Query info" panel when loading a chart from a URL.
+
+**Query parameters:**
+
+| Name | Required | Description |
+|------|----------|-------------|
+| `profile` | yes | Profile name |
+| `nl` | yes | Canonical NL string |
+| `sig` | yes | HMAC signature |
+| `filters` | no | JSON-encoded `FilterGroup[]` (must match what was signed) |
+
+**Response `200`:**
+```json
+{
+  "sql": "SELECT result.year, COUNT(DISTINCT result.id) FROM result WHERE result.type='publication' ...",
+  "description": "Number of open-access publications grouped by year of publication"
+}
+```
+
+**`403`** — invalid signature.  
+**`404`** — query not in cache (the chart has not been executed since the last cache flush; perform a `/chart` POST to re-populate the cache).
+
+---
+
+### `POST /nl/sign`
+
+Trusted-backend endpoint. Signs a `(profile, canonicalNl, filters)` bundle so that a dashboard backend can attach pre-determined filter conditions to an existing NL query.
+
+Protected by `X-Sign-Key` header (must match `nl.sign-key` in `application.yml`). Returns `403` if the key is missing, blank, or wrong.
+
+**Request:**
+```json
+{
+  "profile": "openaire_stats",
+  "canonicalNl": "Number of open access publications per year",
+  "filters": [
+    { "groupFilters": [{ "field": "publication.country", "type": "=", "values": ["IT"] }], "op": "AND" }
+  ]
+}
+```
+
+`filters` may be `null` or omitted to sign a no-filter query (produces the same HMAC as the chat conversation endpoint).
+
+**Response `200`:**
+```json
+{
+  "sig": "<hmac>",
+  "canonicalFilters": "country:=:IT"
+}
+```
+
+Use `sig` as `query.sig` and `filters` as `query.filters` in the subsequent `/chart` POST body.

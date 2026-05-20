@@ -60,6 +60,7 @@ export interface ChatResponse {
   canonicalNl?: string; // populated when done — human-readable summary of the query
   sig?: string;         // populated when done — HMAC signature authorising the query
   sql?: string;         // populated when done — the generated SQL (informational)
+  description?: string; // populated when done — plain-English sentence describing the query results
 }
 
 // --- NL options (appearance) ---
@@ -100,6 +101,18 @@ export interface NlQuery {
   nl: string;           // canonicalNl from ChatResponse
   sig: string;          // sig from ChatResponse
   profile: string;      // same profile you passed to /nl/chat
+  filters?: FilterGroup[]; // optional dashboard-injected filters (sig must cover these)
+}
+
+export interface FilterGroup {
+  groupFilters: Filter[];
+  op: 'AND' | 'OR';
+}
+
+export interface Filter {
+  field: string;
+  type: string;
+  values: string[];
 }
 
 // DSL query — existing JSON DSL (unchanged)
@@ -139,6 +152,22 @@ export class NlChatService {
       { headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  /**
+   * Returns the SQL and description for a previously signed NL query without executing it.
+   * Use this when loading a chart URL to show metadata (e.g. a "Query info" panel).
+   * Returns null if the query is not in cache (chart must be executed first).
+   */
+  nlInfo(profile: string, nl: string, sig: string,
+         filters?: FilterGroup[]): Observable<{ sql: string; description: string }> {
+    let params = `profile=${encodeURIComponent(profile)}&nl=${encodeURIComponent(nl)}&sig=${encodeURIComponent(sig)}`;
+    if (filters?.length) {
+      params += `&filters=${encodeURIComponent(JSON.stringify(filters))}`;
+    }
+    return this.http.get<{ sql: string; description: string }>(
+      `${this.apiBase}/nl/info?${params}`
+    );
+  }
 }
 ```
 
@@ -173,6 +202,7 @@ export class NlChatComponent {
   querySessionId?: string;
   canonicalNl?: string;
   querySig?: string;
+  queryDescription?: string; // plain-English description of the query results
 
   // Options conversation state
   optionsMessages: Message[] = [];
@@ -216,6 +246,7 @@ export class NlChatComponent {
         if (res.done && res.canonicalNl && res.sig) {
           this.canonicalNl = res.canonicalNl;
           this.querySig = res.sig;
+          this.queryDescription = res.description;  // show in read-only "Query info" panel
           this.phase = 'options';  // move to appearance conversation
         }
       },
@@ -315,6 +346,7 @@ export class NlChatComponent {
   <ng-container *ngIf="phase === 'options'">
     <h3>Describe how you'd like the chart to look</h3>
     <p class="hint">Query ready: <em>{{ canonicalNl }}</em></p>
+    <p *ngIf="queryDescription" class="hint">Description: <em>{{ queryDescription }}</em></p>
     <div class="messages">
       <div *ngFor="let msg of optionsMessages" [class]="'message ' + msg.role">
         <strong>{{ msg.role === 'user' ? 'You' : 'Assistant' }}:</strong> {{ msg.text }}
@@ -474,7 +506,39 @@ verifies the options signature, retrieves the options JSON from cache, and adds 
 
 ---
 
-## 8. Error handling tips
+## 8. Loading query metadata from a URL
+
+When a user loads a saved chart URL that contains an NL query, you can show a read-only "Query info" panel with both the canonical NL string and the generated SQL. Use `GET /nl/info` — it is a pure cache read with no LLM call:
+
+```typescript
+loadQueryInfo(nl: string, sig: string, profile: string): void {
+  this.nlChat.nlInfo(profile, nl, sig).subscribe({
+    next: (info) => {
+      this.queryDescription = info.description;  // show in UI
+      console.log('Generated SQL:', info.sql);
+    },
+    error: (err) => {
+      if (err.status === 404) {
+        // Not cached — execute the chart first (/chart POST), then retry
+      } else if (err.status === 403) {
+        console.error('Signature invalid');
+      }
+    }
+  });
+}
+```
+
+If the query has dashboard-injected filters, pass them too:
+
+```typescript
+this.nlChat.nlInfo(profile, nl, sig, filters).subscribe(...);
+```
+
+> **Important:** `GET /nl/info` only returns data if the query has been executed at least once since the last cache flush. If you get a `404`, execute the chart first by posting to `/chart`, then call `/nl/info` again.
+
+---
+
+## 9. Error handling tips
 
 | Situation | What to do |
 |-----------|-----------|
@@ -487,7 +551,7 @@ verifies the options signature, retrieves the options JSON from cache, and adds 
 
 ---
 
-## 9. Minimal CSS to get started
+## 10. Minimal CSS to get started
 
 ```css
 /* nl-chat.component.css */
@@ -509,8 +573,9 @@ verifies the options signature, retrieves the options JSON from cache, and adds 
 
 1. `POST /nl/chat` with `{ profile, message }` (no `sessionId` on the first message).
 2. Echo the returned `sessionId` in every follow-up message.
-3. Keep looping until `done: true`.
+3. Keep looping until `done: true`. On completion, store `canonicalNl`, `sig`, and `description`.
 4. (Optional) `POST /nl/options/chat` with `{ library, message }` to iteratively design chart appearance.
 5. When done, `POST /chart` with:
    - `query: { nl, sig, profile }` inside `chartsInfo` for the data
    - `nlOptions` + `optionsSig` at the top level for appearance (omit if skipping options)
+6. (Loading from URL) Call `GET /nl/info?profile=…&nl=…&sig=…` to retrieve `{ sql, description }` for read-only display without executing the query.
