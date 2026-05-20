@@ -17,6 +17,7 @@ import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -53,7 +54,7 @@ public class NlMcpTools {
     public NlMcpTools(Mapper mapper,
                       StatsService statsService,
                       NlRequestSigner signer,
-                      NlSqlGenerator sqlGenerator,
+                      @Lazy NlSqlGenerator sqlGenerator,
                       NlSqlCache nlSqlCache,
                       ProfileSchemaBuilder schemaBuilder,
                       @Value("${nl.base-url}") String baseUrl) {
