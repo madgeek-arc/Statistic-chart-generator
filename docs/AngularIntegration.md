@@ -37,6 +37,248 @@ Angular renders the chart (HighCharts / GoogleCharts / eCharts)
 
 ---
 
+## End-to-end curl walkthrough
+
+This section shows every API call in sequence using plain `curl`.
+Copy-paste these to verify connectivity before writing any Angular code.
+Replace `localhost:8090` with the actual backend host.
+
+---
+
+### Step 1 — Start a data query session
+
+Send the first message with no `sessionId`:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/nl/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"profile":"openaire","message":"Show me publications per year"}'
+```
+
+The agent may ask for clarification — `done` is `false`:
+
+```json
+{
+  "sessionId": "abc123",
+  "reply": "Do you want to include only open access publications, or all types?",
+  "done": false
+}
+```
+
+---
+
+### Step 2 — Continue the conversation
+
+Echo `sessionId` in every follow-up:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/nl/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId":"abc123","profile":"openaire","message":"All types"}'
+```
+
+When the agent is satisfied it returns `done: true` with the signed query:
+
+```json
+{
+  "sessionId": "abc123",
+  "reply": "Got it. I've set up a query for publications per year across all types.",
+  "done": true,
+  "canonicalNl": "publications per year",
+  "sig": "v1:a3f9e2c1...",
+  "sql": "SELECT year, COUNT(*) FROM result GROUP BY year ORDER BY year",
+  "description": "Number of publications grouped by publication year."
+}
+```
+
+**Save `canonicalNl`, `sig`, and `profile`** — all three are required for the chart request.
+
+---
+
+### Step 3 — (Optional) Design chart appearance
+
+Start a separate options session with the target charting library:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/nl/options/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"library":"HighCharts","message":"Blue bars with a red title"}'
+```
+
+Agent asks a follow-up (`done: false`):
+
+```json
+{
+  "sessionId": "def456",
+  "reply": "Blue bars and red title noted. Move the legend anywhere, or keep it at the bottom?",
+  "done": false
+}
+```
+
+Continue the options conversation:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/nl/options/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId":"def456","library":"HighCharts","message":"Keep the legend at the bottom"}'
+```
+
+Final response (`done: true`):
+
+```json
+{
+  "sessionId": "def456",
+  "reply": "Signed. Your chart options are ready.",
+  "done": true,
+  "canonicalDescription": "blue bars, red title",
+  "sig": "v1:c7d1b4e8...",
+  "optionsJson": "{\"colors\":[\"#0033cc\"],\"title\":{\"style\":{\"color\":\"red\"}}}"
+}
+```
+
+---
+
+### Step 4 — Fetch chart data
+
+`POST /chart` with the signed NL query in `chartsInfo[].query`. Include `nlOptions` + `optionsSig` only if you ran the options conversation:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/chart \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "library": "HighCharts",
+    "chartsInfo": [{
+      "type": "bar",
+      "name": "Publications per year",
+      "query": {
+        "nl":      "publications per year",
+        "sig":     "v1:a3f9e2c1...",
+        "profile": "openaire"
+      }
+    }],
+    "nlOptions":   "blue bars, red title",
+    "optionsSig":  "v1:c7d1b4e8..."
+  }'
+```
+
+Response — chart series data plus merged chart options:
+
+```json
+{
+  "series": [
+    { "name": "Publications", "data": [12050, 15340, 19200, 22870, 27630] }
+  ],
+  "xAxis": { "categories": ["2019", "2020", "2021", "2022", "2023"] },
+  "chartOptions": {
+    "colors": ["#0033cc"],
+    "title": { "style": { "color": "red" } }
+  }
+}
+```
+
+To skip the options step, simply omit `nlOptions` and `optionsSig`:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/chart \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "library": "HighCharts",
+    "chartsInfo": [{
+      "type": "bar",
+      "query": {
+        "nl":      "publications per year",
+        "sig":     "v1:a3f9e2c1...",
+        "profile": "openaire"
+      }
+    }]
+  }'
+```
+
+---
+
+### Step 5 — Retrieve query metadata (URL-loading scenario)
+
+When a user loads a saved chart URL you already have `canonicalNl` + `sig` + `profile`.
+Call `GET /nl/info` to display the SQL and description without touching the LLM:
+
+```sh
+curl -s "http://localhost:8090/stats-api/nl/info\
+?profile=openaire\
+&nl=publications%20per%20year\
+&sig=v1%3Aa3f9e2c1..."
+```
+
+Response:
+
+```json
+{
+  "sql": "SELECT year, COUNT(*) FROM result GROUP BY year ORDER BY year",
+  "description": "Number of publications grouped by publication year."
+}
+```
+
+Possible error codes: `403` = signature invalid, `404` = not in cache (execute the chart first, then retry).
+
+If the query carries dashboard-injected filters, URL-encode them too:
+
+```sh
+curl -s "http://localhost:8090/stats-api/nl/info\
+?profile=openaire\
+&nl=publications%20per%20year\
+&sig=v1%3Axxx\
+&filters=%5B%7B%22groupFilters%22%3A%5B%7B%22field%22%3A%22type%22%2C%22type%22%3A%22%3D%22%2C%22values%22%3A%5B%22Article%22%5D%7D%5D%2C%22op%22%3A%22AND%22%7D%5D"
+```
+
+---
+
+### Step 6 — (Trusted backends only) Pre-sign a query with filters
+
+Dashboard backends that need to inject filter conditions call `POST /nl/sign` before handing the URL to the browser. This endpoint requires the `X-Sign-Key` header and is never called from the browser:
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/nl/sign \
+  -H 'Content-Type: application/json' \
+  -H 'X-Sign-Key: your-sign-key-here' \
+  -d '{
+    "profile":     "openaire",
+    "canonicalNl": "publications per year",
+    "filters": [
+      {
+        "groupFilters": [
+          { "field": "type", "type": "=", "values": ["Article"] }
+        ],
+        "op": "AND"
+      }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "sig":              "v1:9b2f3e7d...",
+  "canonicalFilters": "type=Article"
+}
+```
+
+The backend then passes `sig` and the serialised `filters` array to the browser inside the chart URL. The browser includes both in the `query` object when calling `/chart`:
+
+```jsonc
+{
+  "nl":      "publications per year",
+  "sig":     "v1:9b2f3e7d...",
+  "profile": "openaire",
+  "filters": [
+    { "groupFilters": [{ "field": "type", "type": "=", "values": ["Article"] }], "op": "AND" }
+  ]
+}
+```
+
+> **Security note:** never expose `sign-key` to the browser. Only trusted server-side code calls `POST /nl/sign`.
+
+---
+
 ## 1. Create a service
 
 ```typescript
