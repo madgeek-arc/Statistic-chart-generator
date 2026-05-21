@@ -1,7 +1,7 @@
 services:
 
   stats-app:
-    image: docker-registry.openaire.eu/stats-tool/statistic-chart-generator:18
+    image: docker-registry.openaire.eu/stats-tool/statistic-chart-generator:21
     pull_policy: always
     ports:
       - "8090:8090"
