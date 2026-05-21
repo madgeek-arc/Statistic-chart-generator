@@ -27,6 +27,11 @@ public class ClaudeNlSqlGenerator implements NlSqlGenerator {
             - Parameters must be ordered to match ? placeholders.
             - Never use scalar subqueries in SELECT (Impala limitation).
             - Use COUNT(DISTINCT ...) rather than COUNT(*) for entity counts.
+            - COLUMN ORDER IS CRITICAL: always put the aggregate/numeric value FIRST, then the
+              grouping dimension (category/label) SECOND. For example:
+                SELECT COUNT(DISTINCT r.id), r.year  -- correct: value first, category second
+                SELECT r.year, COUNT(DISTINCT r.id)  -- WRONG
+              For two-dimension queries: SELECT value, dimension1, dimension2
             - The "description" field must be one plain-English sentence describing what data the
               query returns, written for a non-technical user (e.g. "Number of open-access
               publications grouped by year of publication").
