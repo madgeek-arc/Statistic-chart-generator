@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.nl.conversation.ConversationSessionSt
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -42,6 +43,14 @@ public class NlChatController {
 
         AgentReply reply = nlQueryAgent.chat(sessionId, request.message(), request.profile());
 
+        Map<String, String> queryJson = null;
+        if (reply.isDone()) {
+            queryJson = new LinkedHashMap<>();
+            queryJson.put("nl", reply.getCanonicalNl());
+            queryJson.put("sig", reply.getSig());
+            queryJson.put("profile", request.profile());
+        }
+
         return ResponseEntity.ok(new ChatResponse(
                 sessionId,
                 reply.getReply(),
@@ -49,12 +58,14 @@ public class NlChatController {
                 reply.isDone() ? reply.getCanonicalNl() : null,
                 reply.isDone() ? reply.getSig() : null,
                 reply.isDone() ? reply.getSql() : null,
-                reply.isDone() ? reply.getDescription() : null
+                reply.isDone() ? reply.getDescription() : null,
+                queryJson
         ));
     }
 
     public record ChatRequest(String sessionId, String profile, String message) {}
 
     public record ChatResponse(String sessionId, String reply, boolean done,
-                               String canonicalNl, String sig, String sql, String description) {}
+                               String canonicalNl, String sig, String sql, String description,
+                               Map<String, String> queryJson) {}
 }

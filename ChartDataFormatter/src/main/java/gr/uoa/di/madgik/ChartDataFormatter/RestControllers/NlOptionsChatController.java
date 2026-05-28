@@ -6,6 +6,8 @@ import gr.uoa.di.madgik.ChartDataFormatter.nl.options.OptionsAgentReply;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -40,18 +42,27 @@ public class NlOptionsChatController {
 
         OptionsAgentReply reply = agent.chat(sessionId, request.message(), request.library());
 
+        Map<String, String> optionsElement = null;
+        if (reply.isDone()) {
+            optionsElement = new LinkedHashMap<>();
+            optionsElement.put("nlOptions", reply.getCanonicalDescription());
+            optionsElement.put("optionsSig", reply.getSig());
+        }
+
         return ResponseEntity.ok(new OptionsResponse(
                 sessionId,
                 reply.getReply(),
                 reply.isDone(),
                 reply.isDone() ? reply.getCanonicalDescription() : null,
                 reply.isDone() ? reply.getSig() : null,
-                reply.isDone() ? reply.getOptionsJson() : null
+                reply.isDone() ? reply.getOptionsJson() : null,
+                optionsElement
         ));
     }
 
     public record OptionsRequest(String sessionId, String library, String message) {}
 
     public record OptionsResponse(String sessionId, String reply, boolean done,
-                                   String canonicalDescription, String sig, String optionsJson) {}
+                                   String canonicalDescription, String sig, String optionsJson,
+                                   Map<String, String> optionsElement) {}
 }

@@ -16,7 +16,6 @@ import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
 @Component
 public class NlMcpTools {
 
-    public record SignedQuery(String url, String canonicalNl, String sig, String sql, String description) {}
+    public record SignedQuery(String canonicalNl, String sig, String sql, String description) {}
 
     private static final ThreadLocal<SignedQuery> pendingSign = new ThreadLocal<>();
 
@@ -49,22 +48,19 @@ public class NlMcpTools {
     private final NlSqlGenerator sqlGenerator;
     private final NlSqlCache nlSqlCache;
     private final ProfileSchemaBuilder schemaBuilder;
-    private final String baseUrl;
 
     public NlMcpTools(Mapper mapper,
                       StatsService statsService,
                       NlRequestSigner signer,
                       @Lazy NlSqlGenerator sqlGenerator,
                       NlSqlCache nlSqlCache,
-                      ProfileSchemaBuilder schemaBuilder,
-                      @Value("${nl.base-url}") String baseUrl) {
+                      ProfileSchemaBuilder schemaBuilder) {
         this.mapper = mapper;
         this.statsService = statsService;
         this.signer = signer;
         this.sqlGenerator = sqlGenerator;
         this.nlSqlCache = nlSqlCache;
         this.schemaBuilder = schemaBuilder;
-        this.baseUrl = baseUrl;
     }
 
     @Tool(description = "Returns the list of available profiles with their name and description.")
@@ -126,10 +122,7 @@ public class NlMcpTools {
         nlSqlCache.put(profile, canonicalNl, new NlCachedEntry(qwp, sqlResult.getDescription()), fingerprint);
 
         String sig = signer.sign(profile, canonicalNl);
-        String url = baseUrl + "?profile=" + profile
-                + "&nl=" + java.net.URLEncoder.encode(canonicalNl, java.nio.charset.StandardCharsets.UTF_8)
-                + "&sig=" + sig;
-        pendingSign.set(new SignedQuery(url, canonicalNl, sig, sqlResult.getSql(), sqlResult.getDescription()));
-        return url;
+        pendingSign.set(new SignedQuery(canonicalNl, sig, sqlResult.getSql(), sqlResult.getDescription()));
+        return "Signed successfully.";
     }
 }

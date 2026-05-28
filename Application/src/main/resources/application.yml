@@ -51,9 +51,6 @@ nl:
     signing-secret: change-me-in-production
     session-ttl-minutes: 30
     session-cleanup-interval-ms: 60000
-    # Prefix of the signed URL returned by the agent. Use an absolute URL (e.g. https://stats.example.org/chart/json)
-    # when the portal and this service are on different origins.
-    base-url: /chart/json
     agent-model: claude-haiku-4-5-20251001
     # Bump to invalidate all cached NL chart options (e.g. after updating the options system prompt)
     options-prompt-version: "1"

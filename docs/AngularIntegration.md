@@ -17,7 +17,7 @@ Angular sends POST /nl/chat
 Backend asks Claude for clarifications (if needed)
         │  ← may repeat several turns
         ▼
-Claude is satisfied → backend returns  done: true  +  canonicalNl + sig
+Claude is satisfied → backend returns  done: true  +  queryJson {nl, sig, profile}
         │
         ▼
 (Optional) User describes chart appearance
@@ -26,7 +26,7 @@ Claude is satisfied → backend returns  done: true  +  canonicalNl + sig
 Angular sends POST /nl/options/chat
         │  ← may repeat several turns
         ▼
-Claude is satisfied → backend returns  done: true  +  canonicalDescription + sig + optionsJson
+Claude is satisfied → backend returns  done: true  +  optionsElement {nlOptions, optionsSig}
         │
         ▼
 Angular sends POST /stats-api/chart  (with query.nl + query.sig + nlOptions + optionsSig)
@@ -87,11 +87,17 @@ When the agent is satisfied it returns `done: true` with the signed query:
   "canonicalNl": "publications per year",
   "sig": "v1:a3f9e2c1...",
   "sql": "SELECT year, COUNT(*) FROM result GROUP BY year ORDER BY year",
-  "description": "Number of publications grouped by publication year."
+  "description": "Number of publications grouped by publication year.",
+  "queryJson": {
+    "nl": "publications per year",
+    "sig": "v1:a3f9e2c1...",
+    "profile": "openaire"
+  }
 }
 ```
 
-**Save `canonicalNl`, `sig`, and `profile`** — all three are required for the chart request.
+**Save `queryJson`** — drop it directly into the `query` field of a `chartsInfo` entry.
+`canonicalNl`, `sig`, and `description` are also returned individually for display purposes.
 
 ---
 
@@ -132,15 +138,37 @@ Final response (`done: true`):
   "done": true,
   "canonicalDescription": "blue bars, red title",
   "sig": "v1:c7d1b4e8...",
-  "optionsJson": "{\"colors\":[\"#0033cc\"],\"title\":{\"style\":{\"color\":\"red\"}}}"
+  "optionsJson": "{\"colors\":[\"#0033cc\"],\"title\":{\"style\":{\"color\":\"red\"}}}",
+  "optionsElement": {
+    "nlOptions": "blue bars, red title",
+    "optionsSig": "v1:c7d1b4e8..."
+  }
 }
 ```
+
+**Save `optionsElement`** — spread it directly into the chart request body.
 
 ---
 
 ### Step 4 — Fetch chart data
 
-`POST /chart` with the signed NL query in `chartsInfo[].query`. Include `nlOptions` + `optionsSig` only if you ran the options conversation:
+`POST /chart` using `queryJson` from step 2 and `optionsElement` from step 3 (if run):
+
+```sh
+curl -s -X POST http://localhost:8090/stats-api/chart \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "library": "HighCharts",
+    "chartsInfo": [{
+      "type": "bar",
+      "name": "Publications per year",
+      "query": <queryJson from step 2>
+    }],
+    <optionsElement from step 3, spread at top level>
+  }'
+```
+
+Concretely:
 
 ```sh
 curl -s -X POST http://localhost:8090/stats-api/chart \
@@ -299,10 +327,11 @@ export interface ChatResponse {
   sessionId: string;    // keep this and send it back on every subsequent turn
   reply: string;        // the assistant's text to show the user
   done: boolean;        // true when the query is fully resolved
-  canonicalNl?: string; // populated when done — human-readable summary of the query
-  sig?: string;         // populated when done — HMAC signature authorising the query
+  canonicalNl?: string; // populated when done — human-readable summary of the query (display only)
+  sig?: string;         // populated when done — HMAC signature (also inside queryJson)
   sql?: string;         // populated when done — the generated SQL (informational)
   description?: string; // populated when done — plain-English sentence describing the query results
+  queryJson?: NlQuery;  // populated when done — drop directly into chartsInfo[i].query
 }
 
 // --- NL options (appearance) ---
@@ -317,9 +346,10 @@ export interface OptionsResponse {
   sessionId: string;
   reply: string;
   done: boolean;
-  canonicalDescription?: string; // populated when done — concise appearance description
-  sig?: string;                  // populated when done — HMAC signature
-  optionsJson?: string;          // populated when done — chart options JSON string
+  canonicalDescription?: string;                        // populated when done — for display
+  sig?: string;                                         // populated when done — also inside optionsElement
+  optionsJson?: string;                                 // populated when done — raw chart options JSON (informational)
+  optionsElement?: { nlOptions: string; optionsSig: string }; // populated when done — spread directly into chart request body
 }
 
 // --- Chart request ---
@@ -424,7 +454,7 @@ export class NlChatService {
 ```typescript
 // src/app/nl-chat/nl-chat.component.ts
 import { Component } from '@angular/core';
-import { NlChatService, ChatResponse, OptionsResponse } from './nl-chat.service';
+import { NlChatService, ChatResponse, OptionsResponse, NlQuery } from './nl-chat.service';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -442,15 +472,13 @@ export class NlChatComponent {
   // NL query conversation state
   queryMessages: Message[] = [];
   querySessionId?: string;
-  canonicalNl?: string;
-  querySig?: string;
-  queryDescription?: string; // plain-English description of the query results
+  queryJson?: NlQuery;          // ready-to-embed query object (queryJson from ChatResponse)
+  queryDescription?: string;    // plain-English description of the query results (display only)
 
   // Options conversation state
   optionsMessages: Message[] = [];
   optionsSessionId?: string;
-  canonicalDescription?: string;
-  optionsSig?: string;
+  optionsElement?: { nlOptions: string; optionsSig: string }; // ready-to-spread into chart request
 
   inputText = '';
   loading = false;
@@ -485,9 +513,8 @@ export class NlChatComponent {
         this.queryMessages.push({ role: 'assistant', text: res.reply });
         this.loading = false;
 
-        if (res.done && res.canonicalNl && res.sig) {
-          this.canonicalNl = res.canonicalNl;
-          this.querySig = res.sig;
+        if (res.done && res.queryJson) {
+          this.queryJson = res.queryJson;
           this.queryDescription = res.description;  // show in read-only "Query info" panel
           this.phase = 'options';  // move to appearance conversation
         }
@@ -513,9 +540,8 @@ export class NlChatComponent {
         this.optionsMessages.push({ role: 'assistant', text: res.reply });
         this.loading = false;
 
-        if (res.done && res.canonicalDescription && res.sig) {
-          this.canonicalDescription = res.canonicalDescription;
-          this.optionsSig = res.sig;
+        if (res.done && res.optionsElement) {
+          this.optionsElement = res.optionsElement;
           this.phase = 'done';
           this.loadChart();
         }
@@ -539,16 +565,11 @@ export class NlChatComponent {
       library: this.library,
       chartsInfo: [{
         type: 'bar',
-        name: this.canonicalNl,
-        query: {
-          nl: this.canonicalNl!,
-          sig: this.querySig!,
-          profile: this.profile,
-        }
+        name: this.queryJson!.nl,
+        query: this.queryJson!,             // drop queryJson directly here
       }],
-      // Include options only if the user went through the options conversation
-      nlOptions: this.canonicalDescription,
-      optionsSig: this.optionsSig,
+      // Spread optionsElement at top level — undefined is ignored by the spread
+      ...this.optionsElement,
     }).subscribe({
       next: (data) => {
         this.chartData = data;
@@ -587,7 +608,7 @@ export class NlChatComponent {
   <!-- Phase 2: Chart appearance conversation -->
   <ng-container *ngIf="phase === 'options'">
     <h3>Describe how you'd like the chart to look</h3>
-    <p class="hint">Query ready: <em>{{ canonicalNl }}</em></p>
+    <p class="hint">Query ready: <em>{{ queryJson?.nl }}</em></p>
     <p *ngIf="queryDescription" class="hint">Description: <em>{{ queryDescription }}</em></p>
     <div class="messages">
       <div *ngFor="let msg of optionsMessages" [class]="'message ' + msg.role">
@@ -659,31 +680,26 @@ export class AppModule {}
 
 ## 6. Storing and reusing completed queries and options
 
-The `canonicalNl` + `sig` + `profile` triple is a self-contained signed query.
-The `canonicalDescription` + `optionsSig` pair is a self-contained signed options reference.
-Both can be persisted and replayed later without calling Claude again:
+`queryJson` and `optionsElement` are self-contained signed objects. Persist them as-is
+and replay them directly — no reassembly required:
 
 ```typescript
-// Save both when done
-if (res.done && res.canonicalNl && res.sig) {
-  localStorage.setItem('lastNlQuery', JSON.stringify({
-    nl: res.canonicalNl, sig: res.sig, profile: this.profile
-  }));
+// Save when done — store the ready-to-use objects directly
+if (res.done && res.queryJson) {
+  localStorage.setItem('lastNlQuery', JSON.stringify(res.queryJson));
 }
-if (optsDone && res.canonicalDescription && res.sig) {
-  localStorage.setItem('lastChartOptions', JSON.stringify({
-    nlOptions: res.canonicalDescription, optionsSig: res.sig
-  }));
+if (res.done && res.optionsElement) {
+  localStorage.setItem('lastChartOptions', JSON.stringify(res.optionsElement));
 }
 
 // Later — replay both directly
-const q = JSON.parse(localStorage.getItem('lastNlQuery')!);
+const q: NlQuery = JSON.parse(localStorage.getItem('lastNlQuery')!);
 const o = JSON.parse(localStorage.getItem('lastChartOptions') ?? 'null');
 
 this.nlChat.fetchChart({
   library: 'HighCharts',
   chartsInfo: [{ type: 'bar', query: q }],
-  ...(o ?? {}),   // spread nlOptions + optionsSig if present
+  ...(o ?? {}),   // spread optionsElement (nlOptions + optionsSig) if present
 }).subscribe(data => { /* render */ });
 ```
 
@@ -815,9 +831,9 @@ this.nlChat.nlInfo(profile, nl, sig, filters).subscribe(...);
 
 1. `POST /nl/chat` with `{ profile, message }` (no `sessionId` on the first message).
 2. Echo the returned `sessionId` in every follow-up message.
-3. Keep looping until `done: true`. On completion, store `canonicalNl`, `sig`, and `description`.
-4. (Optional) `POST /nl/options/chat` with `{ library, message }` to iteratively design chart appearance.
+3. Keep looping until `done: true`. On completion, store `queryJson` (the ready-to-embed query object) and `description` (for display).
+4. (Optional) `POST /nl/options/chat` with `{ library, message }` to iteratively design chart appearance. On `done: true`, store `optionsElement` (the ready-to-spread `{ nlOptions, optionsSig }` object).
 5. When done, `POST /chart` with:
-   - `query: { nl, sig, profile }` inside `chartsInfo` for the data
-   - `nlOptions` + `optionsSig` at the top level for appearance (omit if skipping options)
+   - `query: queryJson` inside `chartsInfo` for the data (drop it in directly)
+   - `...optionsElement` spread at the top level for appearance (omit if skipping options)
 6. (Loading from URL) Call `GET /nl/info?profile=…&nl=…&sig=…` to retrieve `{ sql, description }` for read-only display without executing the query.
