@@ -43,7 +43,7 @@ public class NlMcpToolsTest {
         nlSqlCache = mock(NlSqlCache.class);
 
         tools = new NlMcpTools(mapper, statsService, signer, sqlGenerator, nlSqlCache,
-                new ProfileSchemaBuilder(mapper), "/chart/json");
+                new ProfileSchemaBuilder(mapper));
 
         profileConfig = new ProfileConfiguration();
         profileConfig.tables = new HashMap<>();
@@ -58,15 +58,14 @@ public class NlMcpToolsTest {
     // --- signNlQuery: happy path ---
 
     @Test
-    void signNlQuery_happyPath_returnsUrl() {
+    void signNlQuery_happyPath_returnsConfirmation() {
         when(sqlGenerator.generate(any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
 
         NlMcpTools.clearSignedQuery();
         String result = tools.signNlQuery("openaire", "total publications");
 
-        assertTrue(result.contains("/chart/json"), "should return chart URL");
-        assertTrue(result.contains("openaire"), "URL should contain profile");
+        assertEquals("Signed successfully.", result);
     }
 
     @Test
