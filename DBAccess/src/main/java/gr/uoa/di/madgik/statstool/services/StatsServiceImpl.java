@@ -239,8 +239,6 @@ public class StatsServiceImpl implements StatsService {
                     for (int i = 2; i <= n; i++) pinnedOrder.append("+COALESCE(y").append(i).append(",0)");
                     pinnedOrder.append(" DESC");
                     effectiveOrderBy = pinnedOrder.toString();
-                } else if ("yaxis".equals(orderBy)) {
-                    effectiveOrderBy = "1 DESC";
                 } else if (stackedOrder) {
                     StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
                     for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");

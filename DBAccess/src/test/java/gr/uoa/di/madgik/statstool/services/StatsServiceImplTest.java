@@ -263,9 +263,11 @@ public class StatsServiceImplTest {
     }
 
     @Test
-    void mergedPath_yaxisOrderBy_usesKeysCteAndOrdersBy1Desc() throws Exception {
-        // yaxis must use the UNION keys CTE (not q1-drives) so disjoint-series queries
-        // all appear on the x-axis, and must order by the first y column descending.
+    void mergedPath_yaxisOrderBy_usesKeysCteAndCoaclesceSum() throws Exception {
+        // yaxis must use the UNION keys CTE so disjoint-series queries all appear on the
+        // x-axis. Ordering is by COALESCE sum so each country ranks by its actual value
+        // regardless of which series it belongs to (ORDER BY y1 alone would bury countries
+        // with NULL y1 at an undefined position).
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
 
@@ -282,14 +284,13 @@ public class StatsServiceImplTest {
         verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
 
         String sql = sqlCaptor.getValue();
-        assertTrue(sql.contains("ORDER BY 1 DESC"), "Expected ORDER BY 1 DESC for yaxis, got: " + sql);
         assertFalse(sql.contains("ORDER BY yaxis"), "yaxis must not appear literally in merged SQL, got: " + sql);
         // Keys CTE must be present so all x-values from all queries appear
         assertTrue(sql.contains("keys AS ("), "yaxis mode must include a keys CTE, got: " + sql);
         assertTrue(sql.toUpperCase().contains("UNION ALL"), "keys CTE must use UNION ALL, got: " + sql);
         assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, got: " + sql);
-        // Must NOT use the COALESCE sum ordering (that belongs to stacked/pinned)
-        assertFalse(sql.contains("COALESCE(y1,0)+COALESCE(y2,0)"), "yaxis must not use stacked sum ordering, got: " + sql);
+        // Ordering must be COALESCE sum so countries with NULL in one series still rank correctly
+        assertTrue(sql.contains("COALESCE(y1,0)+COALESCE(y2,0)"), "yaxis must use COALESCE sum ordering, got: " + sql);
     }
 
     @Test
