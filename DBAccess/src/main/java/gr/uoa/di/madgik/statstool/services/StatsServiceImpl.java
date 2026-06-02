@@ -122,7 +122,10 @@ public class StatsServiceImpl implements StatsService {
                 // x-axis values (e.g. stacked categorical charts) all appear on the x-axis.
                 // "pinned" also uses the keys-CTE so that q1's x-values are always present,
                 // then sorts q1-present rows first and the rest by combined sum DESC.
-                boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || orderBy == null;
+                // "yaxis" also uses the keys-CTE so that disjoint-series queries (e.g. q1=Ireland,
+                // q2=all other countries) all appear on the x-axis rather than q1 silently
+                // defining the entire universe (which would suppress q2's exclusive rows).
+                boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || "yaxis".equals(orderBy) || orderBy == null;
                 StringBuilder cteColumns = new StringBuilder("(y");
                 for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
                 cteColumns.append(")");
@@ -236,6 +239,8 @@ public class StatsServiceImpl implements StatsService {
                     for (int i = 2; i <= n; i++) pinnedOrder.append("+COALESCE(y").append(i).append(",0)");
                     pinnedOrder.append(" DESC");
                     effectiveOrderBy = pinnedOrder.toString();
+                } else if ("yaxis".equals(orderBy)) {
+                    effectiveOrderBy = "1 DESC";
                 } else if (stackedOrder) {
                     StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
                     for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");

@@ -263,7 +263,9 @@ public class StatsServiceImplTest {
     }
 
     @Test
-    void mergedPath_yaxisOrderBy_translatesTo1Desc() throws Exception {
+    void mergedPath_yaxisOrderBy_usesKeysCteAndOrdersBy1Desc() throws Exception {
+        // yaxis must use the UNION keys CTE (not q1-drives) so disjoint-series queries
+        // all appear on the x-axis, and must order by the first y column descending.
         Query q1 = newQuery("p", true);
         Query q2 = newQuery("p", true);
 
@@ -282,5 +284,42 @@ public class StatsServiceImplTest {
         String sql = sqlCaptor.getValue();
         assertTrue(sql.contains("ORDER BY 1 DESC"), "Expected ORDER BY 1 DESC for yaxis, got: " + sql);
         assertFalse(sql.contains("ORDER BY yaxis"), "yaxis must not appear literally in merged SQL, got: " + sql);
+        // Keys CTE must be present so all x-values from all queries appear
+        assertTrue(sql.contains("keys AS ("), "yaxis mode must include a keys CTE, got: " + sql);
+        assertTrue(sql.toUpperCase().contains("UNION ALL"), "keys CTE must use UNION ALL, got: " + sql);
+        assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, got: " + sql);
+        // Must NOT use the COALESCE sum ordering (that belongs to stacked/pinned)
+        assertFalse(sql.contains("COALESCE(y1,0)+COALESCE(y2,0)"), "yaxis must not use stacked sum ordering, got: " + sql);
+    }
+
+    @Test
+    void yaxisMode_usesKeysCte_toAlignDisjointXaxisValues() throws Exception {
+        // Regression: a chart with q1=Ireland-only and q2=all-other-countries previously
+        // returned only Ireland because q1 drove the x-axis (FROM q1 LEFT JOIN q2). With the
+        // fix, yaxis uses the UNION keys CTE so all countries from both queries appear.
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), eq("yaxis"))).thenReturn("SELECT 100, 'Ireland'");
+        when(mapper.map(eq(q2), anyList(), eq("yaxis"))).thenReturn("SELECT 200, 'Germany'");
+
+        Result merged = new Result();
+        merged.setRows(new ArrayList<>());
+        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
+
+        statsService.query(Arrays.asList(q1, q2), "yaxis");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+        String sql = sqlCaptor.getValue();
+
+        assertTrue(sql.contains("keys AS ("), "keys CTE must be present, got: " + sql);
+        assertTrue(sql.contains("FROM q1") && sql.contains("FROM q2"), "keys CTE must reference both CTEs, got: " + sql);
+        assertTrue(sql.toUpperCase().contains("UNION ALL"), "keys CTE must UNION ALL queries, got: " + sql);
+        assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, got: " + sql);
+        assertTrue(sql.contains("LEFT JOIN q2"), "q2 must be LEFT JOINed, got: " + sql);
+        // q1 must not drive — the old broken pattern
+        assertFalse(sql.matches("(?s).*FROM q1\\s+LEFT JOIN q2.*"), "q1 must not drive x-axis unilaterally, got: " + sql);
     }
 }
