@@ -83,6 +83,8 @@ function handleAdminSideData(dataJSONobj) {
                         //Pass the Chart library to ChartDataFormatter
                         RequestInfoObj.library = dataJSONobj.library;
                         RequestInfoObj.orderBy = dataJSONobj.orderBy;
+                        if (dataJSONobj.nlOptions) RequestInfoObj.nlOptions = dataJSONobj.nlOptions;
+                        if (dataJSONobj.optionsSig) RequestInfoObj.optionsSig = dataJSONobj.optionsSig;
 
                         //Create ChartInfo Object Array
                         RequestInfoObj.chartsInfo = [];
@@ -109,6 +111,8 @@ function handleAdminSideData(dataJSONobj) {
                     //Pass the Chart library to ChartDataFormatter
                     RequestInfoObj.library = dataJSONobj.library;
                     RequestInfoObj.orderBy = dataJSONobj.orderBy;
+                    if (dataJSONobj.nlOptions) RequestInfoObj.nlOptions = dataJSONobj.nlOptions;
+                    if (dataJSONobj.optionsSig) RequestInfoObj.optionsSig = dataJSONobj.optionsSig;
 
                     //Create ChartInfo Object Array
                     RequestInfoObj.chartsInfo = [];
@@ -162,6 +166,10 @@ function handleAdminSideData(dataJSONobj) {
             //Pass the Chart library to ChartDataFormatter
             RequestInfoObj.library = dataJSONobj.library;
             RequestInfoObj.drilldown = dataJSONobj.drilldown;
+
+            // Forward NL options so the backend applies the signed chart appearance
+            if (dataJSONobj.nlOptions) RequestInfoObj.nlOptions = dataJSONobj.nlOptions;
+            if (dataJSONobj.optionsSig) RequestInfoObj.optionsSig = dataJSONobj.optionsSig;
 
             // When global stacking is enabled and ordering by yaxis, sort by the combined
             // sum of all series so the tallest stacked bars come first.
