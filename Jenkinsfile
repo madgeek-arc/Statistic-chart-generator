@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 'master' }
 
     environment {
         REGISTRY_CREDENTIALS = credentials('openaire-docker-registry-lempesis')
