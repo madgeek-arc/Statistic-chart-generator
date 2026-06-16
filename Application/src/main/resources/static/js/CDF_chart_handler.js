@@ -307,6 +307,11 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
         case "HighCharts": {
             var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
 
+            // NL appearance options override static chartDescription options
+            if (responseData.chartOptions) {
+                chartJson = Highcharts.merge(chartJson, responseData.chartOptions);
+            }
+
             Highcharts.setOptions({
                 lang: {
                     drillUpText: '<< Back',
