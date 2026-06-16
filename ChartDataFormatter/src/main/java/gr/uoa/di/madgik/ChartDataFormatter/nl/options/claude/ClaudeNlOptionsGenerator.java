@@ -15,7 +15,9 @@ public class ClaudeNlOptionsGenerator implements NlOptionsGenerator {
             - Output ONLY valid JSON. No markdown fences, no explanation.
             - Use only valid %s option names and structures.
             - Do not include data (series, dataset) — only visual and layout options.
-            - Produce a complete, self-consistent options object.
+            - Only include properties that are explicitly described. Do not invent defaults
+              or placeholders for anything not mentioned in the description.
+            - Never include title.text or subtitle.text — those are always set by the caller.
             """;
 
     private final ChatClient chatClient;

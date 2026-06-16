@@ -37,7 +37,13 @@ public class ClaudeNlOptionsChatAgent implements NlOptionsChatAgent {
                  alone without the conversation history)
                - optionsJson: the final %s options JSON object
 
-            Important: do not include data (series, dataset) in the options — only visual/layout config.
+            Important:
+            - Do not include data (series, dataset) in the options — only visual/layout config.
+            - Only generate properties that were explicitly requested by the user. Do not invent
+              defaults or placeholders for properties the user did not mention (e.g. if the user
+              did not ask for a title, do not include title.text or any title property).
+            - title.text and subtitle.text are always controlled by the calling application and
+              must NEVER appear in the options JSON, even as placeholders.
             """;
 
     private final ChatClient chatClient;
