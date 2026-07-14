@@ -18,19 +18,16 @@ function fetchChart(jsonData) {
         .always();
 }
 
-/**
- * Formats numeric values given as string, otherwise returns original data.
- *
- * @param data
- * @returns {*|string}
- */
+// Formats numeric values given as string using the user's locale; returns non-numeric data as-is.
 function formatIfNumeric(data) {
     const isAlphanumericRegex = /[a-zA-Z]/;
     if (isAlphanumericRegex.test(data)) {
         return data
     }
     let num = parseFloat(data);
-    const smallIntRegex = /[-+]?\d{1,4}$/;
+    // Never group 1-4 digit values (likely years, e.g. "2020") in any locale - anchored so it
+    // matches the whole string, not just a trailing 1-4 digit chunk of a larger number.
+    const smallIntRegex = /^[-+]?\d{1,4}$/;
     if (Number.isNaN(num) || smallIntRegex.test(data)) {
         return data;
     } else {
