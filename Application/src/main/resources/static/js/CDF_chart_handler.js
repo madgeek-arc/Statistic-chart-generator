@@ -35,6 +35,41 @@ function formatIfNumeric(data) {
     }
 }
 
+// Reads the locale's actual decimal/group separator via formatToParts, since some locales
+// (e.g. it-IT) omit the group separator for small numbers, making it unsafe to guess by
+// formatting a small number and reading a character position.
+function getLocaleSeparator(partType) {
+    const part = new Intl.NumberFormat(userLocale).formatToParts(1000000.1).find(p => p.type === partType);
+    return part ? part.value : (partType === 'decimal' ? '.' : ',');
+}
+
+// Applies locale separators to Highcharts, and wraps numberFormat so grouping only happens
+// when Intl says the locale would group a number of that magnitude (Highcharts itself always
+// groups >= 1000, which is wrong for locales like it-IT that only group from 10,000 up).
+function applyHighchartsLocaleFormatting() {
+    Highcharts.setOptions({
+        lang: {
+            drillUpText: '<< Back',
+            decimalPoint: getLocaleSeparator('decimal'),
+            thousandsSep: getLocaleSeparator('group')
+        }
+    });
+
+    if (Highcharts.numberFormat.__cldrGroupingWrapped) {
+        return;
+    }
+
+    const defaultNumberFormat = Highcharts.numberFormat;
+    Highcharts.numberFormat = function (number, decimals, decimalPoint, thousandsSep) {
+        const sep = thousandsSep !== undefined ? thousandsSep : getLocaleSeparator('group');
+        const isGrouped = new Intl.NumberFormat(userLocale)
+            .formatToParts(Math.trunc(Math.abs(number)))
+            .some(part => part.type === 'group');
+        return defaultNumberFormat(number, decimals, decimalPoint, isGrouped ? sep : '');
+    };
+    Highcharts.numberFormat.__cldrGroupingWrapped = true;
+}
+
 //Function for loading(= appending to the head) a JS file
 function loadJS(url, afterLoadCallback) {
 
@@ -309,13 +344,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                 chartJson = Highcharts.merge(chartJson, responseData.chartOptions);
             }
 
-            Highcharts.setOptions({
-                lang: {
-                    drillUpText: '<< Back',
-                    decimalPoint: (1.1).toLocaleString(userLocale).charAt(1),
-                    thousandsSep: (1000).toLocaleString(userLocale).charAt(1)
-                }
-            })
+            applyHighchartsLocaleFormatting();
 
             if (DEBUGMODE) {
                 console.log("Final formed JSON", chartJson);
@@ -354,12 +383,7 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
                         mapChart.mapZoom(mapJson.zoomTo.zoomValue);
                     }
                 });
-            Highcharts.setOptions({
-                lang: {
-                    decimalPoint: (1.1).toLocaleString(userLocale).charAt(1),
-                    thousandsSep: (1000).toLocaleString(userLocale).charAt(1)
-                }
-            })
+            applyHighchartsLocaleFormatting();
 
             break;
         }
