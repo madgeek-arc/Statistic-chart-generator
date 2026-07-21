@@ -339,9 +339,14 @@ function handleChartDataFormatterResponse(responseData, originalDataJSONobj, Cha
         case "HighCharts": {
             var chartJson = convertToValidHighchartJson(responseData, originalDataJSONobj);
 
-            // NL appearance options override static chartDescription options
+            // NL appearance options override static chartDescription options.
+            // Strip title/subtitle text — those are content, not style, and must
+            // come from chartDescription, not the NL options placeholder.
             if (responseData.chartOptions) {
-                chartJson = Highcharts.merge(chartJson, responseData.chartOptions);
+                const nlOpts = responseData.chartOptions;
+                if (nlOpts.title) delete nlOpts.title.text;
+                if (nlOpts.subtitle) delete nlOpts.subtitle.text;
+                chartJson = Highcharts.merge(chartJson, nlOpts);
             }
 
             applyHighchartsLocaleFormatting();
