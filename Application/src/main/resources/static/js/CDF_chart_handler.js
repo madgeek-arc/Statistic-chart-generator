@@ -461,9 +461,9 @@ function fillGoogleChartsDataTable(responseData, originJson) {
     const chartType = originJson.chartDescription.chartType;
 
     // datacolumns has the same size of columnsType PLUS a header column
-    if (dataColumns.length > 0 && (columnsType === null || ((dataColumns.length === (columnsType.length + 1))))) {
+    if (dataColumns.length > 0 && (columnsType == null || ((dataColumns.length === (columnsType.length + 1))))) {
 
-        if (columnsType !== null)
+        if (columnsType != null)
             originJson.chartDescription.options.series = new Array(columnsType.length);
 
         for (let index = 0; index < dataColumns.length; index++) {
@@ -478,7 +478,7 @@ function fillGoogleChartsDataTable(responseData, originJson) {
             } else {
                 // Column for the value of the Data entry
                 data.addColumn('number', value);
-                if (columnsType !== null)
+                if (columnsType != null)
                     originJson.chartDescription.options.series[index - 1] = {type: columnsType[index - 1]};
             }
         }
@@ -515,13 +515,11 @@ function convertToValidHighchartJson(responseData, originJson) {
             seriesInstance.stacking = convertedJson.series[index].stacking;
 
         // Pass the data series name to the response data object
-        //TODO check that this one did not break anything else!!!!!
-        // if(responseData.dataSeriesNames != null)
-        if (responseData.dataSeriesNames !== undefined && responseData.dataSeriesNames !== null)
+        if (responseData.dataSeriesNames != null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
         // Pass the data series type to the response data object
-        if (responseData.dataSeriesTypes !== null)
+        if (responseData.dataSeriesTypes != null)
             seriesInstance.type = responseData.dataSeriesTypes[index];
 
         // Pass the data series color to the response data object
@@ -602,7 +600,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
 
         var seriesInstance = convertedJson.series[index];
 
-        if (responseData.dataSeriesNames !== null)
+        if (responseData.dataSeriesNames != null)
             seriesInstance.name = responseData.dataSeriesNames[index];
 
         // Propagate if this data series will be stacking
@@ -611,7 +609,7 @@ function convertToValideChartsJson(responseData, originJson, ChartDataFormatterR
             seriesInstance.stack = convertedJson.series[0].stack;
 
         // Pass the data series type to the response data object
-        if (responseData.dataSeriesTypes !== null)
+        if (responseData.dataSeriesTypes != null)
             seriesInstance.type = responseData.dataSeriesTypes[index];
 
         // // Pass the data series color to the response data object

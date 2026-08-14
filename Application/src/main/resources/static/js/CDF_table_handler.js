@@ -106,9 +106,9 @@ function fillGoogleChartsDataTable(responseData, originJson){
     var columnsType = responseData.columnsType;
     
     // datacolumns has the same size of columnsType PLUS a header column
-    if(dataColumns.length > 0 && ( columnsType === null || ((columnsType !== null) && (dataColumns.length === (columnsType.length + 1))))){
+    if(dataColumns.length > 0 && ( columnsType == null || ((columnsType != null) && (dataColumns.length === (columnsType.length + 1))))){
 
-        if(columnsType !== null) 
+        if(columnsType != null)
             originJson.tableDescription.options.series = new Array(columnsType.length);
 
         for(let index = 0; index < dataColumns.length; index++){
@@ -116,7 +116,7 @@ function fillGoogleChartsDataTable(responseData, originJson){
                 data.addColumn('string', dataColumns[index]);
             else{
                 data.addColumn('number', dataColumns[index]);
-                if(columnsType !== null)
+                if(columnsType != null)
                     originJson.tableDescription.options.series[index-1] = {type: columnsType[index-1]};
             }
         }
