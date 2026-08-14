@@ -60,7 +60,8 @@ public class SqlQueryBuilder {
                     if (filter.getType() == null) {
                         throw new IllegalArgumentException("Filter on field '" + filter.getField() + "' is missing required property 'type'");
                     }
-                    if (filter.getValues() == null || filter.getValues().isEmpty() || filter.getValues().contains(null)) {
+                    boolean requiresValues = !"is_null".equals(filter.getType()) && !"is_not_null".equals(filter.getType());
+                    if (requiresValues && (filter.getValues() == null || filter.getValues().isEmpty() || filter.getValues().contains(null))) {
                         throw new IllegalArgumentException("Filter on field '" + filter.getField() + "' has a missing or null value");
                     }
                     String path = mapField(filter.getField());

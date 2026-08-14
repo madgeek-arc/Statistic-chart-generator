@@ -452,6 +452,10 @@ public class SqlQueryTree {
                     case "ends_with":
                         parameters.add(mapType(f.getValues().get(0).toLowerCase(), f.getDatatype()));
                         return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?)";
+                    case "is_null":
+                        return qualifiedCol + " IS NULL";
+                    case "is_not_null":
+                        return qualifiedCol + " IS NOT NULL";
                 }
                 return null;
             };

@@ -156,7 +156,7 @@ A single predicate applied to one field.
 |-------|------|----------|-------------|
 | `field` | `string` | **yes** | Dot-separated field path (same format as `Select.field`). |
 | `type` | `string` | **yes** | Filter operator. See [filter operators](#filter-operators). |
-| `values` | `string[]` | **yes** | Values to test against. All values are strings in JSON; `datatype` controls SQL casting. For `between`, provide exactly two values: `[min, max]`. For `=` / `!=` with multiple values, generates `IN` / `NOT IN`. |
+| `values` | `string[]` | **yes**, except for `is_null`/`is_not_null` | Values to test against. All values are strings in JSON; `datatype` controls SQL casting. For `between`, provide exactly two values: `[min, max]`. For `=` / `!=` with multiple values, generates `IN` / `NOT IN`. `is_null`/`is_not_null` ignore `values` — it may be omitted or empty. |
 | `datatype` | `string` | no | SQL cast hint. Common values: `"int"`, `"text"`, `"date"`. If omitted the mapper infers from the field type in the profile. |
 
 ##### Filter operators
@@ -172,6 +172,8 @@ A single predicate applied to one field.
 | `"between"` | `col BETWEEN ? AND ?` | Requires exactly 2 values |
 | `"contains"` | `col LIKE ?` | Value is wrapped with `%…%` |
 | `"startsWith"` | `col LIKE ?` | Value is wrapped with `…%` |
+| `"is_null"` | `col IS NULL` | Ignores `values` (may be omitted or empty) |
+| `"is_not_null"` | `col IS NOT NULL` | Ignores `values` (may be omitted or empty) |
 
 ---
 

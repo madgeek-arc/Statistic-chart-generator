@@ -456,6 +456,44 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void isNullFilter_generatesIsNullPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "is_null", Collections.emptyList(), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type IS NULL"), "Must generate IS NULL predicate");
+        assertEquals(0, params.size(), "is_null must bind no parameters");
+    }
+
+    @Test
+    public void isNotNullFilter_generatesIsNotNullPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "is_not_null", Collections.emptyList(), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type IS NOT NULL"), "Must generate IS NOT NULL predicate");
+        assertEquals(0, params.size(), "is_not_null must bind no parameters");
+    }
+
+    @Test
     public void entityFilter_notDuplicated_acrossMultipleFieldPaths() {
         // Regression: addEntityFilters() was called once per select/filter field that traverses the
         // root entity, causing the entity table-filter (e.g. type='publication') to appear N times.
