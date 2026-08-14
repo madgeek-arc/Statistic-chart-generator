@@ -63,6 +63,11 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
+    public boolean isEnabled() {
+        return enableCache;
+    }
+
+    @Override
     public boolean exists(String key) {
         if (!enableCache) {
             log.warn("Calling exists method while cache is not enabled.");
