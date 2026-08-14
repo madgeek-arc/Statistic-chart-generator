@@ -42,6 +42,9 @@ public class SqlQueryBuilder {
 
         int selectCount = 1;
         for (Select select : query.getSelect()) {
+            if (select.getField() == null) {
+                throw new IllegalArgumentException("Select at position " + selectCount + " is missing required property 'field'");
+            }
             String path = mapField(select.getField());
             mappedSelects.add(new Select(path, select.getAggregate(), selectCount));
             selectCount++;
@@ -51,6 +54,15 @@ public class SqlQueryBuilder {
             for (FilterGroup filterGroup : query.getFilters()) {
                 List<Filter> filters = new ArrayList<>();
                 for (Filter filter : filterGroup.getGroupFilters()) {
+                    if (filter.getField() == null) {
+                        throw new IllegalArgumentException("Filter is missing required property 'field'");
+                    }
+                    if (filter.getType() == null) {
+                        throw new IllegalArgumentException("Filter on field '" + filter.getField() + "' is missing required property 'type'");
+                    }
+                    if (filter.getValues() == null || filter.getValues().isEmpty() || filter.getValues().contains(null)) {
+                        throw new IllegalArgumentException("Filter on field '" + filter.getField() + "' has a missing or null value");
+                    }
                     String path = mapField(filter.getField());
                     filters.add(new Filter(path, filter.getType(), filter.getValues(), getDataType(filter.getField())));
                 }
