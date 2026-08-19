@@ -73,12 +73,15 @@ public class StatsRepository {
         for (int i = 0; i < sql.length(); i++) {
             char c = sql.charAt(i);
             if (c == '\'' && !inDouble) {
-                // handle doubled single quotes inside single-quoted strings
-                inSingle = !inSingle;
-                // if next is also quote, stay inside string
+                // A doubled quote ('') only represents an escaped literal quote when it
+                // occurs while already inside a string; check the pre-toggle state so an
+                // empty string literal ('') immediately outside a string closes normally
+                // instead of being mistaken for an escape sequence.
                 if (inSingle && i + 1 < sql.length() && sql.charAt(i + 1) == '\'') {
-                    // skip the escaped quote
+                    // skip the escaped quote, remain inside the string
                     i++;
+                } else {
+                    inSingle = !inSingle;
                 }
                 continue;
             }
