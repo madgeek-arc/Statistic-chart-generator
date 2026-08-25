@@ -260,7 +260,7 @@ public class StatsServiceImpl implements StatsService {
                 }
 
                 Result mergedResult;
-                if (allUseCache) {
+                if (allUseCache && statsCache.isEnabled()) {
                     String cacheKey = StatsCache.getCacheKey(finalSql, mergedParameters, baseProfile);
                     if (statsCache.exists(cacheKey)) {
                         mergedResult = statsCache.get(cacheKey);
@@ -327,7 +327,7 @@ public class StatsServiceImpl implements StatsService {
             log.debug("Bound parameters (in order): {}", parameters);
             log.debug("Target profile: {}", profile);
 
-            if (query.isUseCache()) {
+            if (query.isUseCache() && statsCache.isEnabled()) {
                 cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
 
                 if (statsCache.exists(cacheKey)) {
@@ -356,8 +356,10 @@ public class StatsServiceImpl implements StatsService {
     @Override
     public Result queryRaw(QueryWithParameters queryWithParameters) throws StatsServiceException {
         try {
-            String cacheKey = StatsCache.getCacheKey(queryWithParameters);
-            if (statsCache.exists(cacheKey)) {
+            boolean useCache = statsCache.isEnabled();
+            String cacheKey = useCache ? StatsCache.getCacheKey(queryWithParameters) : null;
+
+            if (useCache && statsCache.exists(cacheKey)) {
                 log.debug("Raw query key {} in cache.", cacheKey);
                 return statsCache.get(cacheKey);
             }
@@ -366,7 +368,9 @@ public class StatsServiceImpl implements StatsService {
                     queryWithParameters.getQuery(),
                     queryWithParameters.getParameters(),
                     queryWithParameters.getDbId());
-            statsCache.save(queryWithParameters, timedResult.result, timedResult.execTimeMs, timedResult.queueTimeMs);
+            if (useCache) {
+                statsCache.save(queryWithParameters, timedResult.result, timedResult.execTimeMs, timedResult.queueTimeMs);
+            }
             return timedResult.result;
         } catch (Exception e) {
             throw new StatsServiceException("Raw query execution failed: " + e.getMessage(), e);

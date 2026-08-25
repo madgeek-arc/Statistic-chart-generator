@@ -19,6 +19,8 @@ public interface StatsCache {
 
     void dropCache(String profile) throws Exception;
 
+    boolean isEnabled();
+
     boolean exists(String key) throws Exception;
 
     Result get(String key) throws Exception;

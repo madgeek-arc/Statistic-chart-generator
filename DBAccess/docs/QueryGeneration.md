@@ -314,6 +314,15 @@ EXISTS (
 | `contains` | `lower(col) LIKE CONCAT('%', ?, '%')` |
 | `starts_with` | `lower(col) LIKE CONCAT(?, '%')` |
 | `ends_with` | `lower(col) LIKE CONCAT('%', ?)` |
+| `is_null` | `col IS NULL` |
+| `is_not_null` | `col IS NOT NULL` |
+
+`is_null`/`is_not_null` bind no JDBC parameters and ignore `values`. Note that
+on a hop-based filter (a field on a related/joined entity), the predicate is
+applied inside an `EXISTS (...)` correlated subquery — `is_null` there means
+"a related row exists and its column is null", not "no related row exists at
+all". This is the existing EXISTS semantics shared by every operator on hop
+fields, not specific to these two.
 
 ### makeQuery — GROUP BY and ORDER BY
 
