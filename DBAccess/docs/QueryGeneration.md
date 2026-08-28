@@ -309,6 +309,8 @@ EXISTS (
 | `=` (multiple values) | `col IN (?, ?, ?)` |
 | `!=` (single value) | `col != ?` |
 | `!=` (multiple values) | `col NOT IN (?, ?)` |
+| `in` | `col IN (?, ?, ?)` |
+| `not_in` | `col NOT IN (?, ?, ?)` |
 | `>`, `>=`, `<`, `<=` | `col > ?` etc. |
 | `between` | `col BETWEEN ? AND ?` |
 | `contains` | `lower(col) LIKE CONCAT('%', ?, '%')` |
@@ -316,6 +318,10 @@ EXISTS (
 | `ends_with` | `lower(col) LIKE CONCAT('%', ?)` |
 | `is_null` | `col IS NULL` |
 | `is_not_null` | `col IS NOT NULL` |
+
+`in`/`not_in` always emit `IN` / `NOT IN`, regardless of value count (a
+single-value `in` renders as `col IN (?)`), unlike `=` / `!=` which only switch
+to `IN` / `NOT IN` when given multiple values.
 
 `is_null`/`is_not_null` bind no JDBC parameters and ignore `values`. Note that
 on a hop-based filter (a field on a related/joined entity), the predicate is

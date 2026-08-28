@@ -494,6 +494,80 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void inFilter_multipleValues_generatesInPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "in", Arrays.asList("a", "b", "c"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type IN (?, ?, ?)"), "Must generate IN predicate");
+        assertEquals(Arrays.asList("a", "b", "c"), params, "Values must be bound in order");
+    }
+
+    @Test
+    public void inFilter_singleValue_generatesInPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "in", Collections.singletonList("a"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type IN (?)"), "Single value must still generate IN, not =");
+        assertEquals(1, params.size());
+    }
+
+    @Test
+    public void notInFilter_generatesNotInPredicate() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "not_in", Arrays.asList("a", "b"), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("r0.type NOT IN (?, ?)"), "Must generate NOT IN predicate");
+        assertEquals(2, params.size());
+    }
+
+    @Test
+    public void inFilter_emptyValues_throws() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+
+        Filter f = new Filter("result.type", "in", Collections.emptyList(), "text");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", "sum", 1)),
+                "result", "test", 0, null, false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new SqlQueryBuilder(apiQuery, pc).getSqlQuery(new ArrayList<>(), null),
+                "in with no values must be rejected");
+    }
+
+    @Test
     public void entityFilter_notDuplicated_acrossMultipleFieldPaths() {
         // Regression: addEntityFilters() was called once per select/filter field that traverses the
         // root entity, causing the entity table-filter (e.g. type='publication') to appear N times.

@@ -433,6 +433,16 @@ public class SqlQueryTree {
                         }
                         return qualifiedCol + ("!=".equals(f.getType()) ? " NOT IN " : " IN ") + placeholder;
                     }
+                    case "in":
+                    case "not_in": {
+                        // Explicit set membership: always emit IN / NOT IN, regardless of value count
+                        List<String> vals = f.getValues();
+                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), "?")) + ")";
+                        for (String value : vals) {
+                            parameters.add(mapType(value, f.getDatatype()));
+                        }
+                        return qualifiedCol + ("not_in".equals(f.getType()) ? " NOT IN " : " IN ") + placeholder;
+                    }
                     case ">":
                     case ">=":
                     case "<":
