@@ -165,6 +165,8 @@ A single predicate applied to one field.
 |---|---|---|
 | `"="` | `col = ?` or `col IN (?,?,…)` | Single value → `=`; multiple values → `IN` |
 | `"!="` | `col != ?` or `col NOT IN (?,?,…)` | Single value → `!=`; multiple values → `NOT IN` |
+| `"in"` | `col IN (?,?,…)` | Always `IN`, even for a single value; requires ≥1 value |
+| `"not_in"` | `col NOT IN (?,?,…)` | Always `NOT IN`, even for a single value; requires ≥1 value |
 | `">"` | `col > ?` | |
 | `">="` | `col >= ?` | |
 | `"<"` | `col < ?` | |
