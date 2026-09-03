@@ -63,7 +63,20 @@ public class SchemaServiceImpl implements SchemaService{
 
         List<Select> selects = new ArrayList<>();
         selects.add(new Select(lastFld, null, 1));
-        Query query = new Query(null, null, null, selects, fld.get(fld.size()-2), profile, 0,null, true);
+
+        // Push the "like" substring match down into SQL as a `contains` filter (which emits
+        // lower(col) LIKE '%?%' with a lower-cased bind) instead of filtering every distinct
+        // value in Java.
+        List<FilterGroup> filters = null;
+        if (like != null && !like.isEmpty()) {
+            Filter likeFilter = new Filter(lastFld, "contains", Collections.singletonList(like), null);
+            filters = Collections.singletonList(new FilterGroup(new ArrayList<>(Collections.singletonList(likeFilter)), "AND"));
+        }
+
+        // Bound the query: RESULT_LIMIT + 1 rows is enough to decide "return the list" vs
+        // "too many, return count only" below, and keeps an unbounded distinct-value dump
+        // from overflowing the result cache.
+        Query query = new Query(null, null, filters, selects, fld.get(fld.size()-2), profile, RESULT_LIMIT + 1, null, true);
 
         List<Query> queries = new ArrayList<>();
         queries.add(query);
@@ -75,18 +88,43 @@ public class SchemaServiceImpl implements SchemaService{
 
             List<String> values = new ArrayList<>();
             for(List<?> val : result.getRows()) {
-                if("".equals(like) || String.valueOf(val.get(0)).toLowerCase().contains(like.toLowerCase())) {
-                    values.add(String.valueOf(val.get(0)));
-                }
+                values.add(String.valueOf(val.get(0)));
             }
 
             if(values.size() <= RESULT_LIMIT) {
                 return new FieldValues(values.size(), values);
             } else {
-                return new FieldValues(values.size(), null);
+                // The list query is capped at RESULT_LIMIT + 1, so values.size() here is just
+                // the cap. Fire one lightweight COUNT(DISTINCT) query (same filter) so the
+                // response still reports the real number of matching distinct values.
+                return new FieldValues(countDistinctValues(profile, fld, lastFld, filters), null);
             }
         } else {
             return new FieldValues(0, null);
         }
+    }
+
+    private int countDistinctValues(String profile, List<String> fld, String lastFld,
+                                    List<FilterGroup> filters) throws StatsServiceException {
+        List<Select> selects = new ArrayList<>();
+        // "count" compiles to COUNT(DISTINCT <col>), matching the DISTINCT semantics of the
+        // list query above.
+        selects.add(new Select(lastFld, "count", 1));
+        Query countQuery = new Query(null, null, filters, selects,
+                fld.get(fld.size() - 2), profile, 1, null, true);
+
+        List<Result> results = statsService.query(new ArrayList<>(Collections.singletonList(countQuery)));
+        if (results != null && !results.isEmpty() && results.get(0) != null
+                && results.get(0).getRows() != null && !results.get(0).getRows().isEmpty()) {
+            Object cell = results.get(0).getRows().get(0).get(0);
+            if (cell != null) {
+                try {
+                    return (int) Math.min(Integer.MAX_VALUE, Long.parseLong(String.valueOf(cell).trim()));
+                } catch (NumberFormatException ignored) {
+                    // fall through to the sentinel below
+                }
+            }
+        }
+        return RESULT_LIMIT + 1; // count unavailable: still signal "over the limit"
     }
 }
