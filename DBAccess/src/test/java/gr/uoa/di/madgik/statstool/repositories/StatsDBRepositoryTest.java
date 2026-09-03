@@ -7,6 +7,8 @@ import org.hsqldb.jdbc.JDBCDataSource;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -100,6 +102,51 @@ public class StatsDBRepositoryTest {
         assertNotNull(fetched);
         assertEquals(1, fetched.getRows().size());
         assertEquals("two", fetched.getRows().get(0).get(1));
+    }
+
+    @Test
+    public void postInit_migratesLegacyNarrowColumns() throws Exception {
+        JDBCDataSource ds = new JDBCDataSource();
+        ds.setUrl("jdbc:hsqldb:mem:cache_legacy_schema;hsqldb.tx=mvcc");
+        ds.setUser("sa");
+        ds.setPassword("");
+
+        // Recreate the pre-2026-02 schema: query/key VARCHAR(10000), profile VARCHAR(100),
+        // and no queuetime column.
+        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+            st.execute("create table cache_entry (" +
+                    "key varchar(10000) not null," +
+                    "result longvarchar not null, " +
+                    "shadow longvarchar, " +
+                    "query varchar(10000) not null," +
+                    "created timestamp default now() not null, " +
+                    "updated timestamp default now() not null, " +
+                    "total_hits int default 0 not null," +
+                    "session_hits int default 0 not null," +
+                    "pinned boolean default false not null," +
+                    "exectime int default 0 not null," +
+                    "profile varchar(100) not null)");
+        }
+
+        StatsDBRepository repo = new StatsDBRepository(ds);
+        Field f = StatsDBRepository.class.getDeclaredField("enableCache");
+        f.setAccessible(true);
+        f.set(repo, true);
+        repo.postInit();
+
+        // A query whose JSON serialization far exceeds the legacy VARCHAR(10000) cap.
+        String largeQuery = repeat("Q", 50000);
+        QueryWithParameters qwp = new QueryWithParameters(largeQuery, new ArrayList<>(), "hsqldb");
+        Result res = new Result();
+        res.addRow(Arrays.asList(1, "v"));
+
+        CacheEntry entry = new CacheEntry(hexKey64('d'), qwp, res);
+        entry.setProfile("prof");
+
+        repo.storeEntry(entry);
+
+        assertTrue(repo.exists(entry.getKey()), "Entry should store after schema migration");
+        assertNotNull(repo.get(entry.getKey()));
     }
 
     @Test

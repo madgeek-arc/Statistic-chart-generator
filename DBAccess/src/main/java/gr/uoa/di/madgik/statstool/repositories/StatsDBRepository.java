@@ -22,6 +22,10 @@ public class StatsDBRepository implements StatsCache {
 
     public static final String CACHE_DB_NAME = "cache";
 
+    // A LONGVARCHAR column / cast resolves to VARCHAR(16M) in HSQLDB. Stay safely below that
+    // ceiling: an oversized payload is skipped (logged) rather than failing the whole write.
+    private static final int MAX_CACHE_VALUE_CHARS = 15 * 1024 * 1024;
+
     @Value("${statstool.cache.enabled:true}")
     private boolean enableCache;
 
@@ -58,6 +62,26 @@ public class StatsDBRepository implements StatsCache {
         } catch (Exception ignored) {
             // Column may already exist or DB may not support IF NOT EXISTS; safe to ignore
         }
+
+        // Migrate existing tables created by older builds with narrow VARCHAR columns.
+        // `create table if not exists` above never re-applies the widened types to a
+        // persisted cache_entry, so a stale /tmp/cache volume keeps e.g. query VARCHAR(10000)
+        // and overflows with "string data, right truncation" on large cached SQL.
+        // (key is left alone: it only ever holds a 32-char MD5 or a short sentinel.)
+        // Each ALTER is idempotent (a no-op when the column already has the target type).
+        for (String migration : new String[]{
+                "alter table cache_entry alter column query longvarchar",
+                "alter table cache_entry alter column result longvarchar",
+                "alter table cache_entry alter column shadow longvarchar",
+                "alter table cache_entry alter column profile varchar(255)"
+        }) {
+            try {
+                jdbcTemplate.execute(migration);
+            } catch (Exception ignored) {
+                // Already the target type, or the DB rejects a no-op change; safe to ignore
+            }
+        }
+        log.info("cache_entry schema migration checks complete");
 
         jdbcTemplate.execute("create index if not exists key_idx on cache_entry(key)");
     }
@@ -142,18 +166,35 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-        String query = "merge into cache_entry as t using (values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile when not matched then insert values vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile;";
+        // Every param in the `values(...)` derived table is explicitly CAST: HSQLDB types an
+        // uninferable `?` there as VARCHAR(32768) and truncates any larger result/shadow/query
+        // payload with "string data, right truncation", regardless of the real column width.
+        // (Casting only some params breaks HSQLDB's type inference for the rest, so cast all.)
+        String query = "merge into cache_entry as t using (values(cast(? as varchar(64)), cast(? as longvarchar), cast(? as longvarchar), cast(? as longvarchar), cast(? as timestamp), cast(? as timestamp), cast(? as int), cast(? as int), cast(? as boolean), cast(? as int), cast(? as int), cast(? as varchar(255)))) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.total_hits=vals.total, t.session_hits=vals.session, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile when not matched then insert (key, result, shadow, query, created, updated, total_hits, session_hits, pinned, exectime, queuetime, profile) values (vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile);";
 
         log.debug("Storing entry " + entry);
 
         if (!enableCache) {
             throw new RuntimeException("Cache is not enabled!");
         }
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String resultJson = entry.getResult() == null ? null : objectMapper.writeValueAsString(entry.getResult());
+        String shadowJson = entry.getShadowResult() == null ? null : objectMapper.writeValueAsString(entry.getShadowResult());
+        String queryJson = entry.getQuery() == null ? null : objectMapper.writeValueAsString(entry.getQuery());
+
+        int oversized = maxLength(resultJson, shadowJson, queryJson);
+        if (oversized > MAX_CACHE_VALUE_CHARS) {
+            log.warn("Skipping cache write for key {}: serialized payload is {} chars, over the {} char limit",
+                    entry.getKey(), oversized, MAX_CACHE_VALUE_CHARS);
+            return;
+        }
+
         jdbcTemplate.update(query,
                 entry.getKey(),
-                entry.getResult() == null?null:new ObjectMapper().writeValueAsString(entry.getResult()),
-                entry.getShadowResult() == null?null:new ObjectMapper().writeValueAsString(entry.getShadowResult()),
-                entry.getQuery() == null?null:new ObjectMapper().writeValueAsString(entry.getQuery()),
+                resultJson,
+                shadowJson,
+                queryJson,
                 Timestamp.from(entry.getCreated().toInstant()),
                 Timestamp.from(entry.getUpdated().toInstant()),
                 entry.getTotalHits(),
@@ -163,6 +204,16 @@ public class StatsDBRepository implements StatsCache {
                 entry.getQueueTime(),
                 entry.getProfile()
         );
+    }
+
+    private static int maxLength(String... values) {
+        int max = 0;
+        for (String value : values) {
+            if (value != null && value.length() > max) {
+                max = value.length();
+            }
+        }
+        return max;
     }
 
     @Override
