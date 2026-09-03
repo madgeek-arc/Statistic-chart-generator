@@ -915,6 +915,38 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void denormAndNonDenorm_onSameEntity_coexist_inSameQuery() {
+        // Two fields on indi_pub_gold in the same query:
+        //   is_gold_oa  — denorm (sqlTable="result"): must NOT join indi_pub_gold
+        //   other_col   — normal (sqlTable="indi_pub_gold"): must JOIN indi_pub_gold
+        // The two mapField() calls are independent (separate tableToPath maps).
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        // Add a non-denorm field on the same entity
+        pc.fields.put("indi_pub_gold.other_col", new Field("indi_pub_gold", "other_col", "string"));
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.id", "count", 1),
+                        new Select("result.indi_pub_gold.is_gold_oa", null, 2),   // denorm
+                        new Select("result.indi_pub_gold.other_col",  null, 3)    // normal join
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        // Denorm field reads from root alias
+        assertTrue(sql.matches("(?s).*\\br0\\.is_gold_oa\\b.*"),
+                "Denorm field must resolve to root alias; got: " + sql);
+        // Non-denorm field still joins to indi_pub_gold
+        assertTrue(sql.matches("(?s).*JOIN indi_pub_gold.*"),
+                "Non-denorm field must still produce a JOIN to indi_pub_gold; got: " + sql);
+        // indi_pub_gold join alias carries other_col
+        assertTrue(sql.matches("(?s).*\\.other_col\\b.*"),
+                "Non-denorm field column must appear; got: " + sql);
+    }
+
+    @Test
     public void forwardHiddenJoin_unaffected_byDenormLogic() {
         // Existing forward hidden-join: field declared on entity A, sqlTable points to
         // a table B NOT yet traversed. Must still produce a join to B.
