@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.ModelAndView;
 
@@ -149,13 +150,22 @@ public class ChartDataFormatterRestController {
         try {
             URI getUri = new URI(getUrl);
             ResponseEntity<String> responseEntity = restTemplate.getForEntity(getUri, String.class);
-            shortenedUrl = responseEntity.getBody().toString();
+            shortenedUrl = responseEntity.getBody();
             log.debug(shortenedUrl);
 
         } catch (URISyntaxException e) {
             log.error(e.getMessage(), e);
             response.put("shortUrl", shortenedUrl);
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        } catch (RestClientException e) {
+            // TinyURL unreachable / slow / returned an error (e.g. Cloudflare 524). URL
+            // shortening is best-effort: fall back to the original URL so the caller still
+            // gets a working link instead of a 500.
+            log.warn("URL shortening failed, returning the original URL: " + e.getMessage());
+        }
+
+        if (shortenedUrl == null || shortenedUrl.isBlank()) {
+            shortenedUrl = url;
         }
 
         response.put("shortUrl", shortenedUrl);

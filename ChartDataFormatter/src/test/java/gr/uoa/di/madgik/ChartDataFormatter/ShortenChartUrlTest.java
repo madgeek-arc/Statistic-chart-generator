@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -57,6 +59,43 @@ class ShortenChartUrlTest {
                         .content("{\"url\":\"not a valid url\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.shortUrl").doesNotExist());
+    }
+
+    @Test
+    void shortenChartUrl_upstream5xx_fallsBackToOriginalUrl() throws Exception {
+        when(restTemplate.getForEntity(any(URI.class), eq(String.class)))
+                .thenThrow(HttpServerErrorException.create(HttpStatus.GATEWAY_TIMEOUT,
+                        "timeout", null, null, null));
+
+        mockMvc.perform(post("/chart/shorten")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"https://example.com/some/long/url\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortUrl").value("https://example.com/some/long/url"));
+    }
+
+    @Test
+    void shortenChartUrl_connectTimeout_fallsBackToOriginalUrl() throws Exception {
+        when(restTemplate.getForEntity(any(URI.class), eq(String.class)))
+                .thenThrow(new ResourceAccessException("connect timed out"));
+
+        mockMvc.perform(post("/chart/shorten")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"https://example.com/some/long/url\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortUrl").value("https://example.com/some/long/url"));
+    }
+
+    @Test
+    void shortenChartUrl_nullBody_fallsBackToOriginalUrl() throws Exception {
+        when(restTemplate.getForEntity(any(URI.class), eq(String.class)))
+                .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
+
+        mockMvc.perform(post("/chart/shorten")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"https://example.com/some/long/url\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shortUrl").value("https://example.com/some/long/url"));
     }
 
     @Test
