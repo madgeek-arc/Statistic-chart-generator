@@ -838,4 +838,177 @@ public class SqlQueryTreeTest {
         assertEquals(1, occurrences,
                 "Entity filter must appear exactly once even when entity name differs from table name; got: " + sql);
     }
+
+    // --- Denormalized field (reverse hidden-join) tests ---
+    // Scenario: indi_pub_gold was a separate table joined via result.id = indi_pub_gold.id.
+    // After denormalization, is_gold_oa lives directly on result. The profile still exposes
+    // result.indi_pub_gold.is_gold_oa but sqlTable="result" short-circuits the join.
+
+    private ProfileConfiguration buildProfileWithDenormField() {
+        ProfileConfiguration pc = buildProfile();
+        pc.tables.put("indi_pub_gold", new Table("indi_pub_gold", "id", null));
+        // Denormalized: declared on indi_pub_gold entity, physically on result
+        pc.fields.put("indi_pub_gold.is_gold_oa", new Field("result", "is_gold_oa", "boolean"));
+        // Relation still present for non-denormalized fields / backwards compat
+        pc.relations.put("result.indi_pub_gold", Collections.singletonList(new Join("result", "id", "indi_pub_gold", "id")));
+        pc.relations.put("indi_pub_gold.result", Collections.singletonList(new Join("indi_pub_gold", "id", "result", "id")));
+        return pc;
+    }
+
+    @Test
+    public void denormSelect_readsDirectlyFromAncestor_noJoinToIntermediateTable() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(new Select("result.indi_pub_gold.is_gold_oa", null, 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denormalized field must not produce a join to indi_pub_gold; got: " + sql);
+        assertTrue(sql.matches("(?s).*\\br0\\.is_gold_oa\\b.*"),
+                "Denormalized field must be read directly from root table alias; got: " + sql);
+    }
+
+    @Test
+    public void denormFilter_appliesInlineOnRootTable_noExistsToIntermediateTable() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        Filter f = new Filter("result.indi_pub_gold.is_gold_oa", "=", Collections.singletonList("true"), "boolean");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("result.id", null, 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denormalized filter must not reference indi_pub_gold; got: " + sql);
+        assertTrue(sql.matches("(?s).*\\br0\\.is_gold_oa\\b.*"),
+                "Denormalized filter must reference column directly on root table alias; got: " + sql);
+    }
+
+    @Test
+    public void denormField_deeperPath_joinsAncestorChain_skipsIntermediateTable() {
+        // project -> result -> indi_pub_gold.is_gold_oa (denorm)
+        // Must join project->result but NOT result->indi_pub_gold.
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        pc.tables.put("project", new Table("project", "id", null));
+        pc.fields.put("project.name", new Field("project", "name", "string"));
+        pc.relations.put("project.result", Collections.singletonList(new Join("project", "id", "result", "id")));
+        pc.relations.put("result.project", Collections.singletonList(new Join("result", "id", "project", "id")));
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(new Select("project.result.indi_pub_gold.is_gold_oa", null, 1)),
+                "project", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denormalized field in deep path must not join indi_pub_gold; got: " + sql);
+        assertTrue(sql.contains("result"),
+                "Deep path must still traverse up to result; got: " + sql);
+        assertTrue(sql.matches("(?s).*\\.is_gold_oa\\b.*"),
+                "Column is_gold_oa must appear in output; got: " + sql);
+    }
+
+    @Test
+    public void forwardHiddenJoin_unaffected_byDenormLogic() {
+        // Existing forward hidden-join: field declared on entity A, sqlTable points to
+        // a table B NOT yet traversed. Must still produce a join to B.
+        ProfileConfiguration pc = buildProfile();
+        // result.result_classifications is a forward hidden-join (B not traversed as ancestor)
+        pc.tables.put("result_classifications", new Table("result_classifications", "id", null));
+        pc.fields.put("result.classification", new Field("result_classifications", "type", "string"));
+        pc.relations.put("result.result_classifications",
+                Collections.singletonList(new Join("result", "id", "result_classifications", "id")));
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(new Select("result.classification", null, 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains("result_classifications"),
+                "Forward hidden-join must still produce join to result_classifications; got: " + sql);
+    }
+
+    @Test
+    public void denormAggregate_resolvedAsRootExpression_noDerivedSubquery() {
+        // COUNT(DISTINCT result.indi_pub_gold.is_gold_oa) — denorm short-circuit gives
+        // path "result.is_gold_oa". SqlQueryTree must treat it as a root aggregate
+        // (inline COUNT(DISTINCT r0.is_gold_oa)), NOT a derived LEFT JOIN subquery.
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(
+                        new Select("result.indi_pub_gold.is_gold_oa", "count", 1)
+                ),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denorm aggregate must not join indi_pub_gold; got: " + sql);
+        assertFalse(sql.contains("LEFT JOIN ("),
+                "Denorm aggregate on root-resolved field must not produce a derived subquery; got: " + sql);
+        assertTrue(sql.matches("(?s).*COUNT\\(DISTINCT r0\\.is_gold_oa\\).*"),
+                "Aggregate must inline COUNT(DISTINCT) on root alias; got: " + sql);
+    }
+
+    @Test
+    public void denormIntermediateEntityFilters_notApplied_whenShortCircuited() {
+        // Documents intentional behavior: if the intermediate entity (indi_pub_gold) has
+        // entity-level filters, they are silently dropped when the field short-circuits
+        // to an ancestor table. The denormalization process is assumed to have baked in
+        // any constraints the filter represented.
+        ProfileConfiguration pc = buildProfile();
+        List<gr.uoa.di.madgik.statstool.domain.Filter> entityFilters = Collections.singletonList(
+                new gr.uoa.di.madgik.statstool.domain.Filter("active", "=", Collections.singletonList("true"), "boolean"));
+        pc.tables.put("indi_pub_gold", new Table("indi_pub_gold", "id", entityFilters));
+        pc.fields.put("indi_pub_gold.is_gold_oa", new Field("result", "is_gold_oa", "boolean"));
+        pc.relations.put("result.indi_pub_gold", Collections.singletonList(new Join("result", "id", "indi_pub_gold", "id")));
+        pc.relations.put("indi_pub_gold.result", Collections.singletonList(new Join("indi_pub_gold", "id", "result", "id")));
+
+        Query apiQuery = new Query(null, null, new ArrayList<>(),
+                Arrays.asList(new Select("result.indi_pub_gold.is_gold_oa", null, 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denorm short-circuit must not join indi_pub_gold; got: " + sql);
+        assertFalse(sql.contains("active"),
+                "Entity filters on the skipped intermediate entity must not appear in SQL; got: " + sql);
+    }
+
+    @Test
+    public void denormFilter_inDeeperPath_noJoinToIntermediateTable() {
+        // Filter path: project.result.indi_pub_gold.is_gold_oa (denorm)
+        // Must not produce EXISTS or JOIN to indi_pub_gold; filter lands on result alias.
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        pc.tables.put("project", new Table("project", "id", null));
+        pc.fields.put("project.name", new Field("project", "name", "string"));
+        pc.relations.put("project.result", Collections.singletonList(new Join("project", "id", "result", "id")));
+        pc.relations.put("result.project", Collections.singletonList(new Join("result", "id", "project", "id")));
+
+        Filter f = new Filter("project.result.indi_pub_gold.is_gold_oa", "=",
+                Collections.singletonList("true"), "boolean");
+        FilterGroup fg = new FilterGroup(Collections.singletonList(f), "AND");
+        Query apiQuery = new Query(null, null, Collections.singletonList(fg),
+                Arrays.asList(new Select("project.name", null, 1)),
+                "project", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertFalse(sql.contains("indi_pub_gold"),
+                "Denorm filter in deep path must not reference indi_pub_gold; got: " + sql);
+        assertTrue(sql.matches("(?s).*\\.is_gold_oa\\b.*"),
+                "Column is_gold_oa must appear in filter output; got: " + sql);
+    }
 }

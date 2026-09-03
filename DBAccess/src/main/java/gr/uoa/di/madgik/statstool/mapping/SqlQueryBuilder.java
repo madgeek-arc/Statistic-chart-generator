@@ -2,8 +2,10 @@ package gr.uoa.di.madgik.statstool.mapping;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import gr.uoa.di.madgik.statstool.domain.Filter;
@@ -95,6 +97,10 @@ public class SqlQueryBuilder {
 
     private String mapField(String field) {
         String path = "";
+        // Maps each physical table name to the path string at the point it was reached.
+        // Used to short-circuit when a field's sqlTable is an ancestor already traversed
+        // (denormalized column: declared on entity B but physically lives on ancestor table A).
+        Map<String, String> tableToPath = new HashMap<>();
         List<String> fldPath = new ArrayList<>(Arrays.asList(field.split("\\.")));
         if (fldPath.size() == 1) {
             path = profileConfiguration.tables.get(fldPath.get(0)).getTable() + "." + profileConfiguration.tables.get(fldPath.get(0)).getKey();
@@ -104,23 +110,34 @@ public class SqlQueryBuilder {
                 Table table1 = profileConfiguration.tables.get(fldPath.get(i));
                 if (i == 0) {
                     path += table1.getTable();
+                    tableToPath.put(table1.getTable(), path);
                 }
                 addEntityFilters(fldPath.get(i), path);
                 Table table2 = profileConfiguration.tables.get(fldPath.get(i + 1));
                 path += joinTables(table1.getTable(), table2.getTable());
+                tableToPath.put(table2.getTable(), path);
             }
             Table table1 = profileConfiguration.tables.get(fldPath.get(fldPath.size() - 2));
             if (fldPath.size() - 2 == 0) {
                 path += table1.getTable();
+                tableToPath.put(table1.getTable(), path);
             }
-            addEntityFilters(fldPath.get(fldPath.size() - 2), path);
             Field field1 = profileConfiguration.fields.get(fldPath.get(fldPath.size() - 2) + "." + fldPath.get(fldPath.size() - 1));
             if (field1 != null) {
-                if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
-                    path += joinTables(table1.getTable(), field1.getTable());
+                if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())
+                        && tableToPath.containsKey(field1.getTable())) {
+                    // Denormalized field: sqlTable points to an ancestor already in the path.
+                    // Skip the intermediate join and read directly from that ancestor table.
+                    path = tableToPath.get(field1.getTable());
+                } else {
+                    addEntityFilters(fldPath.get(fldPath.size() - 2), path);
+                    if (field1.getTable() != null && !field1.getTable().equals(table1.getTable())) {
+                        path += joinTables(table1.getTable(), field1.getTable());
+                    }
                 }
                 path += "." + field1.getColumn();
             } else {
+                addEntityFilters(fldPath.get(fldPath.size() - 2), path);
                 Table table2 = profileConfiguration.tables.get(fldPath.get(fldPath.size() - 1));
                 path += joinTables(table1.getTable(), table2.getTable());
                 addEntityFilters(fldPath.get(fldPath.size() - 1), path);
