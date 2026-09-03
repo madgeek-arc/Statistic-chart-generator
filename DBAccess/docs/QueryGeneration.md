@@ -163,7 +163,7 @@ For each query:
 
 ### mapField(field)
 
-Each logical field reference is a dot-separated path, e.g. `"publication.topics.result.result_fos.lvl2"`. The method walks the path segments against the `ProfileConfiguration`:
+Each logical field reference is a dot-separated path, e.g. `"publication.topics.result.result_fos.lvl2"`. The method walks the path segments against the `ProfileConfiguration`, maintaining a `tableToPath` map (`physicalTableName → pathPrefixAtThatPoint`) as it traverses hops.
 
 - **Size 1** (entity key only, e.g. `"publication"`):
   `path = tableName + "." + keyColumn`
@@ -171,14 +171,39 @@ Each logical field reference is a dot-separated path, e.g. `"publication.topics.
 
 - **Size 2** (entity + direct field, e.g. `"publication.bestlicence"`):
   `path = tableName` then `path += "." + column`
-  → If the field's `sqlTable` differs from the entity table, appends an encoded join segment first.
+  → If the field's `sqlTable` differs from the entity table, checks `tableToPath` first (see below).
   → calls `addEntityFilters(entity, tableName)`
 
 - **Size ≥ 3** (multi-hop, e.g. `"publication.topics.result.result_fos.lvl2"`):
   Iterates intermediate segments, accumulating an encoded path string of the form `TableA(col_a).(col_b)TableB`.
   → calls `addEntityFilters(entity, path)` for each intermediate table.
+  → records each reached physical table in `tableToPath` before extending the path.
 
 The returned path string encodes the full join chain using the syntax `(fromCol).(toCol)TableName` as segments.
+
+#### Field `sqlTable` — two directions
+
+A `MappingField` in the profile JSON can declare a `sqlTable` that differs from its entity's own `from` table. This is used for two opposite purposes:
+
+**Forward hidden-join** (existing): `sqlTable` names a table not yet in the traversal path. `mapField` calls `joinTables()` to append an extra join segment, making the field appear to belong to entity A while physically living on table B.
+
+```json
+// publication entity (from: "result"), classification field lives on result_classifications
+{ "column": "type", "name": "classification", "sqlTable": "result_classifications" }
+```
+→ path: `result(id).(id)result_classifications.type`
+
+**Denormalized field (reverse hidden-join)**: `sqlTable` names a table that is an **ancestor already recorded in `tableToPath`**. `mapField` short-circuits: it discards all intermediate join segments accumulated since that ancestor and sets `path = tableToPath.get(field.sqlTable)`, then appends the column. No join to the intermediate entity is emitted. `addEntityFilters` for the intermediate entity is also skipped.
+
+```json
+// indi_pub_gold entity (from: "indi_pub_gold"), is_gold_oa denormalized onto result
+{ "column": "is_gold_oa", "name": "is_gold_oa", "sqlTable": "result" }
+```
+→ path: `result.is_gold_oa` (even though the logical path is `result.indi_pub_gold.is_gold_oa`)
+
+This allows a schema to remain unchanged after physical denormalization: users still reference `result.indi_pub_gold.is_gold_oa` and the generated SQL reads `result.is_gold_oa` directly.
+
+**Important:** entity-level `filters` declared on the intermediate entity (e.g. `indi_pub_gold`) are silently dropped when the field short-circuits to an ancestor. The denormalization process is assumed to have baked in any constraints those filters represented. If the intermediate entity has active filters and the denorm copied all rows unconditionally, query results will differ from the pre-denormalization baseline.
 
 ### addEntityFilters(entity, path)
 
@@ -374,3 +399,33 @@ Loaded at startup from the JSON mapping file (e.g. `openaire.json`). The `Profil
 - `relations` — keyed by `"TableA.TableB"`, value is the ordered list of `Join` objects connecting them
 
 Entity-level filters (e.g. `type = 'publication'` on the `publication` entity) are added automatically to every query that uses that entity; they are deduplicated so each entity contributes its filters only once per SQL query.
+
+### MappingField `sqlTable` attribute
+
+The optional `sqlTable` attribute on a field in the profile JSON controls which physical table the column is read from:
+
+| `sqlTable` value | Effect |
+|---|---|
+| Absent | Column read from the entity's own `from` table (normal case) |
+| Names a table **not yet traversed** in the path | Forward hidden-join: a join segment to that table is appended (field appears on entity A, lives on table B) |
+| Names a table **already traversed** as an ancestor | Denormalized field: all intermediate joins are skipped and the column is read directly from the ancestor table |
+
+**Denormalization migration pattern:** when a column moves from a joined satellite table into the root table, add `"sqlTable": "<root_table>"` to the field definition in every affected entity. The logical schema (entity + field names) is unchanged; only the generated SQL changes. The `relations` entry for the satellite can be left in place for other non-denormalized fields on that entity, or removed if all fields have been migrated.
+
+```json
+// Before: result.indi_pub_gold.is_gold_oa joins to indi_pub_gold table
+{
+  "from": "indi_pub_gold", "name": "indi_pub_gold", "key": "id",
+  "fields": [
+    { "column": "is_gold_oa", "name": "is_gold_oa", "datatype": "boolean" }
+  ]
+}
+
+// After: same logical path, column now read directly from result
+{
+  "from": "indi_pub_gold", "name": "indi_pub_gold", "key": "id",
+  "fields": [
+    { "column": "is_gold_oa", "name": "is_gold_oa", "datatype": "boolean", "sqlTable": "result" }
+  ]
+}
+```
