@@ -348,18 +348,32 @@ public class StatsDBRepository implements StatsCache {
         DatasourceContext.setContext(CACHE_DB_NAME);
         Map<String, Object> stats = new LinkedHashMap<>();
 
-        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry",new Object[] {}, Integer.class));
-        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null and shadow is not null",new Object[] {}, Integer.class));
-        stats.put("profiles", jdbcTemplate.query("select profile, count(key) as queries, avg(exectime) as avg_exec_time, avg(queuetime) as avg_queue_time from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') group by profile order by count(key) desc", (rs, rowNum) -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-
-            map.put("profile", rs.getString("profile"));
-            map.put("queries", rs.getInt("queries"));
-            map.put("avg_exec_time", rs.getInt("avg_exec_time"));
-            map.put("avg_queue_time", rs.getInt("avg_queue_time"));
-
-            return map;
-        }));
+        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry", new Object[] {}, Integer.class));
+        stats.put("valid", jdbcTemplate.queryForObject("select count(*) from cache_entry where valid=true", new Object[] {}, Integer.class));
+        stats.put("invalid", jdbcTemplate.queryForObject("select count(*) from cache_entry where valid=false", new Object[] {}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null", new Object[] {}, Integer.class));
+        stats.put("profiles", jdbcTemplate.query(
+                "select profile," +
+                "  count(*) as queries," +
+                "  sum(case when valid=true then 1 else 0 end) as valid," +
+                "  sum(case when valid=false then 1 else 0 end) as invalid," +
+                "  sum(case when shadow is not null then 1 else 0 end) as with_shadow," +
+                "  avg(exectime) as avg_exec_time," +
+                "  avg(queuetime) as avg_queue_time" +
+                " from cache_entry" +
+                " where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')" +
+                " group by profile order by count(*) desc",
+                (rs, rowNum) -> {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("profile", rs.getString("profile"));
+                    map.put("queries", rs.getInt("queries"));
+                    map.put("valid", rs.getInt("valid"));
+                    map.put("invalid", rs.getInt("invalid"));
+                    map.put("with_shadow", rs.getInt("with_shadow"));
+                    map.put("avg_exec_time", rs.getInt("avg_exec_time"));
+                    map.put("avg_queue_time", rs.getInt("avg_queue_time"));
+                    return map;
+                }));
 
         stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits desc limit 10", (rs, rowNum) -> {
             CacheEntry entry = null;
