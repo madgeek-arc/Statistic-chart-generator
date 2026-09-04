@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class CacheServiceImpl implements CacheService {
@@ -39,22 +39,23 @@ public class CacheServiceImpl implements CacheService {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    private Boolean updating = false;
+    private final AtomicBoolean updating = new AtomicBoolean(false);
 
     @Override
     public void updateCache(String profile) {
 
 	log.info("Updating cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
 
-        synchronized (updating) {
-            if (!updating) {
-                updating = true;
-                new Thread(() -> {
+        if (updating.compareAndSet(false, true)) {
+            new Thread(() -> {
+                try {
                     doUpdateCache(profile);
-                    this.updating=false;
-                }).start();
-            } else
-                throw new IllegalStateException("Cache is already being updated. Please, come back later");
+                } finally {
+                    updating.set(false);
+                }
+            }).start();
+        } else {
+            throw new IllegalStateException("Cache is already being updated. Please, come back later");
         }
 
     }
@@ -105,15 +106,16 @@ public class CacheServiceImpl implements CacheService {
 
         entries.sort(new EntriesComparator());
 
-        AtomicInteger i = new AtomicInteger();
         long startTime = new Date().getTime();
 
-        entries.parallelStream().forEach(entry -> {
+        // IntStream.range preserves sorted order: entry at index N gets slot N, so
+        // pinned/high-hit entries are guaranteed to fall within numberLimit.
+        java.util.stream.IntStream.range(0, entries.size()).parallel().forEach(slot -> {
+            CacheEntry entry = entries.get(slot);
             try {
 
-                if (i.get() < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
-                    i.getAndIncrement();
-                    log.debug(i.get() + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
+                if (slot < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
+                    log.debug(slot + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
 
                     TimedResult timedResult = statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow"));
 
@@ -144,22 +146,26 @@ public class CacheServiceImpl implements CacheService {
         List<CacheEntry> entries = statsCache.getEntries(profile);
 
         entries.forEach(entry -> {
-            if (entry.getShadowResult() != null) {
-                entry.setResult(entry.getShadowResult());
-            } else {
-                entry.setResult(null);
-            }
-
-            entry.setSessionHits(0);
-            entry.setShadowResult(null);
-            entry.setUpdated(new Date());
-
             try {
+                if (entry.getShadowResult() != null) {
+                    entry.setResult(entry.getShadowResult());
+                    entry.setValid(true);
+                } else {
+                    // No shadow populated (limit exceeded or query failed during update).
+                    // Mark invalid so exists() returns false; counters are preserved.
+                    entry.setValid(false);
+                }
+                entry.setShadowResult(null);
+                entry.setUpdated(new Date());
                 statsCache.storeEntry(entry);
             } catch (Exception e) {
-                log.error("Error updating cache entry", e);
+                log.error("Error promoting cache entry " + entry.getKey(), e);
             }
         });
+
+        // Reset session_hits for the promoted profile in a single statement.
+        // Counters are never touched by storeEntry; this is the only place session_hits resets.
+        statsCache.resetSessionHits(profile);
     }
 }
 

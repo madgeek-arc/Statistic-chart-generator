@@ -150,6 +150,122 @@ public class StatsDBRepositoryTest {
     }
 
     @Test
+    public void validFlag_newEntryExistsAndInvalidEntryDoesNot() throws Exception {
+        StatsDBRepository repo = newRepo("cache_valid_flag");
+
+        String key = hexKey64('e');
+        QueryWithParameters q = new QueryWithParameters("SELECT 1", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        CacheEntry e = new CacheEntry(key, q, r);
+        e.setProfile("prof");
+        repo.storeEntry(e);
+        assertTrue(repo.exists(key), "New entry must be valid");
+
+        e.setValid(false);
+        repo.storeEntry(e);
+        assertFalse(repo.exists(key), "Invalid entry must not be found by exists()");
+    }
+
+    @Test
+    public void save_onInvalidEntry_restoresValid() throws Exception {
+        StatsDBRepository repo = newRepo("cache_save_repop");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT repop", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(99));
+
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+        assertTrue(repo.exists(key));
+
+        // Invalidate (simulates promote with no shadow)
+        List<CacheEntry> entries = repo.getEntries("prof");
+        CacheEntry e = entries.get(0);
+        e.setValid(false);
+        repo.storeEntry(e);
+        assertFalse(repo.exists(key));
+
+        // save() repopulates → valid=true, entry accessible again
+        repo.save(q, r, 10, 0);
+        assertTrue(repo.exists(key), "save() must restore valid=true on invalid entry");
+    }
+
+    @Test
+    public void storeEntry_doesNotOverwriteCounters() throws Exception {
+        StatsDBRepository repo = newRepo("cache_counter_preserve");
+
+        String key = hexKey64('f');
+        QueryWithParameters q = new QueryWithParameters("SELECT cnt", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        CacheEntry e = new CacheEntry(key, q, r);
+        e.setProfile("prof");
+        repo.storeEntry(e); // INSERT: total=1, session=1
+
+        repo.get(key); // total=2, session=2
+        repo.get(key); // total=3, session=3
+
+        // Simulate update cycle: storeEntry must NOT reset counters
+        e.setShadowResult(r);
+        repo.storeEntry(e);
+
+        CacheEntry stored = repo.getEntries("prof").get(0);
+        assertEquals(3, stored.getTotalHits(), "storeEntry must not overwrite total_hits");
+        assertEquals(3, stored.getSessionHits(), "storeEntry must not overwrite session_hits");
+    }
+
+    @Test
+    public void save_onInvalidEntry_preservesCounters() throws Exception {
+        StatsDBRepository repo = newRepo("cache_invalid_counters");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT preserve", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        repo.get(key); // total=2, session=2
+        repo.get(key); // total=3, session=3
+
+        // Invalidate
+        List<CacheEntry> entries = repo.getEntries("prof");
+        CacheEntry e = entries.get(0);
+        e.setValid(false);
+        repo.storeEntry(e);
+
+        // save() repopulates — counters must be untouched
+        repo.save(q, r, 10, 0);
+
+        CacheEntry stored = repo.getEntries("prof").get(0);
+        assertEquals(3, stored.getTotalHits(), "total_hits must survive invalid repopulation");
+        assertEquals(3, stored.getSessionHits(), "session_hits must survive invalid repopulation");
+    }
+
+    @Test
+    public void resetSessionHits_resetsSessionOnly_totalUnchanged() throws Exception {
+        StatsDBRepository repo = newRepo("cache_reset_session");
+
+        String key = hexKey64('g');
+        QueryWithParameters q = new QueryWithParameters("SELECT reset", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        CacheEntry e = new CacheEntry(key, q, r);
+        e.setProfile("prof");
+        repo.storeEntry(e); // total=1, session=1
+
+        repo.get(key); // total=2, session=2
+        repo.get(key); // total=3, session=3
+
+        repo.resetSessionHits("prof");
+
+        CacheEntry stored = repo.getEntries("prof").get(0);
+        assertEquals(3, stored.getTotalHits(), "resetSessionHits must not touch total_hits");
+        assertEquals(0, stored.getSessionHits(), "resetSessionHits must set session_hits=0");
+    }
+
+    @Test
     public void shadowNullThenLarge_storesSuccessfully() throws Exception {
         StatsDBRepository repo = newRepo("cache_shadow");
 

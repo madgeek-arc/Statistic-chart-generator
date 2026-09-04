@@ -15,6 +15,7 @@ public class CacheEntry {
     private int totalHits = 1;
     private int sessionHits = 1;
     private boolean pinned = false;
+    private boolean valid = true;
 
     private String profile;
 
@@ -112,6 +113,14 @@ public class CacheEntry {
 
     public void setPinned(boolean pinned) {
         this.pinned = pinned;
+    }
+
+    public boolean isValid() {
+        return valid;
+    }
+
+    public void setValid(boolean valid) {
+        this.valid = valid;
     }
 
     public int getExecTime() {

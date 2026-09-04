@@ -33,6 +33,8 @@ public interface StatsCache {
 
     void deleteEntry(String key);
 
+    void resetSessionHits(String profile);
+
     static String MD5(String string) throws Exception {
         MessageDigest md = MessageDigest.getInstance("MD5");
 
