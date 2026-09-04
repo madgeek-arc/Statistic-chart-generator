@@ -150,6 +150,52 @@ public class StatsDBRepositoryTest {
     }
 
     @Test
+    public void postInit_trimsCharPaddedKeys_existingEntriesStillReachable() throws Exception {
+        // Simulates a persisted volume that was written with the old CHAR(64) key column.
+        // CHAR(64) stores 32-char MD5 keys padded with 32 trailing spaces.
+        // After ALTER COLUMN key varchar(64), the padding is preserved in storage —
+        // a lookup with a clean 32-char key would miss unless we also TRIM.
+        JDBCDataSource ds = new JDBCDataSource();
+        ds.setUrl("jdbc:hsqldb:mem:cache_char_key_migration;hsqldb.tx=mvcc");
+        ds.setUser("sa");
+        ds.setPassword("");
+
+        String cleanKey = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"; // 32-char MD5-like key
+        String paddedKey = cleanKey + repeat(" ", 32);           // as CHAR(64) would store it
+
+        // Create old schema with CHAR(64) key column and insert a padded key directly
+        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+            st.execute("create table cache_entry (" +
+                    "key char(64) not null," +
+                    "result longvarchar not null, " +
+                    "shadow longvarchar, " +
+                    "query longvarchar not null," +
+                    "created timestamp default now() not null, " +
+                    "updated timestamp default now() not null, " +
+                    "total_hits int default 0 not null," +
+                    "session_hits int default 0 not null," +
+                    "pinned boolean default false not null," +
+                    "exectime int default 0 not null," +
+                    "queuetime int default 0 not null," +
+                    "profile varchar(255) not null)");
+            // Insert a row directly with the padded key (as the old CHAR column would produce)
+            st.execute("insert into cache_entry(key,result,query,profile) values('" +
+                    paddedKey + "','{\"rows\":[]}','{\"query\":\"Q\",\"parameters\":[],\"dbId\":\"h\"}','p')");
+        }
+
+        // Run postInit — this should ALTER key to varchar(64) then TRIM existing rows
+        StatsDBRepository repo = new StatsDBRepository(ds);
+        Field f = StatsDBRepository.class.getDeclaredField("enableCache");
+        f.setAccessible(true);
+        f.set(repo, true);
+        repo.postInit();
+
+        // Lookup with clean (non-padded) key must find the migrated entry
+        assertTrue(repo.exists(cleanKey),
+                "Entry stored with padded CHAR key must be reachable after TRIM migration via clean key");
+    }
+
+    @Test
     public void shadowNullThenLarge_storesSuccessfully() throws Exception {
         StatsDBRepository repo = newRepo("cache_shadow");
 

@@ -69,8 +69,11 @@ public class StatsDBRepository implements StatsCache {
         // and overflows with "string data, right truncation" on large cached SQL.
         // Each ALTER is idempotent (a no-op when the column already has the target type).
         // key: char(64) → varchar(64) to stop HSQLDB padding short MD5 keys with trailing spaces.
+        // The UPDATE trims any space-padded keys left by the old CHAR(64) type so that
+        // existing persisted entries remain reachable after the column type change.
         for (String migration : new String[]{
                 "alter table cache_entry alter column key varchar(64)",
+                "update cache_entry set key = trim(key)",
                 "alter table cache_entry alter column query longvarchar",
                 "alter table cache_entry alter column result longvarchar",
                 "alter table cache_entry alter column shadow longvarchar",
