@@ -43,7 +43,7 @@ public class StatsDBRepository implements StatsCache {
 
         log.debug("Creating cache table");
         jdbcTemplate.execute("create table if not exists cache_entry (" +
-                        "key char(64) not null," +
+                        "key varchar(64) not null," +
                         "result longvarchar not null, " +
                         "shadow longvarchar, " +
                         "query longvarchar not null," +
@@ -67,9 +67,10 @@ public class StatsDBRepository implements StatsCache {
         // `create table if not exists` above never re-applies the widened types to a
         // persisted cache_entry, so a stale /tmp/cache volume keeps e.g. query VARCHAR(10000)
         // and overflows with "string data, right truncation" on large cached SQL.
-        // (key is left alone: it only ever holds a 32-char MD5 or a short sentinel.)
         // Each ALTER is idempotent (a no-op when the column already has the target type).
+        // key: char(64) → varchar(64) to stop HSQLDB padding short MD5 keys with trailing spaces.
         for (String migration : new String[]{
+                "alter table cache_entry alter column key varchar(64)",
                 "alter table cache_entry alter column query longvarchar",
                 "alter table cache_entry alter column result longvarchar",
                 "alter table cache_entry alter column shadow longvarchar",
