@@ -36,7 +36,7 @@ Application (WAR, Spring Boot entry point)
 
 **ChartDataFormatter** — REST controllers (`ChartDataFormatterRestController`, `RawDataFormatterRestController`, `TableDataFormatterRestController`) and output formatters for HighCharts, GoogleCharts, and eCharts. Also holds the `Mapper` class that translates chart requests into SQL via the `Mapping` model.
 
-**DBAccess** — Core SQL generation (`SqlQueryBuilder` uses Groovy scripting; `SqlQueryTree` builds CTEs / derived subqueries / joins), multi-datasource support (PostgreSQL, Impala, HSQLDB cache), result caching (Redis optional, HSQLDB file-based persistent), and schema/cache REST endpoints.
+**DBAccess** — Core SQL generation (`SqlQueryBuilder` uses Groovy scripting; `SqlQueryTree` builds CTEs / derived subqueries / joins), multi-datasource support (PostgreSQL, Impala, HSQLDB cache), result caching (HSQLDB file-based persistent), and schema/cache REST endpoints.
 
 ## Key Design Patterns
 
@@ -48,6 +48,10 @@ Known Impala constraints enforced in `SqlQueryTree`:
 - ORDER BY uses the aggregate expression by name, not a positional `1`
 
 **Multi-query merging** combines multiple queries into a single SQL statement via CTEs + FULL OUTER JOIN to reduce round trips. See `ChartDataFormatter/docs/MultiQueryFormatting.md`.
+
+**Cache lifecycle** — Three-phase cycle: `updateCache` populates shadow results from a shadow datasource, `promoteCache` moves shadows to live results and auto-starts `trickleUpdate`, which background-refreshes stale entries from the main DB at lowest priority. Stale entries are always served (no hard invalidation). See `DBAccess/docs/CacheLifecycle.md`.
+
+**Priority queue** — All queries (user, cache update, trickle) share a `PriorityBlockingQueue`-backed `ThreadPoolExecutor` (pool size 4). `USER(0) < CACHE_UPDATE(1) < TRICKLE(2)` — user queries always jump queued background tasks. Same `(sql, params, datasource)` triple in-flight is deduplicated across callers.
 
 **Hive JDBC driver** — The project uses the Apache Hive JDBC 4.0.1 standalone driver (not Simba/Cloudera). The Maven Shade plugin strips its bundled SLF4J to avoid classpath conflicts.
 
@@ -63,7 +67,8 @@ Configured in `DBAccess/src/main/resources/application.yml` (template) and overr
 - `GET /health/readiness`, `GET /health/liveness` — health probes
 - `GET /prometheus` — Prometheus metrics
 - Chart/data endpoints on `ChartDataFormatterRestController`
-- Schema and cache management on `SchemaController`, `CacheController`
+- Schema endpoints on `SchemaController`
+- Cache management on `CacheController`: `updateCache`, `stopUpdate`, `promoteCache`, `trickleUpdate`, `dropCache`, `stats`
 
 Sample JSON request payloads are in `Application/src/main/resources/public/jsonFiles/`.
 
