@@ -51,9 +51,9 @@ public class CacheServiceImpl implements CacheService {
                 " profile(s) [limit=" + effectiveLimit + ", maxSeconds=" + effectiveSeconds + "]");
 
         if (updating.compareAndSet(false, true)) {
-            stopRequested.set(false);
             new Thread(() -> {
                 try {
+                    stopRequested.set(false);
                     doUpdateCache(profile, effectiveLimit, effectiveSeconds);
                 } finally {
                     updating.set(false);
