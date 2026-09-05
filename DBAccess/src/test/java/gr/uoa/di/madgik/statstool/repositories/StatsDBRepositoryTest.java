@@ -321,4 +321,30 @@ public class StatsDBRepositoryTest {
         assertEquals(3, stored.getTotalHits(), "save() on existing entry must preserve total_hits");
         assertEquals(3, stored.getSessionHits(), "save() on existing entry must preserve session_hits");
     }
+
+    @Test
+    public void promoteCache_staleEntriesStillServed() throws Exception {
+        StatsDBRepository repo = newRepo("cache_promote_stale");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT stale_serve", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(42));
+
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        // Simulate what updateCache+promote does to a skipped (no-shadow) entry:
+        // markAllStale → load → storeEntry with shadow=null, fresh=false
+        repo.markAllStale("prof");
+        List<CacheEntry> entries = repo.getEntries("prof");
+        CacheEntry e = entries.get(0);
+        e.setShadowResult(null); // skipped during update
+        repo.storeEntry(e);     // promote stores as-is (no shadow → no change to result)
+
+        // Core guarantee: get() must still return the stale result, NOT null
+        Result served = repo.get(key);
+        assertNotNull(served, "Stale entry must still be served after promote — no hard invalidation");
+        assertEquals("42", served.getRows().get(0).get(0).toString(),
+                "Stale result must be the original value");
+    }
 }

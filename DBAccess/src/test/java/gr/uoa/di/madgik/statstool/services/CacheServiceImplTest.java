@@ -67,6 +67,18 @@ public class CacheServiceImplTest {
         assertTrue(activeUpdates.isEmpty(), "Update did not finish within 5 s");
     }
 
+    @SuppressWarnings("unchecked")
+    private void waitForTrickle() throws Exception {
+        Field f = CacheServiceImpl.class.getDeclaredField("activeTrickles");
+        f.setAccessible(true);
+        Set<String> activeTrickles = (Set<String>) f.get(service);
+        long deadline = System.currentTimeMillis() + 5000;
+        while (!activeTrickles.isEmpty() && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
+        assertTrue(activeTrickles.isEmpty(), "Trickle did not finish within 5 s");
+    }
+
     private static List<CacheEntry> makeEntries(int n) {
         List<CacheEntry> list = new ArrayList<>();
         for (int i = 0; i < n; i++) {
@@ -266,6 +278,86 @@ public class CacheServiceImplTest {
     public void stopUpdate_whenNotRunning_isNoOp() {
         assertDoesNotThrow(() -> service.stopUpdate());
     }
+
+    // -------------------------------------------------------------------------
+    // trickle concurrency
+    // -------------------------------------------------------------------------
+
+    @Test
+    public void trickleUpdate_sameProfile_secondIsNoOp() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        when(statsCache.getStaleEntries(eq("openaire"))).thenAnswer(inv -> {
+            started.countDown();
+            release.await();
+            return new ArrayList<>();
+        });
+
+        service.trickleUpdate("openaire");
+        assertTrue(started.await(2, TimeUnit.SECONDS), "First trickle must start");
+
+        assertDoesNotThrow(() -> service.trickleUpdate("openaire"));
+
+        release.countDown();
+        waitForTrickle();
+
+        verify(statsCache, times(1)).getStaleEntries(any());
+    }
+
+    @Test
+    public void updateCache_setsTrickleStopRequested() throws Exception {
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        when(statsCache.getEntries(any())).thenAnswer(inv -> {
+            started.countDown();
+            release.await();
+            return new ArrayList<>();
+        });
+
+        service.updateCache("openaire", 10, 3600);
+        assertTrue(started.await(2, TimeUnit.SECONDS));
+
+        Field f = CacheServiceImpl.class.getDeclaredField("trickleStopRequested");
+        f.setAccessible(true);
+        assertTrue(((AtomicBoolean) f.get(service)).get(),
+                "updateCache must set trickleStopRequested=true");
+
+        release.countDown();
+        waitForUpdate();
+    }
+
+    @Test
+    public void trickle_stopsWhenFlagSet() throws Exception {
+        int total = 20;
+        AtomicInteger queryCount = new AtomicInteger();
+        CountDownLatch firstStarted = new CountDownLatch(1);
+
+        when(statsCache.getStaleEntries(any())).thenReturn(makeEntries(total));
+        when(statsRepository.executeQuery(any(), any(), any(), eq(QueryPriority.TRICKLE))).thenAnswer(inv -> {
+            firstStarted.countDown();
+            Thread.sleep(50);
+            queryCount.incrementAndGet();
+            return shadowResult();
+        });
+
+        service.trickleUpdate("openaire");
+        assertTrue(firstStarted.await(2, TimeUnit.SECONDS));
+
+        Field f = CacheServiceImpl.class.getDeclaredField("trickleStopRequested");
+        f.setAccessible(true);
+        ((AtomicBoolean) f.get(service)).set(true);
+
+        waitForTrickle();
+
+        assertTrue(queryCount.get() < total,
+                "trickle must stop early when trickleStopRequested is set; got " + queryCount.get());
+    }
+
+    // -------------------------------------------------------------------------
+    // afterStop
+    // -------------------------------------------------------------------------
 
     @Test
     public void afterStop_nextUpdateStartsClean() throws Exception {
