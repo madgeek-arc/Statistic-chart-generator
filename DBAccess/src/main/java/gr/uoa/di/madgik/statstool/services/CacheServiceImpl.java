@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
@@ -39,35 +40,51 @@ public class CacheServiceImpl implements CacheService {
 
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    private final AtomicBoolean updating = new AtomicBoolean(false);
+    // Tracks profiles currently being updated. The sentinel "*" represents a
+    // null (all-profiles) update. Access must be guarded by synchronized(activeUpdates).
+    private final Set<String> activeUpdates = ConcurrentHashMap.newKeySet();
+    private static final String ALL_PROFILES = "*";
+
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
     @Override
     public void updateCache(String profile, Integer limit, Integer maxSeconds) {
         int effectiveLimit = (limit != null) ? limit : numberLimit;
         int effectiveSeconds = (maxSeconds != null) ? maxSeconds : timeLimit;
+        String key = (profile == null) ? ALL_PROFILES : profile;
 
-        log.info("Updating cache for " + (profile != null ? "'" + profile + "'" : "all") +
-                " profile(s) [limit=" + effectiveLimit + ", maxSeconds=" + effectiveSeconds + "]");
-
-        if (updating.compareAndSet(false, true)) {
-            new Thread(() -> {
-                try {
-                    stopRequested.set(false);
-                    doUpdateCache(profile, effectiveLimit, effectiveSeconds);
-                } finally {
-                    updating.set(false);
-                }
-            }).start();
-        } else {
-            log.info("Cache update already running; ignoring request");
+        synchronized (activeUpdates) {
+            // A global update blocks everything; a profile update blocks the same profile
+            // and is blocked by a global update.
+            if (activeUpdates.contains(ALL_PROFILES) || activeUpdates.contains(key)) {
+                log.info("Cache update for '{}' already running; ignoring request", key);
+                return;
+            }
+            // Starting a global update is only allowed when no other update is running.
+            if (key.equals(ALL_PROFILES) && !activeUpdates.isEmpty()) {
+                log.info("Profile-specific updates are running; ignoring global update request");
+                return;
+            }
+            activeUpdates.add(key);
         }
+
+        log.info("Updating cache for {} [limit={}, maxSeconds={}]",
+                profile != null ? "'" + profile + "'" : "all profiles", effectiveLimit, effectiveSeconds);
+
+        new Thread(() -> {
+            try {
+                stopRequested.set(false);
+                doUpdateCache(profile, effectiveLimit, effectiveSeconds);
+            } finally {
+                activeUpdates.remove(key);
+            }
+        }).start();
     }
 
     @Override
     public void stopUpdate() {
-        if (updating.get()) {
-            log.info("Stop requested for running cache update");
+        if (!activeUpdates.isEmpty()) {
+            log.info("Stop requested for running cache update(s): {}", activeUpdates);
             stopRequested.set(true);
         } else {
             log.info("No cache update running; stopUpdate is a no-op");
