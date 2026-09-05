@@ -52,13 +52,29 @@ public class Mapper {
                 }
 
                 Mapping mapping = mapper.readValue(resourceLoader.getResource(mappingProfile.getFile()).getURL(), Mapping.class);
+
+                // Collect visible entity names first so relations can be filtered.
+                Set<String> visibleEntityNames = new HashSet<>();
+                for (MappingEntity entity : mapping.getEntities()) {
+                    if (entity.isVisible()) {
+                        visibleEntityNames.add(entity.getName());
+                    }
+                }
+
                 for(MappingEntity entity : mapping.getEntities()) {
+                    if (!entity.isVisible()) {
+                        continue; // exclude from schema; SQL generation uses tables/fields maps
+                    }
                     Entity schemaEntity = new Entity(entity.getName());
                     for(MappingField field : entity.getFields()) {
-                        schemaEntity.addField(new EntityField(field.getName(), field.getDatatype()));
+                        if (field.isVisible()) {
+                            schemaEntity.addField(new EntityField(field.getName(), field.getDatatype()));
+                        }
                     }
                     for(String relation : entity.getRelations()) {
-                        schemaEntity.addRelation(relation);
+                        if (visibleEntityNames.contains(relation)) {
+                            schemaEntity.addRelation(relation);
+                        }
                     }
                     profileConfiguration.entities.put(entity.getName(), schemaEntity);
                 }

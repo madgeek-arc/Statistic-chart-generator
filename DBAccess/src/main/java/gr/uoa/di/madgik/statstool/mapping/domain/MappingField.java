@@ -6,6 +6,7 @@ public class MappingField {
     private String datatype;
     private String sqlTable;
     private String description;
+    private boolean visible = true;
 
     MappingField() {}
 
@@ -47,5 +48,13 @@ public class MappingField {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 }

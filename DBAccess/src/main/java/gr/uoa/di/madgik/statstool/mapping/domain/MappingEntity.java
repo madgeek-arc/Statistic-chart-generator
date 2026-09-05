@@ -7,6 +7,7 @@ public class MappingEntity {
     private String from;
     private String key;
     private String description;
+    private boolean visible = true;
     private List<MappingFilter> filters;
     private List<MappingField> fields;
     private List<String> relations;
@@ -67,5 +68,13 @@ public class MappingEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
     }
 }
