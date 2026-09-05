@@ -148,48 +148,6 @@ public class StatsDBRepositoryTest {
     }
 
     @Test
-    public void validFlag_newEntryExistsAndInvalidEntryDoesNot() throws Exception {
-        StatsDBRepository repo = newRepo("cache_valid_flag");
-
-        String key = hexKey64('e');
-        QueryWithParameters q = new QueryWithParameters("SELECT 1", List.of(), "prof");
-        Result r = new Result();
-        r.addRow(List.of(1));
-        CacheEntry e = new CacheEntry(key, q, r);
-        e.setProfile("prof");
-        repo.storeEntry(e);
-        assertNotNull(repo.get(key), "New entry must be valid");
-
-        e.setValid(false);
-        repo.storeEntry(e);
-        assertNull(repo.get(key), "Invalid entry must not be accessible via get()");
-    }
-
-    @Test
-    public void save_onInvalidEntry_restoresValid() throws Exception {
-        StatsDBRepository repo = newRepo("cache_save_repop");
-
-        QueryWithParameters q = new QueryWithParameters("SELECT repop", List.of(), "prof");
-        Result r = new Result();
-        r.addRow(List.of(99));
-
-        repo.save(q, r, 5, 0);
-        String key = StatsCache.getCacheKey(q);
-        assertNotNull(repo.get(key));
-
-        // Invalidate (simulates promote with no shadow)
-        List<CacheEntry> entries = repo.getEntries("prof");
-        CacheEntry e = entries.get(0);
-        e.setValid(false);
-        repo.storeEntry(e);
-        assertNull(repo.get(key));
-
-        // save() repopulates → valid=true, entry accessible again
-        repo.save(q, r, 10, 0);
-        assertNotNull(repo.get(key), "save() must restore valid=true on invalid entry");
-    }
-
-    @Test
     public void storeEntry_doesNotOverwriteCounters() throws Exception {
         StatsDBRepository repo = newRepo("cache_counter_preserve");
 
@@ -211,34 +169,6 @@ public class StatsDBRepositoryTest {
         CacheEntry stored = repo.getEntries("prof").get(0);
         assertEquals(3, stored.getTotalHits(), "storeEntry must not overwrite total_hits");
         assertEquals(3, stored.getSessionHits(), "storeEntry must not overwrite session_hits");
-    }
-
-    @Test
-    public void save_onInvalidEntry_preservesCounters() throws Exception {
-        StatsDBRepository repo = newRepo("cache_invalid_counters");
-
-        QueryWithParameters q = new QueryWithParameters("SELECT preserve", List.of(), "prof");
-        Result r = new Result();
-        r.addRow(List.of(1));
-
-        repo.save(q, r, 5, 0);
-        String key = StatsCache.getCacheKey(q);
-
-        repo.get(key); // total=2, session=2
-        repo.get(key); // total=3, session=3
-
-        // Invalidate
-        List<CacheEntry> entries = repo.getEntries("prof");
-        CacheEntry e = entries.get(0);
-        e.setValid(false);
-        repo.storeEntry(e);
-
-        // save() repopulates — counters must be untouched
-        repo.save(q, r, 10, 0);
-
-        CacheEntry stored = repo.getEntries("prof").get(0);
-        assertEquals(3, stored.getTotalHits(), "total_hits must survive invalid repopulation");
-        assertEquals(3, stored.getSessionHits(), "session_hits must survive invalid repopulation");
     }
 
     @Test
@@ -286,5 +216,109 @@ public class StatsDBRepositoryTest {
         // Ensure get still works after updating shadow
         Result fetched = repo.get(key);
         assertNotNull(fetched);
+    }
+
+    @Test
+    public void freshFlag_defaultsFalse_setTrueAfterSave() throws Exception {
+        StatsDBRepository repo = newRepo("cache_fresh_flag");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT fresh", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        List<CacheEntry> entries = repo.getEntries("prof");
+        assertEquals(1, entries.size());
+        assertTrue(entries.get(0).isFresh(), "save() must set fresh=true");
+    }
+
+    @Test
+    public void markAllStale_setsFreshFalse() throws Exception {
+        StatsDBRepository repo = newRepo("cache_mark_stale");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT stale", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        // Confirm fresh=true after save
+        assertTrue(repo.getEntries("prof").get(0).isFresh());
+
+        repo.markAllStale("prof");
+
+        assertFalse(repo.getEntries("prof").get(0).isFresh(), "markAllStale must set fresh=false");
+    }
+
+    @Test
+    public void trickleRefreshEntry_setsFreshTrue() throws Exception {
+        StatsDBRepository repo = newRepo("cache_trickle_refresh");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT trickle", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        repo.markAllStale("prof");
+        assertFalse(repo.getEntries("prof").get(0).isFresh());
+
+        Result updated = new Result();
+        updated.addRow(List.of(2));
+        repo.trickleRefreshEntry(key, updated, 10, 0);
+
+        assertTrue(repo.getEntries("prof").get(0).isFresh(), "trickleRefreshEntry must set fresh=true");
+    }
+
+    @Test
+    public void getStaleEntries_orderedByTotalHitsDesc() throws Exception {
+        StatsDBRepository repo = newRepo("cache_stale_order");
+
+        // Create 3 entries with different total_hits via get() calls
+        for (int i = 0; i < 3; i++) {
+            QueryWithParameters q = new QueryWithParameters("SELECT " + i, List.of(), "prof");
+            Result r = new Result();
+            r.addRow(List.of(i));
+            repo.save(q, r, 5, 0);
+            String key = StatsCache.getCacheKey(q);
+            // call get() i times to build up total_hits: entry 0→1 hit, entry 1→2 hits, entry 2→3 hits
+            for (int j = 0; j <= i; j++) repo.get(key);
+        }
+
+        repo.markAllStale("prof");
+        List<CacheEntry> stale = repo.getStaleEntries("prof");
+
+        assertEquals(3, stale.size());
+        // Entries should be ordered by total_hits descending: 4, 3, 2
+        assertTrue(stale.get(0).getTotalHits() >= stale.get(1).getTotalHits(),
+                "getStaleEntries must order by total_hits DESC");
+        assertTrue(stale.get(1).getTotalHits() >= stale.get(2).getTotalHits(),
+                "getStaleEntries must order by total_hits DESC");
+    }
+
+    @Test
+    public void save_preservesCountersOnExistingEntry() throws Exception {
+        StatsDBRepository repo = newRepo("cache_save_counters");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT preserved", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        repo.save(q, r, 5, 0);
+        String key = StatsCache.getCacheKey(q);
+
+        // Build up counters
+        repo.get(key); // total=2
+        repo.get(key); // total=3
+
+        // save() again (simulates user cold re-execution with updated result)
+        Result r2 = new Result();
+        r2.addRow(List.of(99));
+        repo.save(q, r2, 10, 0);
+
+        CacheEntry stored = repo.getEntries("prof").get(0);
+        assertEquals(3, stored.getTotalHits(), "save() on existing entry must preserve total_hits");
+        assertEquals(3, stored.getSessionHits(), "save() on existing entry must preserve session_hits");
     }
 }

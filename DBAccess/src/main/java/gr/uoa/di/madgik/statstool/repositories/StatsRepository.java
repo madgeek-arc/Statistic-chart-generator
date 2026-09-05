@@ -35,6 +35,10 @@ public class StatsRepository {
     }
 
     public TimedResult executeQuery(String query, List<Object> parameters, String dbId) throws Exception {
+        return executeQuery(query, parameters, dbId, QueryPriority.USER);
+    }
+
+    public TimedResult executeQuery(String query, List<Object> parameters, String dbId, QueryPriority priority) throws Exception {
         QueryWithParameters q = new QueryWithParameters(query, parameters, dbId);
         Future<TimedResult> future;
         long submitTime = System.currentTimeMillis();
@@ -43,14 +47,16 @@ public class StatsRepository {
             future = tasks.get(q);
 
             if (future == null) {
-                log.debug("Query " + q + " was not in queue. Submitting");
-                future = executorService.submit(new ResultCallable(q));
+                log.debug("Query {} was not in queue. Submitting with priority {}", q, priority);
+                PrioritizedFutureTask<TimedResult> task = new PrioritizedFutureTask<>(new ResultCallable(q), priority.value);
+                future = task;
+                executorService.execute(task);
                 tasks.put(q, future);
             } else {
-                log.debug("query " + q + " was already submitted. Waiting for completion");
+                log.debug("Query {} was already submitted. Waiting for completion", q);
             }
 
-            log.info("size of queue: " + tasks.size());
+            log.info("size of queue: {}", tasks.size());
         }
 
         try {
@@ -61,7 +67,7 @@ public class StatsRepository {
         } finally {
             synchronized (tasks) {
                 tasks.remove(q);
-                log.info("size of queue: " + tasks.size());
+                log.info("size of queue: {}", tasks.size());
             }
         }
     }

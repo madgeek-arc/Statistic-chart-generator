@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import gr.uoa.di.madgik.statstool.repositories.NlOptionsCache;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
+import gr.uoa.di.madgik.statstool.repositories.QueryPriority;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.apache.logging.log4j.Logger;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 
 @Service
 public class CacheServiceImpl implements CacheService {
@@ -46,6 +48,8 @@ public class CacheServiceImpl implements CacheService {
     private static final String ALL_PROFILES = "*";
 
     private final AtomicBoolean stopRequested = new AtomicBoolean(false);
+    private final AtomicBoolean trickleStopRequested = new AtomicBoolean(false);
+    private final Set<String> activeTrickles = ConcurrentHashMap.newKeySet();
 
     @Override
     public void updateCache(String profile, Integer limit, Integer maxSeconds) {
@@ -92,14 +96,40 @@ public class CacheServiceImpl implements CacheService {
     }
 
     @Override
-    public void promoteCache(String profile) {
+    public void trickleUpdate(String profile) {
+        String key = (profile == null) ? ALL_PROFILES : profile;
 
-	log.info("Promoting cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
+        synchronized (activeTrickles) {
+            if (activeTrickles.contains(ALL_PROFILES) || activeTrickles.contains(key)) {
+                log.info("Trickle update for '{}' already running; ignoring", key);
+                return;
+            }
+            if (key.equals(ALL_PROFILES) && !activeTrickles.isEmpty()) {
+                log.info("Profile-specific trickles running; ignoring global trickle request");
+                return;
+            }
+            activeTrickles.add(key);
+        }
+
+        log.info("Starting trickle update for {}", profile != null ? "'" + profile + "'" : "all profiles");
+
+        new Thread(() -> {
+            try {
+                doTrickleUpdate(profile);
+            } finally {
+                activeTrickles.remove(key);
+            }
+        }).start();
+    }
+
+    @Override
+    public void promoteCache(String profile) {
+        log.info("Promoting cache for " + (profile != null ? "'" + profile + "'" : "all") + " profile(s)");
         this.doPromoteCache(profile);
     }
 
     public void dropCache(String profile) throws Exception {
-	log.info("Dropping cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
+        log.info("Dropping cache for " + (profile != null ? "'" + profile + "'" : "all") + " profile(s)");
         this.statsCache.dropCache(profile);
     }
 
@@ -133,37 +163,45 @@ public class CacheServiceImpl implements CacheService {
 
     private void doUpdateCache(String profile, int effectiveLimit, int effectiveSeconds) {
         log.info("Starting cache update");
-        List<CacheEntry> entries = statsCache.getEntries(profile);
 
+        // Signal any running trickle to stop — its work will be obsolete after markAllStale.
+        trickleStopRequested.set(true);
+
+        // Mark every entry in scope as stale before loading, so in-memory copies
+        // start with fresh=false and only entries we successfully execute get fresh=true.
+        statsCache.markAllStale(profile);
+
+        List<CacheEntry> entries = statsCache.getEntries(profile);
         entries.sort(new EntriesComparator());
 
         long startTime = new Date().getTime();
 
-        // IntStream.range preserves sorted order: entry at index N gets slot N, so
-        // pinned/high-hit entries are guaranteed to fall within effectiveLimit.
-        java.util.stream.IntStream.range(0, entries.size()).parallel().forEach(slot -> {
+        IntStream.range(0, entries.size()).parallel().forEach(slot -> {
             CacheEntry entry = entries.get(slot);
             try {
-
                 if (!stopRequested.get() && slot < effectiveLimit && new Date().getTime() < startTime + effectiveSeconds * 1000L) {
-                    log.debug(slot + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
+                    log.debug("{}: Updating entry {} ({})", slot, entry.getKey(), entry.getQuery().getDbId());
 
-                    TimedResult timedResult = statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow"));
+                    TimedResult timedResult = statsRepository.executeQuery(
+                            entry.getQuery().getQuery(),
+                            entry.getQuery().getParameters(),
+                            entry.getQuery().getDbId().replace("public", "shadow"),
+                            QueryPriority.CACHE_UPDATE);
 
                     entry.setShadowResult(timedResult.result);
+                    entry.setFresh(true);
                     entry.setExecTime(timedResult.execTimeMs);
                     entry.setQueueTime(timedResult.queueTimeMs);
                 } else {
-                    log.info("Skipping entry " + entry.getKey() + " (limit/time exceeded or stop requested). Invalidating shadow.");
-
+                    log.info("Skipping entry {} (limit/time/stop). Shadow cleared; trickle will refresh.", entry.getKey());
                     entry.setShadowResult(null);
+                    // fresh stays false — trickle will pick this up after promote
                 }
-
                 statsCache.storeEntry(entry);
             } catch (JsonProcessingException e) {
-                log.error("Error storing cache entry" ,e);
+                log.error("Error storing cache entry", e);
             } catch (Exception e) {
-                log.error("Error updating entry " + entry, e);
+                log.error("Error updating entry {}", entry, e);
                 statsCache.deleteEntry(entry.getKey());
             }
         });
@@ -172,7 +210,7 @@ public class CacheServiceImpl implements CacheService {
     }
 
     private void doPromoteCache(String profile) {
-        log.info("Promoting shadow cache values to public");
+        log.info("Promoting shadow cache values to result");
 
         List<CacheEntry> entries = statsCache.getEntries(profile);
 
@@ -180,23 +218,47 @@ public class CacheServiceImpl implements CacheService {
             try {
                 if (entry.getShadowResult() != null) {
                     entry.setResult(entry.getShadowResult());
-                    entry.setValid(true);
-                } else {
-                    // No shadow populated (limit exceeded or query failed during update).
-                    // Mark invalid so exists() returns false; counters are preserved.
-                    entry.setValid(false);
+                    entry.setShadowResult(null);
                 }
-                entry.setShadowResult(null);
-                entry.setUpdated(new Date());
+                // fresh=false entries: result unchanged (stale but valid, trickle target)
                 statsCache.storeEntry(entry);
             } catch (Exception e) {
-                log.error("Error promoting cache entry " + entry.getKey(), e);
+                log.error("Error promoting cache entry {}", entry.getKey(), e);
             }
         });
 
-        // Reset session_hits for the promoted profile in a single statement.
-        // Counters are never touched by storeEntry; this is the only place session_hits resets.
         statsCache.resetSessionHits(profile);
+
+        // Auto-start trickle to refresh entries that were not shadow-updated this cycle.
+        trickleUpdate(profile);
+    }
+
+    private void doTrickleUpdate(String profile) {
+        trickleStopRequested.set(false); // clear stop flag at trickle start
+
+        List<CacheEntry> staleEntries = statsCache.getStaleEntries(profile);
+        log.info("Trickle: {} stale entries to refresh for {}", staleEntries.size(),
+                profile != null ? "'" + profile + "'" : "all profiles");
+
+        for (CacheEntry entry : staleEntries) {
+            if (trickleStopRequested.get()) {
+                log.info("Trickle update interrupted by new cache update cycle");
+                break;
+            }
+            try {
+                TimedResult timedResult = statsRepository.executeQuery(
+                        entry.getQuery().getQuery(),
+                        entry.getQuery().getParameters(),
+                        entry.getQuery().getDbId(),
+                        QueryPriority.TRICKLE);
+                statsCache.trickleRefreshEntry(entry.getKey(), timedResult.result,
+                        timedResult.execTimeMs, timedResult.queueTimeMs);
+            } catch (Exception e) {
+                log.error("Trickle error for entry {}", entry.getKey(), e);
+            }
+        }
+
+        log.info("Trickle update finished");
     }
 }
 
@@ -210,10 +272,10 @@ class EntriesComparator implements Comparator<CacheEntry> {
             return 1;
 
         if (o1.getSessionHits() != o2.getSessionHits())
-            return o1.getSessionHits() > o2.getSessionHits()?-1:1;
+            return o1.getSessionHits() > o2.getSessionHits() ? -1 : 1;
 
         if (o1.getTotalHits() != o2.getTotalHits())
-            return o1.getTotalHits() > o2.getTotalHits()?-1:1;
+            return o1.getTotalHits() > o2.getTotalHits() ? -1 : 1;
 
         return 0;
     }

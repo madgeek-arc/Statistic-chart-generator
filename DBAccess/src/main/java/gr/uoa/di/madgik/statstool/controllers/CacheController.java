@@ -26,6 +26,11 @@ public class CacheController {
         cacheService.stopUpdate();
     }
 
+    @GetMapping("trickleUpdate")
+    public void trickleUpdate(@RequestParam(name = "profile", required = false) String profile) {
+        cacheService.trickleUpdate(profile);
+    }
+
     @GetMapping("promoteCache")
     public void promoteCache(@RequestParam(name = "profile", required = false) String profile) {
         cacheService.promoteCache(profile);

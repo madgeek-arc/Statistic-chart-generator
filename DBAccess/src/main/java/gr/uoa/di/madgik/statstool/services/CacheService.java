@@ -12,6 +12,8 @@ public interface CacheService {
 
     void stopUpdate();
 
+    void trickleUpdate(String profile);
+
     void promoteCache(String profile);
 
     void dropCache(String profile) throws Exception;

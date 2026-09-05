@@ -55,7 +55,7 @@ public class StatsDBRepository implements StatsCache {
                         "exectime int default 0 not null," +
                         "queuetime int default 0 not null," +
                         "profile varchar(255) not null," +
-                        "valid boolean default true not null)" );
+                        "fresh boolean default false not null)" );
 
         // Migrate existing tables that predate the queuetime column
         try {
@@ -74,7 +74,8 @@ public class StatsDBRepository implements StatsCache {
                 "alter table cache_entry alter column result longvarchar",
                 "alter table cache_entry alter column shadow longvarchar",
                 "alter table cache_entry alter column profile varchar(255)",
-                "alter table cache_entry add column if not exists valid boolean default true not null"
+                "alter table cache_entry add column if not exists valid boolean default true not null",
+                "alter table cache_entry add column if not exists fresh boolean default false not null",
         }) {
             try {
                 jdbcTemplate.execute(migration);
@@ -99,10 +100,9 @@ public class StatsDBRepository implements StatsCache {
 
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        // Atomically confirm entry is valid and increment counters in one UPDATE.
-        // 0 rows affected means key is absent or invalid — return null (cache miss).
+        // Atomically increment hit counters. 0 rows = key absent → cache miss.
         int rows = jdbcTemplate.update(
-                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=? and valid=true", key);
+                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=?", key);
 
         if (rows == 0)
             return null;
@@ -133,37 +133,15 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void save(QueryWithParameters fullSqlQuery, Result result, int execTime, int queueTime) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-        String key = StatsCache.getCacheKey(fullSqlQuery);
-
         if (!enableCache)
             return;
-
-        // If an invalid entry exists for this key, repopulate it in-place so that
-        // total_hits and session_hits are preserved rather than reset.
-        Integer invalidCount = jdbcTemplate.queryForObject(
-                "select count(*) from cache_entry where key=? and valid=false",
-                new Object[]{key}, Integer.class);
-
-        if (invalidCount != null && invalidCount > 0) {
-            ObjectMapper objectMapper = new ObjectMapper();
-            String resultJson = result == null ? null : objectMapper.writeValueAsString(result);
-            String queryJson = objectMapper.writeValueAsString(fullSqlQuery);
-            int oversized = maxLength(resultJson, queryJson);
-            if (oversized > MAX_CACHE_VALUE_CHARS) {
-                log.warn("Skipping cache repopulation for key {}: payload {} chars over limit", key, oversized);
-                return;
-            }
-            jdbcTemplate.update(
-                    "update cache_entry set result=cast(? as longvarchar), query=cast(? as longvarchar), " +
-                    "valid=true, exectime=?, queuetime=?, updated=now() where key=?",
-                    resultJson, queryJson, execTime, queueTime, key);
-        } else {
-            CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
-            entry.setExecTime(execTime);
-            entry.setQueueTime(queueTime);
-            entry.setProfile(fullSqlQuery.getDbId());
-            storeEntry(entry);
-        }
+        String key = StatsCache.getCacheKey(fullSqlQuery);
+        CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
+        entry.setExecTime(execTime);
+        entry.setQueueTime(queueTime);
+        entry.setProfile(fullSqlQuery.getDbId());
+        entry.setFresh(true); // result is fresh from main DB
+        storeEntry(entry);
     }
 
     @Override
@@ -177,7 +155,7 @@ public class StatsDBRepository implements StatsCache {
         // they are managed exclusively by user-facing events (get() increments, save() on
         // invalid-entry repopulation, resetSessionHits() at promote). The update/promote cycle
         // must not overwrite them.
-        String query = "merge into cache_entry as t using (values(cast(? as varchar(64)), cast(? as longvarchar), cast(? as longvarchar), cast(? as longvarchar), cast(? as timestamp), cast(? as timestamp), cast(? as int), cast(? as int), cast(? as boolean), cast(? as int), cast(? as int), cast(? as varchar(255)), cast(? as boolean))) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile, valid) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile, t.valid=vals.valid when not matched then insert (key, result, shadow, query, created, updated, total_hits, session_hits, pinned, exectime, queuetime, profile, valid) values (vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile, vals.valid);";
+        String query = "merge into cache_entry as t using (values(cast(? as varchar(64)), cast(? as longvarchar), cast(? as longvarchar), cast(? as longvarchar), cast(? as timestamp), cast(? as timestamp), cast(? as int), cast(? as int), cast(? as boolean), cast(? as int), cast(? as int), cast(? as varchar(255)), cast(? as boolean))) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile, fresh) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile, t.fresh=vals.fresh when not matched then insert (key, result, shadow, query, created, updated, total_hits, session_hits, pinned, exectime, queuetime, profile, fresh) values (vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile, vals.fresh);";
 
         log.debug("Storing entry " + entry);
 
@@ -210,7 +188,7 @@ public class StatsDBRepository implements StatsCache {
                 entry.getExecTime(),
                 entry.getQueueTime(),
                 entry.getProfile(),
-                entry.isValid()
+                entry.isFresh()
         );
     }
 
@@ -224,87 +202,54 @@ public class StatsDBRepository implements StatsCache {
         return max;
     }
 
+    private CacheEntry mapCacheEntry(java.sql.ResultSet rs, int rowNum) {
+        try {
+            QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+            String key = rs.getString("key");
+            Result result = null;
+            if (rs.getString("result") != null)
+                result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
+
+            CacheEntry entry = new CacheEntry(key, query, result);
+
+            if (rs.getTimestamp("created") != null)
+                entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+            if (rs.getTimestamp("updated") != null)
+                entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+            if (rs.getString("shadow") != null)
+                entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
+
+            entry.setTotalHits(rs.getInt("total_hits"));
+            entry.setSessionHits(rs.getInt("session_hits"));
+            entry.setPinned(rs.getBoolean("pinned"));
+            entry.setExecTime(rs.getInt("exectime"));
+            entry.setQueueTime(rs.getInt("queuetime"));
+            entry.setProfile(rs.getString("profile"));
+            entry.setFresh(rs.getBoolean("fresh"));
+            return entry;
+        } catch (Exception e) {
+            log.error("Error reading cache entry", e);
+            return null;
+        }
+    }
+
     @Override
     public List<CacheEntry> getEntries(String profile) {
         DatasourceContext.setContext(CACHE_DB_NAME);
 
         if (!enableCache) {
             log.debug("Cache is not enabled. Returning empty list");
-
             return Collections.emptyList();
         }
 
         String sql = "select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
 
-        if(profile != null && !profile.isEmpty()) {
+        if (profile != null && !profile.isEmpty()) {
             sql += " and profile=?";
-            return jdbcTemplate.query(sql, new Object[]{profile}, (rs, rowNum) -> {
-                CacheEntry entry = null;
-
-                try {
-                    QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                    String key = rs.getString("key");
-                    Result result = null;
-
-                    if (rs.getString("result") != null)
-                        result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
-
-                    entry = new CacheEntry(key, query, result);
-
-                    if (rs.getTimestamp("created") != null)
-                        entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                    if (rs.getTimestamp("updated") != null)
-                        entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-                    if (rs.getString("shadow") != null)
-                        entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
-
-                    entry.setTotalHits(rs.getInt("total_hits"));
-                    entry.setSessionHits(rs.getInt("session_hits"));
-                    entry.setPinned(rs.getBoolean("pinned"));
-                    entry.setExecTime(rs.getInt("exectime"));
-                    entry.setQueueTime(rs.getInt("queuetime"));
-                    entry.setProfile(rs.getString("profile"));
-                    entry.setValid(rs.getBoolean("valid"));
-                } catch (IOException e) {
-                    log.error("Error reading entry", e);
-                }
-
-                return entry;
-            });
+            return jdbcTemplate.query(sql, new Object[]{profile}, this::mapCacheEntry);
         }
 
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            CacheEntry entry = null;
-
-            try {
-                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                String key = rs.getString("key");
-                Result result = null;
-
-                if (rs.getString("result") != null)
-                    result = new ObjectMapper().readValue(rs.getString("result"), Result.class);
-
-                entry = new CacheEntry(key, query, result);
-
-                if (rs.getTimestamp("created") != null)
-                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                if (rs.getTimestamp("updated") != null)
-                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-                if (rs.getString("shadow") != null)
-                    entry.setShadowResult(new ObjectMapper().readValue(rs.getString("shadow"), Result.class));
-
-                entry.setTotalHits(rs.getInt("total_hits"));
-                entry.setSessionHits(rs.getInt("session_hits"));
-                entry.setPinned(rs.getBoolean("pinned"));
-                entry.setExecTime(rs.getInt("exectime"));
-                entry.setProfile(rs.getString("profile"));
-                entry.setValid(rs.getBoolean("valid"));
-            } catch (IOException e) {
-                log.error("Error reading entry", e);
-            }
-
-            return entry;
-        });
+        return jdbcTemplate.query(sql, this::mapCacheEntry);
     }
 
     @Override
@@ -315,6 +260,45 @@ public class StatsDBRepository implements StatsCache {
         } else {
             jdbcTemplate.execute("update cache_entry set session_hits=0");
         }
+    }
+
+    @Override
+    public void markAllStale(String profile) {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+        if (profile != null && !profile.isEmpty()) {
+            jdbcTemplate.update("update cache_entry set fresh=false where profile=?", profile);
+        } else {
+            jdbcTemplate.execute("update cache_entry set fresh=false");
+        }
+    }
+
+    @Override
+    public List<CacheEntry> getStaleEntries(String profile) {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+        if (!enableCache) return Collections.emptyList();
+
+        String baseSql = "select * from cache_entry where fresh=false" +
+                " and key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
+
+        if (profile != null && !profile.isEmpty()) {
+            return jdbcTemplate.query(baseSql + " and profile=? order by total_hits desc",
+                    new Object[]{profile}, this::mapCacheEntry);
+        }
+        return jdbcTemplate.query(baseSql + " order by total_hits desc", this::mapCacheEntry);
+    }
+
+    @Override
+    public void trickleRefreshEntry(String key, Result result, int execTime, int queueTime) throws Exception {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+        ObjectMapper objectMapper = new ObjectMapper();
+        String resultJson = result == null ? null : objectMapper.writeValueAsString(result);
+        if (resultJson != null && resultJson.length() > MAX_CACHE_VALUE_CHARS) {
+            log.warn("Skipping trickle refresh for key {}: payload over limit", key);
+            return;
+        }
+        jdbcTemplate.update(
+                "update cache_entry set result=cast(? as longvarchar), fresh=true, exectime=?, queuetime=?, updated=now() where key=?",
+                resultJson, execTime, queueTime, key);
     }
 
     @Override
@@ -333,14 +317,14 @@ public class StatsDBRepository implements StatsCache {
         Map<String, Object> stats = new LinkedHashMap<>();
 
         stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry", new Object[] {}, Integer.class));
-        stats.put("valid", jdbcTemplate.queryForObject("select count(*) from cache_entry where valid=true", new Object[] {}, Integer.class));
-        stats.put("invalid", jdbcTemplate.queryForObject("select count(*) from cache_entry where valid=false", new Object[] {}, Integer.class));
+        stats.put("fresh", jdbcTemplate.queryForObject("select count(*) from cache_entry where fresh=true", new Object[] {}, Integer.class));
+        stats.put("stale", jdbcTemplate.queryForObject("select count(*) from cache_entry where fresh=false", new Object[] {}, Integer.class));
         stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null", new Object[] {}, Integer.class));
         stats.put("profiles", jdbcTemplate.query(
                 "select profile," +
                 "  count(*) as queries," +
-                "  sum(case when valid=true then 1 else 0 end) as valid," +
-                "  sum(case when valid=false then 1 else 0 end) as invalid," +
+                "  sum(case when fresh=true then 1 else 0 end) as fresh," +
+                "  sum(case when fresh=false then 1 else 0 end) as stale," +
                 "  sum(case when shadow is not null then 1 else 0 end) as with_shadow," +
                 "  avg(exectime) as avg_exec_time," +
                 "  avg(queuetime) as avg_queue_time" +
@@ -351,8 +335,8 @@ public class StatsDBRepository implements StatsCache {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("profile", rs.getString("profile"));
                     map.put("queries", rs.getInt("queries"));
-                    map.put("valid", rs.getInt("valid"));
-                    map.put("invalid", rs.getInt("invalid"));
+                    map.put("fresh", rs.getInt("fresh"));
+                    map.put("stale", rs.getInt("stale"));
                     map.put("with_shadow", rs.getInt("with_shadow"));
                     map.put("avg_exec_time", rs.getInt("avg_exec_time"));
                     map.put("avg_queue_time", rs.getInt("avg_queue_time"));

@@ -6,6 +6,7 @@ import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
 import gr.uoa.di.madgik.statstool.repositories.NlOptionsCache;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
+import gr.uoa.di.madgik.statstool.repositories.QueryPriority;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import gr.uoa.di.madgik.statstool.repositories.StatsRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -189,13 +190,13 @@ public class CacheServiceImplTest {
     @Test
     public void updateCache_respectsExplicitLimit() throws Exception {
         when(statsCache.getEntries(any())).thenReturn(makeEntries(5));
-        when(statsRepository.executeQuery(any(), any(), any())).thenReturn(shadowResult());
+        when(statsRepository.executeQuery(any(), any(), any(), any())).thenReturn(shadowResult());
 
         service.updateCache(null, 2, 3600);
         waitForUpdate();
 
         // At most 2 shadow queries (limit=2); all 5 storeEntry calls happen
-        verify(statsRepository, atMost(2)).executeQuery(any(), any(), any());
+        verify(statsRepository, atMost(2)).executeQuery(any(), any(), any(), any());
         verify(statsCache, times(5)).storeEntry(any());
     }
 
@@ -203,12 +204,12 @@ public class CacheServiceImplTest {
     public void updateCache_nullParams_fallBackToProperties() throws Exception {
         setField("numberLimit", 2);
         when(statsCache.getEntries(any())).thenReturn(makeEntries(5));
-        when(statsRepository.executeQuery(any(), any(), any())).thenReturn(shadowResult());
+        when(statsRepository.executeQuery(any(), any(), any(), any())).thenReturn(shadowResult());
 
         service.updateCache(null, null, null);
         waitForUpdate();
 
-        verify(statsRepository, atMost(2)).executeQuery(any(), any(), any());
+        verify(statsRepository, atMost(2)).executeQuery(any(), any(), any(), any());
     }
 
     // -------------------------------------------------------------------------
@@ -245,7 +246,7 @@ public class CacheServiceImplTest {
         CountDownLatch firstStarted = new CountDownLatch(1);
 
         when(statsCache.getEntries(any())).thenReturn(makeEntries(total));
-        when(statsRepository.executeQuery(any(), any(), any())).thenAnswer(inv -> {
+        when(statsRepository.executeQuery(any(), any(), any(), any())).thenAnswer(inv -> {
             firstStarted.countDown();
             Thread.sleep(50); // slow enough to allow stop to be observed
             queryCount.incrementAndGet();

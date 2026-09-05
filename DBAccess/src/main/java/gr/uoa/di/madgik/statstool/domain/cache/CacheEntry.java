@@ -15,7 +15,7 @@ public class CacheEntry {
     private int totalHits = 1;
     private int sessionHits = 1;
     private boolean pinned = false;
-    private boolean valid = true;
+    private boolean fresh = false;
 
     private String profile;
 
@@ -115,12 +115,12 @@ public class CacheEntry {
         this.pinned = pinned;
     }
 
-    public boolean isValid() {
-        return valid;
+    public boolean isFresh() {
+        return fresh;
     }
 
-    public void setValid(boolean valid) {
-        this.valid = valid;
+    public void setFresh(boolean fresh) {
+        this.fresh = fresh;
     }
 
     public int getExecTime() {
@@ -162,6 +162,7 @@ public class CacheEntry {
                 ", execTime= " + execTime +
                 ", queueTime= " + queueTime +
                 ", profile= " + profile +
+                ", fresh=" + fresh +
                 '}';
     }
 }

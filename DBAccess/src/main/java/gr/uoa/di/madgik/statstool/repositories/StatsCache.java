@@ -23,7 +23,7 @@ public interface StatsCache {
 
     /**
      * Atomically increments hit counters and returns the cached Result.
-     * Returns null if the key is absent, invalid, or cache is disabled.
+     * Returns null if the key is absent or cache is disabled.
      */
     Result get(String key) throws Exception;
 
@@ -36,6 +36,12 @@ public interface StatsCache {
     void deleteEntry(String key);
 
     void resetSessionHits(String profile);
+
+    void markAllStale(String profile);
+
+    List<CacheEntry> getStaleEntries(String profile);
+
+    void trickleRefreshEntry(String key, Result result, int execTime, int queueTime) throws Exception;
 
     static String MD5(String string) throws Exception {
         MessageDigest md = MessageDigest.getInstance("MD5");

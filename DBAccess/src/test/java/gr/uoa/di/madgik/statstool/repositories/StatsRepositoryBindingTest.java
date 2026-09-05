@@ -9,6 +9,7 @@ import java.sql.*;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -44,33 +45,31 @@ public class StatsRepositoryBindingTest {
         when(rsmd.getColumnCount()).thenReturn(1);
         when(rs.next()).thenReturn(false); // no rows
 
-        // run tasks synchronously by executing callable immediately and returning an already-completed Future
-        when(executorService.submit(any(StatsRepository.ResultCallable.class))).thenAnswer(invocation -> {
-            StatsRepository.ResultCallable callable = invocation.getArgument(0);
-            try {
-                TimedResult tr = callable.call();
-                return new ImmediateFuture(tr);
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                if (e instanceof IllegalArgumentException) throw (IllegalArgumentException) e;
-                throw new RuntimeException(e);
-            }
-        });
-    }
-
-    private static class ImmediateFuture implements Future<TimedResult> {
-        private final TimedResult result;
-        ImmediateFuture(TimedResult result) { this.result = result; }
-        @Override public boolean cancel(boolean mayInterruptIfRunning) { return false; }
-        @Override public boolean isCancelled() { return false; }
-        @Override public boolean isDone() { return true; }
-        @Override public TimedResult get() { return result; }
-        @Override public TimedResult get(long timeout, java.util.concurrent.TimeUnit unit) { return result; }
+        // Run tasks synchronously: when execute() is called with a PrioritizedFutureTask,
+        // run it immediately on the calling thread so get() returns the result.
+        doAnswer(invocation -> {
+            Runnable task = invocation.getArgument(0);
+            task.run();
+            return null;
+        }).when(executorService).execute(any(Runnable.class));
     }
 
     private StatsRepository newRepo() {
         return new StatsRepository(dataSource, executorService);
+    }
+
+    /**
+     * Helper that unwraps ExecutionException to expose the underlying cause.
+     * When the callable throws an exception inside a FutureTask, future.get()
+     * wraps it in ExecutionException; we unwrap to get the root cause.
+     */
+    private static <T extends Throwable> T assertThrowsWrapped(Class<T> type,
+            org.junit.jupiter.api.function.Executable executable) {
+        ExecutionException ee = assertThrows(ExecutionException.class, executable);
+        Throwable cause = ee.getCause();
+        assertTrue(type.isInstance(cause),
+                "Expected cause " + type.getName() + " but got " + cause);
+        return type.cast(cause);
     }
 
     @Test
@@ -111,7 +110,9 @@ public class StatsRepositoryBindingTest {
         StatsRepository repo = newRepo();
         String sql = "SELECT ?";
         List<Object> params = Collections.singletonList(null);
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Validation occurs inside the FutureTask callable; the exception is wrapped
+        // in ExecutionException by future.get().
+        IllegalArgumentException ex = assertThrowsWrapped(IllegalArgumentException.class,
                 () -> repo.executeQuery(sql, params, "p.public"));
         assertTrue(ex.getMessage().toLowerCase().contains("null parameter"));
         // Should fail before opening connection
@@ -123,7 +124,9 @@ public class StatsRepositoryBindingTest {
         StatsRepository repo = newRepo();
         String sql = "SELECT ?, ?";
         List<Object> params = Collections.singletonList("only-one");
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        // Validation occurs inside the FutureTask callable; the exception is wrapped
+        // in ExecutionException by future.get().
+        IllegalArgumentException ex = assertThrowsWrapped(IllegalArgumentException.class,
                 () -> repo.executeQuery(sql, params, "p.public"));
         assertTrue(ex.getMessage().toLowerCase().contains("placeholder count"));
         verify(dataSource, never()).getConnection();
