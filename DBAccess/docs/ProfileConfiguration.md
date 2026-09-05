@@ -92,6 +92,7 @@ An entity is a named logical concept (e.g. `"publication"`, `"project"`) that ma
   "name":        "publication",
   "key":         "id",
   "description": "Peer-reviewed journal articles and conference papers",
+  "visible":     true,
   "filters": [
     {
       "column":   "type",
@@ -122,6 +123,7 @@ An entity is a named logical concept (e.g. `"publication"`, `"project"`) that ma
 | `name` | string | yes | Logical entity name used in API field paths (e.g. `"publication"` in `"publication.year"`). Must be unique within the profile. |
 | `key` | string | yes | Primary key column on the `from` table. Used as the default column when the entity appears alone in a field path (e.g. `"publication"` → `result.id`). Also used as the join column when building EXISTS subqueries. |
 | `description` | string | no | Human-readable description returned by the schema endpoint. |
+| `visible` | boolean | no | Default `true`. When `false`, the entity is excluded from schema discovery endpoints (`/schema/{profile}/entities`) and is pruned from other entities' `relations` lists. The entity remains fully functional for SQL generation, so existing chart URLs that reference it continue to work. Use this to retire an entity from new chart creation without breaking backwards compatibility. |
 | `filters` | Filter[] | no | Default WHERE conditions applied automatically to every query that touches this entity. See [Entity Filters](#entity-filters). |
 | `fields` | Field[] | no | Columns exposed by this entity. See [Field](#field). |
 | `relations` | string[] | no | Names of other entities this entity can be joined to. Used by the schema endpoint; the actual join paths are defined in `relations` at the mapping level. |
@@ -140,7 +142,8 @@ A field is one column exposed on an entity. It always appears in API paths as `"
   "name":        "access mode",
   "datatype":    "text",
   "sqlTable":    null,
-  "description": "Best available licence for this result"
+  "description": "Best available licence for this result",
+  "visible":     true
 }
 ```
 
@@ -153,6 +156,7 @@ A field is one column exposed on an entity. It always appears in API paths as `"
 | `datatype` | string | yes | SQL type hint for parameter binding. One of: `"text"`, `"int"`, `"float"`, `"date"`, `"boolean"`, `"number"`. |
 | `sqlTable` | string | no | Override which physical table this column lives on. See [The sqlTable Attribute](#the-sqltable-attribute). |
 | `description` | string | no | Human-readable description returned by the schema endpoint. |
+| `visible` | boolean | no | Default `true`. When `false`, the field is excluded from the entity's field list in schema discovery but still works in SQL generation for existing charts. |
 
 ---
 
@@ -304,6 +308,38 @@ The `relations` entry for `result → indi_pub_gold` may remain in place (for ot
 | absent / `null` | — | Column read from entity's own `from` table (normal) |
 | names table B | B not yet traversed | Forward hidden-join: join to B is appended |
 | names table A | A already traversed as ancestor | Denorm short-circuit: intermediate joins skipped, column read from A |
+
+---
+
+## Visibility — Schema vs. Backwards Compatibility
+
+Both entities and fields support a `visible` flag (default `true`) that controls whether they appear in the **schema discovery** endpoints while keeping them **fully functional** for SQL generation.
+
+### What visibility controls
+
+| Scope | When `visible: false` |
+|---|---|
+| Entity | Not listed in `GET /schema/{profile}/entities`. Not returned by `GET /schema/{profile}/entities/{entity}`. Pruned from other entities' `relations` lists so callers cannot navigate to it from the schema. |
+| Field | Not listed in the entity's field array in `GET /schema/{profile}/entities/{entity}`. |
+
+In both cases, **existing chart URLs that reference the invisible entity or field continue to work exactly as before** — the SQL generation layer (`ProfileConfiguration.tables`, `fields`, `relations`) is populated unconditionally and is not affected by the `visible` flag.
+
+### When to use visibility
+
+The primary use case is **denormalization with backwards compatibility**:
+
+1. A column that previously required joining to a satellite entity (e.g. `indi_pub_gold`) is moved directly onto the root table (`result`).
+2. The satellite entity in the profile gets `"visible": false` (and its fields get `"sqlTable": "result"` via the denorm pattern).
+3. Old charts using the path `result.indi_pub_gold.is_gold_oa` keep working.
+4. New charts cannot select `indi_pub_gold` because it no longer appears in the schema.
+
+### Visibility vs. profile `hidden`
+
+| Mechanism | Scope | Effect |
+|---|---|---|
+| Profile `hidden: true` (in `mappings.json`) | Entire profile | Profile not listed in `/schema/profiles`; schema endpoints for that profile are still reachable by name |
+| Entity `visible: false` | Single entity within a profile | Entity absent from schema discovery; SQL generation unaffected |
+| Field `visible: false` | Single field within an entity | Field absent from entity schema; SQL generation unaffected |
 
 ---
 
@@ -603,6 +639,46 @@ After adding this, any entity that has `"my_new_satellite"` in its `relations` l
 
 ---
 
+## How to Retire an Entity or Field Without Breaking Existing Charts
+
+Mark it invisible. Existing chart URLs keep working; new chart builders cannot see or select it via the schema API.
+
+**Hide an entire entity:**
+```json
+{
+  "from":    "indi_pub_gold",
+  "name":    "indi_pub_gold",
+  "visible": false,
+  "key":     "id",
+  "fields": [
+    { "column": "is_gold_oa", "name": "is_gold_oa", "datatype": "boolean",
+      "sqlTable": "result" }
+  ]
+}
+```
+
+**Hide individual fields while keeping the entity visible:**
+```json
+{
+  "from":  "result",
+  "name":  "result",
+  "fields": [
+    { "column": "year", "name": "year", "datatype": "int" },
+    { "column": "legacy_col", "name": "legacy_col", "datatype": "text",
+      "visible": false }
+  ]
+}
+```
+
+The typical full workflow when denormalizing a satellite entity:
+
+1. Move the column to the root table in the DB.
+2. Add `"sqlTable": "root_table"` to the affected fields (denorm short-circuit).
+3. Add `"visible": false` to the satellite entity.
+4. Restart. Old URLs work; schema no longer shows the satellite.
+
+---
+
 ## How to Denormalize a Column
 
 When a column moves from a joined satellite table into the root table:
@@ -649,3 +725,5 @@ When building or editing a profile, verify:
 - [ ] Multi-step `joins` arrays are ordered from source to destination — the `to` of step N must match the `from` of step N+1.
 - [ ] Entity names are unique within a profile.
 - [ ] Field names are unique within an entity (duplicate `name` values within one entity's `fields` array will silently overwrite each other in the `ProfileConfiguration.fields` map).
+- [ ] Invisible entities (`visible: false`) that still have active `filters` with fields using `"sqlTable": "<ancestor>"` — verify that the denormalization preserved the filter semantics in the data (entity-level filters on invisible entities are silently dropped during SQL short-circuit; see [The sqlTable Attribute](#the-sqltable-attribute) caveat).
+- [ ] Fields marked `visible: false` that are referenced by existing chart URLs still have correct `column` / `sqlTable` config — visibility only affects schema output, not SQL generation.
