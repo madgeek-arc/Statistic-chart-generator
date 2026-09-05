@@ -40,24 +40,38 @@ public class CacheServiceImpl implements CacheService {
     private final Logger log = LogManager.getLogger(this.getClass());
 
     private final AtomicBoolean updating = new AtomicBoolean(false);
+    private final AtomicBoolean stopRequested = new AtomicBoolean(false);
 
     @Override
-    public void updateCache(String profile) {
+    public void updateCache(String profile, Integer limit, Integer maxSeconds) {
+        int effectiveLimit = (limit != null) ? limit : numberLimit;
+        int effectiveSeconds = (maxSeconds != null) ? maxSeconds : timeLimit;
 
-	log.info("Updating cache for " + (profile!=null?"'"+profile+"'":"all") + " profile(s)");
+        log.info("Updating cache for " + (profile != null ? "'" + profile + "'" : "all") +
+                " profile(s) [limit=" + effectiveLimit + ", maxSeconds=" + effectiveSeconds + "]");
 
         if (updating.compareAndSet(false, true)) {
+            stopRequested.set(false);
             new Thread(() -> {
                 try {
-                    doUpdateCache(profile);
+                    doUpdateCache(profile, effectiveLimit, effectiveSeconds);
                 } finally {
                     updating.set(false);
                 }
             }).start();
         } else {
-            throw new IllegalStateException("Cache is already being updated. Please, come back later");
+            log.info("Cache update already running; ignoring request");
         }
+    }
 
+    @Override
+    public void stopUpdate() {
+        if (updating.get()) {
+            log.info("Stop requested for running cache update");
+            stopRequested.set(true);
+        } else {
+            log.info("No cache update running; stopUpdate is a no-op");
+        }
     }
 
     @Override
@@ -100,7 +114,7 @@ public class CacheServiceImpl implements CacheService {
         nlOptionsCache.evict(library, canonicalDescription);
     }
 
-    private void doUpdateCache(String profile) {
+    private void doUpdateCache(String profile, int effectiveLimit, int effectiveSeconds) {
         log.info("Starting cache update");
         List<CacheEntry> entries = statsCache.getEntries(profile);
 
@@ -109,12 +123,12 @@ public class CacheServiceImpl implements CacheService {
         long startTime = new Date().getTime();
 
         // IntStream.range preserves sorted order: entry at index N gets slot N, so
-        // pinned/high-hit entries are guaranteed to fall within numberLimit.
+        // pinned/high-hit entries are guaranteed to fall within effectiveLimit.
         java.util.stream.IntStream.range(0, entries.size()).parallel().forEach(slot -> {
             CacheEntry entry = entries.get(slot);
             try {
 
-                if (slot < numberLimit && new Date().getTime() < startTime + timeLimit*1000) {
+                if (!stopRequested.get() && slot < effectiveLimit && new Date().getTime() < startTime + effectiveSeconds * 1000L) {
                     log.debug(slot + ". Updating entry " + entry.getKey() + "(" + entry.getQuery().getDbId() + ") with query " + entry.getQuery());
 
                     TimedResult timedResult = statsRepository.executeQuery(entry.getQuery().getQuery(), entry.getQuery().getParameters(), entry.getQuery().getDbId().replace("public", "shadow"));
@@ -123,7 +137,7 @@ public class CacheServiceImpl implements CacheService {
                     entry.setExecTime(timedResult.execTimeMs);
                     entry.setQueueTime(timedResult.queueTimeMs);
                 } else {
-                    log.info("time or # of queries limits exceeded. Invalidating entry " + entry.getKey());
+                    log.info("Skipping entry " + entry.getKey() + " (limit/time exceeded or stop requested). Invalidating shadow.");
 
                     entry.setShadowResult(null);
                 }

@@ -15,8 +15,15 @@ public class CacheController {
     private CacheService cacheService;
 
     @GetMapping("updateCache")
-    public void updateCache(@RequestParam(name = "profile", required = false) String profile) {
-        cacheService.updateCache(profile);
+    public void updateCache(@RequestParam(name = "profile", required = false) String profile,
+                            @RequestParam(name = "limit", required = false) Integer limit,
+                            @RequestParam(name = "maxSeconds", required = false) Integer maxSeconds) {
+        cacheService.updateCache(profile, limit, maxSeconds);
+    }
+
+    @GetMapping("stopUpdate")
+    public void stopUpdate() {
+        cacheService.stopUpdate();
     }
 
     @GetMapping("promoteCache")

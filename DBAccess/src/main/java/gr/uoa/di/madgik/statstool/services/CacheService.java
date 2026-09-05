@@ -4,7 +4,13 @@ import java.util.Map;
 
 public interface CacheService {
 
-    void updateCache(String profile);
+    default void updateCache(String profile) {
+        updateCache(profile, null, null);
+    }
+
+    void updateCache(String profile, Integer limit, Integer maxSeconds);
+
+    void stopUpdate();
 
     void promoteCache(String profile);
 
