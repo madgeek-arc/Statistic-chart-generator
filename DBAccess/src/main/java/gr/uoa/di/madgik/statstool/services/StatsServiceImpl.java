@@ -262,8 +262,8 @@ public class StatsServiceImpl implements StatsService {
                 Result mergedResult;
                 if (allUseCache && statsCache.isEnabled()) {
                     String cacheKey = StatsCache.getCacheKey(finalSql, mergedParameters, baseProfile);
-                    if (statsCache.exists(cacheKey)) {
-                        mergedResult = statsCache.get(cacheKey);
+                    mergedResult = statsCache.get(cacheKey);
+                    if (mergedResult != null) {
                         log.debug("Merged key {} in cache! Returning cached result.", cacheKey);
                     } else {
                         log.info("Performing merged query {}", finalSql);
@@ -329,10 +329,8 @@ public class StatsServiceImpl implements StatsService {
 
             if (query.isUseCache() && statsCache.isEnabled()) {
                 cacheKey = StatsCache.getCacheKey(querySql, parameters, profile);
-
-                if (statsCache.exists(cacheKey)) {
-                    result = statsCache.get(cacheKey);
-
+                result = statsCache.get(cacheKey);
+                if (result != null) {
                     log.debug("Key {} in cache! Returning: {}", cacheKey, result);
                 } else {
                     log.info("Performing query {}", querySql);
@@ -359,9 +357,12 @@ public class StatsServiceImpl implements StatsService {
             boolean useCache = statsCache.isEnabled();
             String cacheKey = useCache ? StatsCache.getCacheKey(queryWithParameters) : null;
 
-            if (useCache && statsCache.exists(cacheKey)) {
-                log.debug("Raw query key {} in cache.", cacheKey);
-                return statsCache.get(cacheKey);
+            if (useCache) {
+                Result cached = statsCache.get(cacheKey);
+                if (cached != null) {
+                    log.debug("Raw query key {} in cache.", cacheKey);
+                    return cached;
+                }
             }
             log.info("Executing raw query {}", queryWithParameters.getQuery());
             TimedResult timedResult = statsRepository.executeQuery(

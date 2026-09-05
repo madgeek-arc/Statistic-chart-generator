@@ -93,30 +93,19 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
-    public boolean exists(String key) {
-        if (!enableCache) {
-            log.warn("Calling exists method while cache is not enabled.");
-            throw new RuntimeException("Cache is not enabled!");
-        }
-
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
-        log.debug("Checking if entry with key " + key + " exists");
-
-        return jdbcTemplate.queryForObject("select count(*) from cache_entry where key=? and valid=true",new Object[] {key}, Integer.class) == 1;
-    }
-
-    @Override
     public Result get(String key) throws Exception {
+        if (!enableCache)
+            return null;
+
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        if (!enableCache)
-            throw new RuntimeException("Cache is not enabled!");
+        // Atomically confirm entry is valid and increment counters in one UPDATE.
+        // 0 rows affected means key is absent or invalid — return null (cache miss).
+        int rows = jdbcTemplate.update(
+                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=? and valid=true", key);
 
-        if (!exists(key))
-            throw new Exception("Key " + key + " does not exist");
-
-        jdbcTemplate.update("update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=?", key);
+        if (rows == 0)
+            return null;
 
         return jdbcTemplate.queryForObject("select result from cache_entry where key=?", new Object[]{key}, (resultSet, i) -> {
             try {
@@ -124,8 +113,7 @@ public class StatsDBRepository implements StatsCache {
             } catch (IOException e) {
                 log.error("Error getting entry with key " + key, e);
             }
-
-            throw new RuntimeException("Something went baad");
+            throw new RuntimeException("Error deserializing cached result for key " + key);
         });
     }
 
@@ -145,40 +133,36 @@ public class StatsDBRepository implements StatsCache {
     @Override
     public void save(QueryWithParameters fullSqlQuery, Result result, int execTime, int queueTime) throws Exception {
         DatasourceContext.setContext(CACHE_DB_NAME);
-        try {
-            String key = StatsCache.getCacheKey(fullSqlQuery);
+        String key = StatsCache.getCacheKey(fullSqlQuery);
 
-            if (!enableCache)
-                throw new RuntimeException("Cache is not enabled!");
+        if (!enableCache)
+            return;
 
-            // If an invalid entry exists for this key, repopulate it in-place so that
-            // total_hits and session_hits are preserved and incremented rather than reset.
-            Integer invalidCount = jdbcTemplate.queryForObject(
-                    "select count(*) from cache_entry where key=? and valid=false",
-                    new Object[]{key}, Integer.class);
+        // If an invalid entry exists for this key, repopulate it in-place so that
+        // total_hits and session_hits are preserved rather than reset.
+        Integer invalidCount = jdbcTemplate.queryForObject(
+                "select count(*) from cache_entry where key=? and valid=false",
+                new Object[]{key}, Integer.class);
 
-            if (invalidCount != null && invalidCount > 0) {
-                ObjectMapper objectMapper = new ObjectMapper();
-                String resultJson = result == null ? null : objectMapper.writeValueAsString(result);
-                String queryJson = objectMapper.writeValueAsString(fullSqlQuery);
-                int oversized = maxLength(resultJson, queryJson);
-                if (oversized > MAX_CACHE_VALUE_CHARS) {
-                    log.warn("Skipping cache repopulation for key {}: payload {} chars over limit", key, oversized);
-                    return;
-                }
-                jdbcTemplate.update(
-                        "update cache_entry set result=cast(? as longvarchar), query=cast(? as longvarchar), " +
-                        "valid=true, exectime=?, queuetime=?, updated=now() where key=?",
-                        resultJson, queryJson, execTime, queueTime, key);
-            } else {
-                CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
-                entry.setExecTime(execTime);
-                entry.setQueueTime(queueTime);
-                entry.setProfile(fullSqlQuery.getDbId());
-                storeEntry(entry);
+        if (invalidCount != null && invalidCount > 0) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String resultJson = result == null ? null : objectMapper.writeValueAsString(result);
+            String queryJson = objectMapper.writeValueAsString(fullSqlQuery);
+            int oversized = maxLength(resultJson, queryJson);
+            if (oversized > MAX_CACHE_VALUE_CHARS) {
+                log.warn("Skipping cache repopulation for key {}: payload {} chars over limit", key, oversized);
+                return;
             }
-        } catch (Exception e) {
-            throw new RedisException(e);
+            jdbcTemplate.update(
+                    "update cache_entry set result=cast(? as longvarchar), query=cast(? as longvarchar), " +
+                    "valid=true, exectime=?, queuetime=?, updated=now() where key=?",
+                    resultJson, queryJson, execTime, queueTime, key);
+        } else {
+            CacheEntry entry = new CacheEntry(key, fullSqlQuery, result);
+            entry.setExecTime(execTime);
+            entry.setQueueTime(queueTime);
+            entry.setProfile(fullSqlQuery.getDbId());
+            storeEntry(entry);
         }
     }
 

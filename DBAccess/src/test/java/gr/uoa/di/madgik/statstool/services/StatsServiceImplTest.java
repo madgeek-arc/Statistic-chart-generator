@@ -73,7 +73,8 @@ public class StatsServiceImplTest {
         // Repository returns a simple merged result
         Result merged = new Result();
         merged.setRows(new ArrayList<>());
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         // Act — pass "xaxis" so the merged ORDER BY resolves to the x column
@@ -125,7 +126,8 @@ public class StatsServiceImplTest {
 
         Result r1 = new Result();
         Result r2 = new Result();
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
                 .thenReturn(new TimedResult(r1, 10, 5))
                 .thenReturn(new TimedResult(r2, 10, 5));
@@ -149,7 +151,7 @@ public class StatsServiceImplTest {
 
         // Cache hit for merged key
         Result cached = new Result();
-        when(statsCache.exists(anyString())).thenReturn(true);
+        when(statsCache.isEnabled()).thenReturn(true);
         when(statsCache.get(anyString())).thenReturn(cached);
 
         List<Result> list = statsService.query(Arrays.asList(q1, q2), null);
@@ -172,7 +174,8 @@ public class StatsServiceImplTest {
         when(mapper.map(eq(q2), anyList(), eq("stacked"))).thenReturn("SELECT 2, 'B' ORDER BY 1 DESC");
 
         Result merged = new Result();
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "stacked");
@@ -207,7 +210,8 @@ public class StatsServiceImplTest {
 
         Result merged = new Result();
         merged.setRows(new ArrayList<>());
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2, q3), "stacked");
@@ -241,7 +245,8 @@ public class StatsServiceImplTest {
 
         Result merged = new Result();
         merged.setRows(new ArrayList<>());
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "pinned");
@@ -275,7 +280,8 @@ public class StatsServiceImplTest {
         when(mapper.map(eq(q2), anyList(), eq("yaxis"))).thenReturn("SELECT 2, 'B'");
 
         Result merged = new Result();
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "yaxis");
@@ -306,7 +312,8 @@ public class StatsServiceImplTest {
 
         Result merged = new Result();
         merged.setRows(new ArrayList<>());
-        when(statsCache.exists(anyString())).thenReturn(false);
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
 
         statsService.query(Arrays.asList(q1, q2), "yaxis");

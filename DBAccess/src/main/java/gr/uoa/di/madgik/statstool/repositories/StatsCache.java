@@ -21,8 +21,10 @@ public interface StatsCache {
 
     boolean isEnabled();
 
-    boolean exists(String key) throws Exception;
-
+    /**
+     * Atomically increments hit counters and returns the cached Result.
+     * Returns null if the key is absent, invalid, or cache is disabled.
+     */
     Result get(String key) throws Exception;
 
     void save(QueryWithParameters fullSqlQuery, Result result, int execTime, int queueTime) throws Exception;

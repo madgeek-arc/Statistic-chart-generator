@@ -69,9 +69,8 @@ public class StatsDBRepositoryTest {
         repo.storeEntry(entry);
 
         // Validate exists and get
-        assertTrue(repo.exists(entry.getKey()), "Entry should exist after storing");
         Result fetched = repo.get(entry.getKey());
-        assertNotNull(fetched, "Fetched result must not be null");
+        assertNotNull(fetched, "Entry should exist after storing and result must not be null");
         assertEquals(res.getRows().size(), fetched.getRows().size(), "Row count should round-trip");
     }
 
@@ -145,8 +144,7 @@ public class StatsDBRepositoryTest {
 
         repo.storeEntry(entry);
 
-        assertTrue(repo.exists(entry.getKey()), "Entry should store after schema migration");
-        assertNotNull(repo.get(entry.getKey()));
+        assertNotNull(repo.get(entry.getKey()), "Entry should store after schema migration");
     }
 
     @Test
@@ -160,11 +158,11 @@ public class StatsDBRepositoryTest {
         CacheEntry e = new CacheEntry(key, q, r);
         e.setProfile("prof");
         repo.storeEntry(e);
-        assertTrue(repo.exists(key), "New entry must be valid");
+        assertNotNull(repo.get(key), "New entry must be valid");
 
         e.setValid(false);
         repo.storeEntry(e);
-        assertFalse(repo.exists(key), "Invalid entry must not be found by exists()");
+        assertNull(repo.get(key), "Invalid entry must not be accessible via get()");
     }
 
     @Test
@@ -177,18 +175,18 @@ public class StatsDBRepositoryTest {
 
         repo.save(q, r, 5, 0);
         String key = StatsCache.getCacheKey(q);
-        assertTrue(repo.exists(key));
+        assertNotNull(repo.get(key));
 
         // Invalidate (simulates promote with no shadow)
         List<CacheEntry> entries = repo.getEntries("prof");
         CacheEntry e = entries.get(0);
         e.setValid(false);
         repo.storeEntry(e);
-        assertFalse(repo.exists(key));
+        assertNull(repo.get(key));
 
         // save() repopulates → valid=true, entry accessible again
         repo.save(q, r, 10, 0);
-        assertTrue(repo.exists(key), "save() must restore valid=true on invalid entry");
+        assertNotNull(repo.get(key), "save() must restore valid=true on invalid entry");
     }
 
     @Test
@@ -277,7 +275,7 @@ public class StatsDBRepositoryTest {
         e.setProfile("prof");
         // no shadow initially
         repo.storeEntry(e);
-        assertTrue(repo.exists(key));
+        assertNotNull(repo.get(key));
 
         // Now add a very large shadow and store again
         Result shadow = new Result();

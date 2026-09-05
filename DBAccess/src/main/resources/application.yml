@@ -10,10 +10,6 @@ spring:
       password:
       url: jdbc:hsqldb:file:/tmp/cache
       driver-class-name: org.hsqldb.jdbcDriver
-  redis:
-    host: vereniki.athenarc.gr
-    port: 6379
-    password: redisPassword
   # Disable feature detection by this undocumented parameter. Check the org.hibernate.engine.jdbc.internal.JdbcServiceImpl.configure method for more details.
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -32,7 +28,6 @@ statstool:
   result_limit: 70
   cache:
     enabled: false
-    storage: redis
     update:
       entries: 5000
       time: 10800
