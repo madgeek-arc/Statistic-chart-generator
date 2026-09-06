@@ -29,13 +29,12 @@ CREATE TABLE cache_entry (
 | Column | Meaning |
 |---|---|
 | `key` | MD5 of the full SQL + bound parameters + datasource profile. Cache lookup key. |
-| `result` | The current result served to API callers. Always non-null; can be stale. |
-| `shadow` | Result pre-fetched against the shadow datasource during `updateCache`. Null when an entry was not reached in the current update cycle. |
-| `fresh` | `true` = result is current (refreshed this cycle by promote or trickle, or from main DB via `save()`). `false` = stale: `get()` treats it as a cache miss and the caller re-executes against the main DB. Set at promote time. |
-| `total_hits` | Incremented exclusively by `get()` (user-facing cache hits). Never reset. |
-| `session_hits` | Same increment as `total_hits`, but reset to 0 at every `promoteCache`. Used to rank entries for the next update cycle. |
+| `result` | Last confirmed result. Served to callers only when `fresh=true`; otherwise treated as a cache miss. |
+| `shadow` | Result pre-fetched from the shadow datasource during `updateCache`. Promoted to `result` at `promoteCache`, then cleared to null. |
+| `fresh` | `true` = result is current (`get()` serves it). `false` = stale: `get()` returns null, caller re-executes against main DB. Reset to false at `promoteCache`; set to true on promotion or trickle refresh. |
+| `total_hits` | Incremented exclusively by `get()` (only on fresh hits). Never reset. |
+| `session_hits` | Same as `total_hits`, but reset to 0 at every `promoteCache`. Used to rank entries for the next update cycle. |
 | `pinned` | Pinned entries sort first in the update queue, regardless of hit counts. |
-| `shadow` | Cleared to null after `promoteCache` copies it to `result`. |
 
 ---
 

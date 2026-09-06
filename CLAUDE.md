@@ -49,7 +49,7 @@ Known Impala constraints enforced in `SqlQueryTree`:
 
 **Multi-query merging** combines multiple queries into a single SQL statement via CTEs + FULL OUTER JOIN to reduce round trips. See `ChartDataFormatter/docs/MultiQueryFormatting.md`.
 
-**Cache lifecycle** — Three-phase cycle: `updateCache` populates shadow results from a shadow datasource, `promoteCache` moves shadows to live results and auto-starts `trickleUpdate`, which background-refreshes stale entries from the main DB at lowest priority. Stale entries are always served (no hard invalidation). See `DBAccess/docs/CacheLifecycle.md`.
+**Cache lifecycle** — Three-phase cycle: `updateCache` populates shadow results from a shadow datasource, `promoteCache` moves shadows to live results and auto-starts `trickleUpdate`, which background-refreshes stale entries from the main DB at lowest priority. Stale entries (`fresh=false`) are treated as cache misses — callers re-execute against the main DB and refresh the entry. See `DBAccess/docs/CacheLifecycle.md`.
 
 **Priority queue** — All queries (user, cache update, trickle) share a `PriorityBlockingQueue`-backed `ThreadPoolExecutor` (pool size 4). `USER(0) < CACHE_UPDATE(1) < TRICKLE(2)` — user queries always jump queued background tasks. Same `(sql, params, datasource)` triple in-flight is deduplicated across callers.
 
