@@ -100,9 +100,10 @@ public class StatsDBRepository implements StatsCache {
 
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        // Atomically increment hit counters. 0 rows = key absent → cache miss.
+        // Atomically increment hit counters only for fresh entries.
+        // 0 rows = key absent (miss) or entry is stale — caller re-executes in both cases.
         int rows = jdbcTemplate.update(
-                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=?", key);
+                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=? and fresh=true", key);
 
         if (rows == 0)
             return null;

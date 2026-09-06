@@ -64,6 +64,7 @@ public class StatsDBRepositoryTest {
         CacheEntry entry = new CacheEntry(hexKey64('a'), qwp, res);
         entry.setProfile("test-profile");
         entry.setExecTime(123);
+        entry.setFresh(true);
 
         // Save to cache
         repo.storeEntry(entry);
@@ -94,6 +95,7 @@ public class StatsDBRepositoryTest {
         CacheEntry e2 = new CacheEntry(key, q2, r2);
         e2.setProfile("prof2");
         e2.setExecTime(20);
+        e2.setFresh(true);
         repo.storeEntry(e2);
 
         // A get should increment total/session hits and return latest result (r2)
@@ -141,6 +143,7 @@ public class StatsDBRepositoryTest {
 
         CacheEntry entry = new CacheEntry(hexKey64('d'), qwp, res);
         entry.setProfile("prof");
+        entry.setFresh(true);
 
         repo.storeEntry(entry);
 
@@ -157,6 +160,7 @@ public class StatsDBRepositoryTest {
         r.addRow(List.of(1));
         CacheEntry e = new CacheEntry(key, q, r);
         e.setProfile("prof");
+        e.setFresh(true);
         repo.storeEntry(e); // INSERT: total=1, session=1
 
         repo.get(key); // total=2, session=2
@@ -181,6 +185,7 @@ public class StatsDBRepositoryTest {
         r.addRow(List.of(1));
         CacheEntry e = new CacheEntry(key, q, r);
         e.setProfile("prof");
+        e.setFresh(true);
         repo.storeEntry(e); // total=1, session=1
 
         repo.get(key); // total=2, session=2
@@ -203,6 +208,7 @@ public class StatsDBRepositoryTest {
         r.addRow(List.of("x"));
         CacheEntry e = new CacheEntry(key, q, r);
         e.setProfile("prof");
+        e.setFresh(true);
         // no shadow initially
         repo.storeEntry(e);
         assertNotNull(repo.get(key));
@@ -323,8 +329,8 @@ public class StatsDBRepositoryTest {
     }
 
     @Test
-    public void promoteCache_staleEntriesStillServed() throws Exception {
-        StatsDBRepository repo = newRepo("cache_promote_stale");
+    public void get_staleEntry_returnsCacheMiss() throws Exception {
+        StatsDBRepository repo = newRepo("cache_stale_miss");
 
         QueryWithParameters q = new QueryWithParameters("SELECT stale_serve", List.of(), "prof");
         Result r = new Result();
@@ -333,18 +339,10 @@ public class StatsDBRepositoryTest {
         repo.save(q, r, 5, 0);
         String key = StatsCache.getCacheKey(q);
 
-        // Simulate what updateCache+promote does to a skipped (no-shadow) entry:
-        // markAllStale → load → storeEntry with shadow=null, fresh=false
+        // Stale entries must not be served — caller must re-execute against main DB.
         repo.markAllStale("prof");
-        List<CacheEntry> entries = repo.getEntries("prof");
-        CacheEntry e = entries.get(0);
-        e.setShadowResult(null); // skipped during update
-        repo.storeEntry(e);     // promote stores as-is (no shadow → no change to result)
 
-        // Core guarantee: get() must still return the stale result, NOT null
         Result served = repo.get(key);
-        assertNotNull(served, "Stale entry must still be served after promote — no hard invalidation");
-        assertEquals("42", served.getRows().get(0).get(0).toString(),
-                "Stale result must be the original value");
+        assertNull(served, "Stale entry must return null (cache miss) — caller re-executes");
     }
 }

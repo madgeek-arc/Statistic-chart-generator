@@ -31,7 +31,7 @@ CREATE TABLE cache_entry (
 | `key` | MD5 of the full SQL + bound parameters + datasource profile. Cache lookup key. |
 | `result` | The current result served to API callers. Always non-null; can be stale. |
 | `shadow` | Result pre-fetched against the shadow datasource during `updateCache`. Null when an entry was not reached in the current update cycle. |
-| `fresh` | `true` = refreshed this cycle (by `updateCache` or trickle); `false` = stale (not yet reached). Stale entries are still served — they are never hidden from callers. |
+| `fresh` | `true` = result is current (refreshed this cycle by promote or trickle, or from main DB via `save()`). `false` = stale: `get()` treats it as a cache miss and the caller re-executes against the main DB. Set at promote time. |
 | `total_hits` | Incremented exclusively by `get()` (user-facing cache hits). Never reset. |
 | `session_hits` | Same increment as `total_hits`, but reset to 0 at every `promoteCache`. Used to rank entries for the next update cycle. |
 | `pinned` | Pinned entries sort first in the update queue, regardless of hit counts. |
@@ -50,15 +50,14 @@ Populates the `shadow` column for each cached entry by executing the query again
 ```
 updateCache(profile, limit, maxSeconds):
   1. Signal any running trickle to stop (trickleStopRequested = true)
-  2. Mark all entries in scope as stale: SET fresh = false
-  3. Load entries sorted by: pinned DESC, session_hits DESC, total_hits DESC
-  4. Execute in parallel (capped at `limit`, within `maxSeconds`):
+  2. Load entries sorted by: pinned DESC, session_hits DESC, total_hits DESC
+  3. Execute in parallel (capped at `limit`, within `maxSeconds`):
        hit  → entry.shadow = result, entry.fresh = true
-       skip → entry.shadow = null    (fresh stays false)
-  5. storeEntry() for every entry (MERGE: preserves total_hits/session_hits)
+       skip → entry.shadow = null    (fresh unchanged — still served from cache)
+  4. storeEntry() for every entry (MERGE: preserves total_hits/session_hits)
 ```
 
-Skipped entries (beyond the limit or time budget) have `fresh=false` after this phase. They are **not** invalidated — they retain their current `result` and will be picked up by the trickle phase.
+Entries remain `fresh=true` throughout this phase. Users continue getting cached results even for entries being shadow-executed. `fresh` is only reset at `promoteCache`.
 
 ### Phase 2 — `promoteCache`
 
@@ -66,17 +65,18 @@ Atomically moves the shadow results into the live `result` column.
 
 ```
 promoteCache(profile):
-  1. Load all entries
-  2. For each entry with shadow != null:
-       result = shadow, shadow = null
+  1. markAllStale(profile) — SET fresh=false for all entries in scope
+  2. Load all entries (fresh=false in-memory)
+  3. For each entry with shadow != null:
+       result = shadow, shadow = null, fresh = true   ← promoted, now fresh
      For each entry with shadow = null (skipped):
-       leave result unchanged (stale, still served)
-  3. storeEntry() for every entry
-  4. resetSessionHits(profile) — zeroes session_hits for the next cycle
-  5. → auto-starts trickleUpdate(profile) asynchronously
+       leave result unchanged, fresh stays false       ← trickle target
+  4. storeEntry() for every entry
+  5. resetSessionHits(profile) — zeroes session_hits for the next cycle
+  6. → auto-starts trickleUpdate(profile) asynchronously
 ```
 
-**No hard invalidation.** Entries that were not shadow-updated stay valid and keep returning their (stale) result. They are marked `fresh=false`, making them targets for the trickle phase.
+`markAllStale` runs here — not at the start of `updateCache` — so entries stay fresh and continue serving cached results throughout the entire (potentially long) update window. Only at promote time do skipped entries become stale.
 
 ### Phase 3 — `trickleUpdate`
 
@@ -99,10 +99,10 @@ Trickle is stopped (but not cancelled mid-query) when `updateCache` is called. I
 ### Cycle timeline
 
 ```
-t0  updateCache()    → shadows populated, fresh entries marked
-t1  promoteCache()   → shadows → results, session_hits reset, trickle auto-starts
-t1+ trickleUpdate()  → background: stale entries refreshed from main DB (TRICKLE priority)
-t2  updateCache()    → trickle stopped, all entries marked stale again, cycle repeats
+t0  updateCache()    → shadows populated; entries stay fresh throughout
+t1  promoteCache()   → markAllStale, then shadows→results (fresh=true), trickle auto-starts
+t1+ trickleUpdate()  → background: stale (skipped) entries refreshed from main DB
+t2  updateCache()    → trickle stopped, cycle repeats
 ```
 
 ---
@@ -136,7 +136,7 @@ Deduplication: if the same `(sql, params, datasource)` triple is already in-flig
 
 ## `save()` — User-triggered Cache Population
 
-When a user request produces a cache miss (entry absent), the result is written via `save()`:
+When a user request produces a cache miss (entry absent **or** entry stale), the result is written via `save()`:
 
 ```
 save(query, result, execTime, queueTime):
@@ -212,10 +212,16 @@ At the start of each `updateCache`, entries are sorted by:
 pinned DESC, session_hits DESC, total_hits DESC
 ```
 
-`session_hits` (reset at each `promoteCache`) reflects demand **since the last cycle** — it ranks recently popular entries above historically popular but currently quiet ones. Entries beyond the `limit` receive `fresh=false` and are picked up by trickle in `total_hits DESC` order (overall lifetime demand).
+`session_hits` (reset at each `promoteCache`) reflects demand **since the last cycle** — it ranks recently popular entries above historically popular but currently quiet ones. Entries beyond the `limit` keep their existing `fresh` flag during `updateCache` (no shadow written). At `promoteCache`, `markAllStale` sets them `fresh=false`; trickle then picks them up in `total_hits DESC` order.
 
 ---
 
-## Stale Entry Guarantee
+## Stale Entry Behaviour
 
-A stale entry (`fresh=false`, no shadow) is **always served**. The only way an entry disappears from the cache is via `dropCache` (explicit delete). The `fresh` flag is purely an internal cycle-tracking mechanism — it does not affect whether `get()` returns a result.
+A stale entry (`fresh=false`) is treated as a **cache miss** by `get()`. The caller re-executes the query against the main datasource and calls `save()`, which refreshes the entry (MERGE UPDATE preserves counters, sets `fresh=true`).
+
+This ensures users always receive current data — stale entries are never silently returned.
+
+The trickle phase pre-emptively refreshes stale entries in the background so that subsequent user requests find them fresh. If a user request arrives before trickle reaches a given entry, the request itself performs the refresh (at `USER` priority).
+
+The only way an entry is permanently removed from the cache is via `dropCache`.

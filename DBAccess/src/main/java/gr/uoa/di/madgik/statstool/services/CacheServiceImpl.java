@@ -164,12 +164,8 @@ public class CacheServiceImpl implements CacheService {
     private void doUpdateCache(String profile, int effectiveLimit, int effectiveSeconds) {
         log.info("Starting cache update");
 
-        // Signal any running trickle to stop — its work will be obsolete after markAllStale.
+        // Signal any running trickle to stop.
         trickleStopRequested.set(true);
-
-        // Mark every entry in scope as stale before loading, so in-memory copies
-        // start with fresh=false and only entries we successfully execute get fresh=true.
-        statsCache.markAllStale(profile);
 
         List<CacheEntry> entries = statsCache.getEntries(profile);
         entries.sort(new EntriesComparator());
@@ -193,9 +189,9 @@ public class CacheServiceImpl implements CacheService {
                     entry.setExecTime(timedResult.execTimeMs);
                     entry.setQueueTime(timedResult.queueTimeMs);
                 } else {
-                    log.info("Skipping entry {} (limit/time/stop). Shadow cleared; trickle will refresh.", entry.getKey());
+                    log.info("Skipping entry {} (limit/time/stop). Shadow cleared.", entry.getKey());
                     entry.setShadowResult(null);
-                    // fresh stays false — trickle will pick this up after promote
+                    // fresh unchanged — entry still serves users from cache until promote
                 }
                 statsCache.storeEntry(entry);
             } catch (JsonProcessingException e) {
@@ -212,6 +208,12 @@ public class CacheServiceImpl implements CacheService {
     private void doPromoteCache(String profile) {
         log.info("Promoting shadow cache values to result");
 
+        // Mark all entries stale before loading. Entries with a shadow get promoted to
+        // fresh=true below. Entries without a shadow (skipped during update) remain
+        // stale and become trickle targets. Order matters: markAllStale then getEntries
+        // so in-memory entries start with fresh=false.
+        statsCache.markAllStale(profile);
+
         List<CacheEntry> entries = statsCache.getEntries(profile);
 
         entries.forEach(entry -> {
@@ -219,8 +221,9 @@ public class CacheServiceImpl implements CacheService {
                 if (entry.getShadowResult() != null) {
                     entry.setResult(entry.getShadowResult());
                     entry.setShadowResult(null);
+                    entry.setFresh(true);
                 }
-                // fresh=false entries: result unchanged (stale but valid, trickle target)
+                // fresh=false entries: result unchanged (stale, trickle target)
                 statsCache.storeEntry(entry);
             } catch (Exception e) {
                 log.error("Error promoting cache entry {}", entry.getKey(), e);
