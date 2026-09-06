@@ -208,6 +208,12 @@ public class CacheServiceImpl implements CacheService {
     private void doPromoteCache(String profile) {
         log.info("Promoting shadow cache values to result");
 
+        if (!statsCache.hasShadowEntries(profile)) {
+            log.warn("promoteCache: no shadow entries found for {} — was updateCache run first? Aborting.",
+                    profile != null ? "'" + profile + "'" : "all profiles");
+            return;
+        }
+
         // Mark all entries stale before loading. Entries with a shadow get promoted to
         // fresh=true below. Entries without a shadow (skipped during update) remain
         // stale and become trickle targets. Order matters: markAllStale then getEntries

@@ -20,7 +20,7 @@ CREATE TABLE cache_entry (
     exectime     INT            DEFAULT 0  NOT NULL,  -- last execution time (ms)
     queuetime    INT            DEFAULT 0  NOT NULL,  -- last queue wait (ms)
     profile      VARCHAR(255)   NOT NULL,
-    fresh        BOOLEAN        DEFAULT FALSE NOT NULL  -- refreshed this cycle?
+    fresh        BOOLEAN        DEFAULT FALSE NOT NULL  -- true = valid (served); false = stale (cache miss)
 )
 ```
 

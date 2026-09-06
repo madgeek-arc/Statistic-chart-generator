@@ -345,4 +345,55 @@ public class StatsDBRepositoryTest {
         Result served = repo.get(key);
         assertNull(served, "Stale entry must return null (cache miss) — caller re-executes");
     }
+
+    @Test
+    public void get_staleEntry_incrementsCounters() throws Exception {
+        StatsDBRepository repo = newRepo("cache_stale_counters");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT stale_count", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+
+        repo.save(q, r, 5, 0); // total=1, session=1 (CacheEntry defaults)
+        String key = StatsCache.getCacheKey(q);
+
+        repo.markAllStale("prof");
+
+        // Stale miss — returns null but counters must still increment
+        assertNull(repo.get(key));
+        assertNull(repo.get(key));
+
+        CacheEntry stored = repo.getEntries("prof").get(0);
+        assertEquals(3, stored.getTotalHits(), "Stale miss must still increment total_hits");
+        assertEquals(3, stored.getSessionHits(), "Stale miss must still increment session_hits");
+    }
+
+    @Test
+    public void hasShadowEntries_trueWhenShadowPresent() throws Exception {
+        StatsDBRepository repo = newRepo("cache_has_shadow");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT 1", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        CacheEntry e = new CacheEntry(StatsCache.getCacheKey(q), q, r);
+        e.setProfile("prof");
+        e.setFresh(true);
+        e.setShadowResult(r);
+        repo.storeEntry(e);
+
+        assertTrue(repo.hasShadowEntries("prof"));
+        assertFalse(repo.hasShadowEntries("other"));
+    }
+
+    @Test
+    public void hasShadowEntries_falseWhenNoShadow() throws Exception {
+        StatsDBRepository repo = newRepo("cache_no_shadow");
+
+        QueryWithParameters q = new QueryWithParameters("SELECT 1", List.of(), "prof");
+        Result r = new Result();
+        r.addRow(List.of(1));
+        repo.save(q, r, 5, 0);
+
+        assertFalse(repo.hasShadowEntries("prof"), "save() never sets shadow");
+    }
 }

@@ -100,15 +100,18 @@ public class StatsDBRepository implements StatsCache {
 
         DatasourceContext.setContext(CACHE_DB_NAME);
 
-        // Atomically increment hit counters only for fresh entries.
-        // 0 rows = key absent (miss) or entry is stale — caller re-executes in both cases.
+        // Increment hit counters unconditionally — reflects true demand even for stale misses.
+        // 0 rows = key absent → true cache miss.
         int rows = jdbcTemplate.update(
-                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=? and fresh=true", key);
+                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=?", key);
 
         if (rows == 0)
             return null;
 
-        return jdbcTemplate.queryForObject("select result from cache_entry where key=?", new Object[]{key}, (resultSet, i) -> {
+        // Entry exists: return result only if fresh; stale returns null (caller re-executes).
+        return jdbcTemplate.queryForObject("select result, fresh from cache_entry where key=?", new Object[]{key}, (resultSet, i) -> {
+            if (!resultSet.getBoolean("fresh"))
+                return null; // stale miss — counters already incremented above
             try {
                 return new ObjectMapper().readValue(resultSet.getString("result"), Result.class);
             } catch (IOException e) {
@@ -261,6 +264,21 @@ public class StatsDBRepository implements StatsCache {
         } else {
             jdbcTemplate.execute("update cache_entry set session_hits=0");
         }
+    }
+
+    @Override
+    public boolean hasShadowEntries(String profile) {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+        if (profile != null && !profile.isEmpty()) {
+            Integer count = jdbcTemplate.queryForObject(
+                    "select count(*) from cache_entry where shadow is not null and profile=?",
+                    new Object[]{profile}, Integer.class);
+            return count != null && count > 0;
+        }
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from cache_entry where shadow is not null",
+                new Object[]{}, Integer.class);
+        return count != null && count > 0;
     }
 
     @Override

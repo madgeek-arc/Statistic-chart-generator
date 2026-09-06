@@ -39,6 +39,9 @@ public interface StatsCache {
 
     void markAllStale(String profile);
 
+    /** Returns true if at least one entry in scope has a non-null shadow (i.e. updateCache was run). */
+    boolean hasShadowEntries(String profile);
+
     List<CacheEntry> getStaleEntries(String profile);
 
     void trickleRefreshEntry(String key, Result result, int execTime, int queueTime) throws Exception;
