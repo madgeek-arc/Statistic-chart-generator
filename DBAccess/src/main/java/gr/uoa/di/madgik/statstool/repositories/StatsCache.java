@@ -22,8 +22,10 @@ public interface StatsCache {
     boolean isEnabled();
 
     /**
-     * Atomically increments hit counters and returns the cached Result.
-     * Returns null if the key is absent or cache is disabled.
+     * Increments hit counters (total_hits, session_hits) unconditionally, then returns
+     * the cached Result if the entry is fresh. Returns null if the key is absent,
+     * the entry is stale (fresh=false), or cache is disabled. Callers must re-execute
+     * against the main DB and call save() on a null return.
      */
     Result get(String key) throws Exception;
 

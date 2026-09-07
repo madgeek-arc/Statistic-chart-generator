@@ -32,7 +32,7 @@ CREATE TABLE cache_entry (
 | `result` | Last confirmed result. Served to callers only when `fresh=true`; otherwise treated as a cache miss. |
 | `shadow` | Result pre-fetched from the shadow datasource during `updateCache`. Promoted to `result` at `promoteCache`, then cleared to null. |
 | `fresh` | `true` = result is current (`get()` serves it). `false` = stale: `get()` returns null, caller re-executes against main DB. Reset to false at `promoteCache`; set to true on promotion or trickle refresh. |
-| `total_hits` | Incremented exclusively by `get()` (only on fresh hits). Never reset. |
+| `total_hits` | Incremented by `get()` on every access (fresh hit or stale miss). Never reset. |
 | `session_hits` | Same as `total_hits`, but reset to 0 at every `promoteCache`. Used to rank entries for the next update cycle. |
 | `pinned` | Pinned entries sort first in the update queue, regardless of hit counts. |
 
@@ -64,6 +64,16 @@ Atomically moves the shadow results into the live `result` column.
 
 ```
 promoteCache(profile):
+  if profile != null:
+    abort if hasShadowEntries(profile) == false
+    doPromoteProfile(profile)
+  else (global):
+    profiles = SELECT DISTINCT profile WHERE shadow IS NOT NULL
+    abort if profiles is empty
+    for each p in profiles: doPromoteProfile(p)
+    (profiles with no shadows are left completely untouched)
+
+doPromoteProfile(profile):
   1. markAllStale(profile) — SET fresh=false for all entries in scope
   2. Load all entries (fresh=false in-memory)
   3. For each entry with shadow != null:
@@ -75,7 +85,7 @@ promoteCache(profile):
   6. → auto-starts trickleUpdate(profile) asynchronously
 ```
 
-`markAllStale` runs here — not at the start of `updateCache` — so entries stay fresh and continue serving cached results throughout the entire (potentially long) update window. Only at promote time do skipped entries become stale.
+`markAllStale` runs per-profile at promote time — not at the start of `updateCache` — so entries stay fresh throughout the entire (potentially long) update window. Global promote automatically scopes to profiles with shadows, preventing accidental mass-stale of unrelated profiles.
 
 ### Phase 3 — `trickleUpdate`
 
@@ -110,10 +120,10 @@ t2  updateCache()    → trickle stopped, cycle repeats
 
 | Counter | Incremented by | Reset by |
 |---|---|---|
-| `total_hits` | `get()` only | Never |
-| `session_hits` | `get()` only | `resetSessionHits()` at every `promoteCache` |
+| `total_hits` | `get()` on every access — fresh hit or stale miss | Never |
+| `session_hits` | Same as `total_hits` | `resetSessionHits()` at every `promoteCache` |
 
-The update/promote/trickle cycle **never touches counters**. The `storeEntry()` MERGE UPDATE clause deliberately omits `total_hits` and `session_hits`. This ensures counters always reflect real user demand.
+Counters increment unconditionally in `get()` regardless of `fresh` state, so they always reflect true user demand. The update/promote/trickle cycle **never touches counters** — the `storeEntry()` MERGE UPDATE clause deliberately omits `total_hits` and `session_hits`.
 
 ---
 
