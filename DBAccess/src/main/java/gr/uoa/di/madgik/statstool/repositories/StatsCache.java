@@ -42,6 +42,9 @@ public interface StatsCache {
     /** Returns true if at least one entry in scope has a non-null shadow (i.e. updateCache was run). */
     boolean hasShadowEntries(String profile);
 
+    /** Returns distinct profiles that have at least one shadow entry. */
+    List<String> getProfilesWithShadows();
+
     List<CacheEntry> getStaleEntries(String profile);
 
     void trickleRefreshEntry(String key, Result result, int execTime, int queueTime) throws Exception;

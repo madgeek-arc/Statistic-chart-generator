@@ -156,7 +156,7 @@ All endpoints are on the `GET /cache/` path and require no request body.
 |---|---|---|
 | `GET /cache/updateCache` | `profile` (opt), `limit` (opt), `maxSeconds` (opt) | Start a shadow-DB update cycle. No-op if an update for the same profile is already running. If `limit`/`maxSeconds` are omitted, values from `application.yml` are used. |
 | `GET /cache/stopUpdate` | — | Signal the running update loop to stop after the current parallel batch. No-op if nothing is running. |
-| `GET /cache/promoteCache` | `profile` (opt) | Promote shadow results to live. Auto-starts `trickleUpdate` on completion. |
+| `GET /cache/promoteCache` | `profile` (opt) | Promote shadow results to live. If `profile` is omitted, scopes automatically to profiles that have shadows (profiles with no shadows are untouched). Auto-starts `trickleUpdate` per promoted profile on completion. Aborts if no shadows exist. |
 | `GET /cache/trickleUpdate` | `profile` (opt) | Manually trigger a trickle refresh of stale entries. No-op if trickle for the same profile is already running. Normally auto-started by `promoteCache`. |
 | `GET /cache/dropCache` | `profile` (opt) | Delete all cache entries (or only those for the given profile). |
 | `GET /cache/stats` | — | Return counts (total, fresh, stale, with_shadow), per-profile breakdown, and top-10 lists by total hits, session hits, and exec time. |

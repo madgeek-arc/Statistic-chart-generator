@@ -396,4 +396,28 @@ public class StatsDBRepositoryTest {
 
         assertFalse(repo.hasShadowEntries("prof"), "save() never sets shadow");
     }
+
+    @Test
+    public void getProfilesWithShadows_returnsOnlyProfilesWithShadow() throws Exception {
+        StatsDBRepository repo = newRepo("cache_profiles_shadow");
+
+        Result r = new Result();
+        r.addRow(List.of(1));
+
+        // "openaire" — has shadow
+        QueryWithParameters q1 = new QueryWithParameters("SELECT 1", List.of(), "openaire");
+        CacheEntry e1 = new CacheEntry(StatsCache.getCacheKey(q1), q1, r);
+        e1.setProfile("openaire");
+        e1.setFresh(true);
+        e1.setShadowResult(r);
+        repo.storeEntry(e1);
+
+        // "egi" — no shadow
+        QueryWithParameters q2 = new QueryWithParameters("SELECT 2", List.of(), "egi");
+        repo.save(q2, r, 5, 0);
+
+        List<String> profiles = repo.getProfilesWithShadows();
+        assertEquals(1, profiles.size());
+        assertEquals("openaire", profiles.get(0));
+    }
 }

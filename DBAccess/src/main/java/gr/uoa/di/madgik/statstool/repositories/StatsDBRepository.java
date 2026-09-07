@@ -282,6 +282,14 @@ public class StatsDBRepository implements StatsCache {
     }
 
     @Override
+    public List<String> getProfilesWithShadows() {
+        DatasourceContext.setContext(CACHE_DB_NAME);
+        return jdbcTemplate.queryForList(
+                "select distinct profile from cache_entry where shadow is not null",
+                String.class);
+    }
+
+    @Override
     public void markAllStale(String profile) {
         DatasourceContext.setContext(CACHE_DB_NAME);
         if (profile != null && !profile.isEmpty()) {

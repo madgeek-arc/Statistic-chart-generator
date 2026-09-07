@@ -206,18 +206,32 @@ public class CacheServiceImpl implements CacheService {
     }
 
     private void doPromoteCache(String profile) {
-        log.info("Promoting shadow cache values to result");
-
-        if (!statsCache.hasShadowEntries(profile)) {
-            log.warn("promoteCache: no shadow entries found for {} — was updateCache run first? Aborting.",
-                    profile != null ? "'" + profile + "'" : "all profiles");
-            return;
+        if (profile != null) {
+            // Profile-specific: guard + promote that profile only.
+            if (!statsCache.hasShadowEntries(profile)) {
+                log.warn("promoteCache: no shadow entries for '{}' — was updateCache run first? Aborting.", profile);
+                return;
+            }
+            doPromoteProfile(profile);
+        } else {
+            // Global: scope to profiles that actually have shadows. Profiles with no
+            // shadows (never updated this cycle) are left untouched.
+            List<String> profiles = statsCache.getProfilesWithShadows();
+            if (profiles.isEmpty()) {
+                log.warn("promoteCache: no shadow entries found anywhere — was updateCache run first? Aborting.");
+                return;
+            }
+            log.info("Global promote: {} profile(s) with shadows: {}", profiles.size(), profiles);
+            profiles.forEach(this::doPromoteProfile);
         }
+    }
 
-        // Mark all entries stale before loading. Entries with a shadow get promoted to
-        // fresh=true below. Entries without a shadow (skipped during update) remain
-        // stale and become trickle targets. Order matters: markAllStale then getEntries
-        // so in-memory entries start with fresh=false.
+    private void doPromoteProfile(String profile) {
+        log.info("Promoting '{}'", profile);
+
+        // Mark all entries in this profile stale before loading. Entries with a shadow
+        // get promoted to fresh=true below. Skipped entries remain stale → trickle targets.
+        // Order matters: markAllStale then getEntries so in-memory entries start fresh=false.
         statsCache.markAllStale(profile);
 
         List<CacheEntry> entries = statsCache.getEntries(profile);
