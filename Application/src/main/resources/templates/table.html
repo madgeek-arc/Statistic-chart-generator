@@ -15,8 +15,8 @@
             $("#container").height(window.innerHeight);
             $("#container").width(window.innerWidth);
 
-            let params = new URLSearchParams(document.location.search.substring(1));
-            let jsonParam = params.get("json");
+            let jsonParam = new URLSearchParams(document.location.hash.substring(1)).get("json")
+                        || new URLSearchParams(document.location.search.substring(1)).get("json");
             let errorElement = document.getElementById("errorSpan");
             let loadingElement = document.getElementById("loader");
 
