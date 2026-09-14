@@ -9,6 +9,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.nl.NlQueryService;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.options.NlOptionsService;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Result;
+import gr.uoa.di.madgik.statstool.services.NamedParametersValidationException;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.apache.logging.log4j.Logger;
@@ -77,12 +78,20 @@ public class RequestBodyHandler {
         } catch (SecurityException e) {
             throw new RequestBodyException("Invalid NL query signature", e, HttpStatus.FORBIDDEN);
         } catch (StatsServiceException e) {
-            throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
+            throw toRequestBodyException(e);
         } catch (RequestBodyException e) {
             throw e;
         } catch (Exception e) {
             throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
         }
+    }
+
+    // Surfaces a namedParameters validation failure as 400 with the specific reason.
+    private RequestBodyException toRequestBodyException(StatsServiceException e) {
+        if (e.getCause() instanceof NamedParametersValidationException) {
+            return new RequestBodyException(e.getCause().getMessage(), e, HttpStatus.BAD_REQUEST);
+        }
+        return new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
     private JsonResponse format(RequestInfo requestJson, List<Result> statsServiceResults) throws RequestBodyException {
@@ -229,6 +238,8 @@ public class RequestBodyHandler {
             }
         } catch (SecurityException e) {
             throw new RequestBodyException("Invalid NL query signature", e, HttpStatus.FORBIDDEN);
+        } catch (StatsServiceException e) {
+            throw toRequestBodyException(e);
         } catch (Exception e) {
             throw new RequestBodyException("Chart Data Formation Error:" + e.getMessage(), e, HttpStatus.UNPROCESSABLE_ENTITY);
         }

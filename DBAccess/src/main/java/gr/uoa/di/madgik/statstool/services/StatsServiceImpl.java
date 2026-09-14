@@ -5,11 +5,18 @@ import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
+import org.springframework.jdbc.core.namedparam.ParsedSql;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -95,10 +102,9 @@ public class StatsServiceImpl implements StatsService {
                         querySql = mapper.map(query, parameters, orderBy);
                     } else {
                         log.debug("Retrieving named sql query from repository");
-                        querySql = getNamedQuery(queryName);
-                        parameters = query.getParameters();
-                        if (querySql == null)
-                            throw new StatsServiceException("query " + queryName + " not found!");
+                        NamedQueryResolution resolved = resolveNamedQuery(query);
+                        querySql = resolved.sql();
+                        parameters = resolved.parameters();
                     }
 
                     // Strip trailing semicolon if exists
@@ -315,11 +321,9 @@ public class StatsServiceImpl implements StatsService {
                 querySql = mapper.map(query, parameters, orderBy);
             } else {
                 log.debug("Retrieving named sql query from repository");
-                querySql = getNamedQuery(queryName);
-                parameters = query.getParameters();
-
-                if (querySql == null)
-                    throw new StatsServiceException("query " + queryName + " not found!");
+                NamedQueryResolution resolved = resolveNamedQuery(query);
+                querySql = resolved.sql();
+                parameters = resolved.parameters();
             }
 
             // Log the generated SQL and parameters for inspection
@@ -380,6 +384,128 @@ public class StatsServiceImpl implements StatsService {
 
     private String getNamedQuery(String queryName) throws IOException {
             return namedQueryRepository.getQuery(queryName);
+    }
+
+    private record NamedQueryResolution(String sql, List<Object> parameters) {}
+
+    // Resolves a named query's SQL and bind parameters. When `namedParameters` is supplied, its
+    // `:name` tokens are rewritten to positional `?` marks and the values flattened into a
+    // matching ordered list - a List-valued parameter expands into one `?` per element, so
+    // IN (:list) clauses are supported without array binding. Otherwise the query's positional
+    // `parameters` list is used unchanged. Throws NamedParametersValidationException on invalid
+    // `namedParameters` input.
+    private NamedQueryResolution resolveNamedQuery(Query query) throws StatsServiceException, IOException {
+        String querySql = getNamedQuery(query.getName());
+        if (querySql == null) {
+            throw new StatsServiceException("query " + query.getName() + " not found!");
+        }
+
+        Map<String, Object> namedParameters = query.getNamedParameters();
+        List<Object> parameters = query.getParameters();
+
+        if (namedParameters != null && !namedParameters.isEmpty()) {
+            if (parameters != null && !parameters.isEmpty()) {
+                throw new NamedParametersValidationException("Query '" + query.getName()
+                        + "' specifies both 'parameters' and 'namedParameters'; use only one.");
+            }
+            for (Map.Entry<String, Object> e : namedParameters.entrySet()) {
+                if (e.getValue() instanceof Collection<?> c && c.isEmpty()) {
+                    throw new NamedParametersValidationException("Named parameter '" + e.getKey()
+                            + "' is an empty list, which would produce an invalid IN () clause.");
+                }
+            }
+
+            Set<String> tokens = extractNamedParameterTokens(querySql);
+
+            List<String> missing = new ArrayList<>();
+            for (String name : tokens) {
+                if (!namedParameters.containsKey(name)) {
+                    missing.add(name);
+                }
+            }
+            if (!missing.isEmpty()) {
+                throw new NamedParametersValidationException("Named query '" + query.getName()
+                        + "' is missing required parameter(s): " + missing);
+            }
+
+            List<String> unreferenced = new ArrayList<>();
+            for (String name : namedParameters.keySet()) {
+                if (!tokens.contains(name)) {
+                    unreferenced.add(name);
+                }
+            }
+            if (!unreferenced.isEmpty()) {
+                throw new NamedParametersValidationException("Query '" + query.getName()
+                        + "' specifies namedParameters not referenced by the query: " + unreferenced);
+            }
+
+            ParsedSql parsedSql = NamedParameterUtils.parseSqlStatement(querySql);
+            MapSqlParameterSource paramSource = new MapSqlParameterSource(namedParameters);
+            querySql = NamedParameterUtils.substituteNamedParameters(parsedSql, paramSource);
+
+            // One value array slot per named parameter, not per expanded `?` - a List-valued
+            // parameter comes back as a single Iterable element, so flatten it (same order
+            // used above to expand it in the SQL text) to line up with the `?` marks.
+            Object[] rawValues = NamedParameterUtils.buildValueArray(parsedSql, paramSource, null);
+            List<Object> flattened = new ArrayList<>();
+            for (Object value : rawValues) {
+                if (value instanceof Iterable<?> iterable) {
+                    for (Object item : iterable) {
+                        flattened.add(item);
+                    }
+                } else {
+                    flattened.add(value);
+                }
+            }
+            parameters = flattened;
+        }
+
+        return new NamedQueryResolution(querySql, parameters);
+    }
+
+    // Collects every `:name` token referenced in the SQL, skipping string literals, "::" casts,
+    // and "--"/"/* */" comments, so a missing-parameter error can list all missing names at once
+    // rather than one.
+    private static Set<String> extractNamedParameterTokens(String sql) {
+        Set<String> names = new LinkedHashSet<>();
+        boolean inSingleQuote = false;
+        int i = 0;
+        while (i < sql.length()) {
+            char c = sql.charAt(i);
+            if (!inSingleQuote && c == '-' && i + 1 < sql.length() && sql.charAt(i + 1) == '-') {
+                int lineEnd = sql.indexOf('\n', i);
+                i = (lineEnd < 0) ? sql.length() : lineEnd + 1;
+                continue;
+            }
+            if (!inSingleQuote && c == '/' && i + 1 < sql.length() && sql.charAt(i + 1) == '*') {
+                int commentEnd = sql.indexOf("*/", i + 2);
+                i = (commentEnd < 0) ? sql.length() : commentEnd + 2;
+                continue;
+            }
+            if (c == '\'') {
+                inSingleQuote = !inSingleQuote;
+                i++;
+                continue;
+            }
+            if (!inSingleQuote && c == ':') {
+                if (i + 1 < sql.length() && sql.charAt(i + 1) == ':') {
+                    i += 2; // Postgres "::" cast, not a named parameter
+                    continue;
+                }
+                int j = i + 1;
+                if (j < sql.length() && Character.isLetter(sql.charAt(j))) {
+                    int start = j;
+                    while (j < sql.length() && (Character.isLetterOrDigit(sql.charAt(j)) || sql.charAt(j) == '_')) {
+                        j++;
+                    }
+                    names.add(sql.substring(start, j));
+                    i = j;
+                    continue;
+                }
+            }
+            i++;
+        }
+        return names;
     }
 
 }

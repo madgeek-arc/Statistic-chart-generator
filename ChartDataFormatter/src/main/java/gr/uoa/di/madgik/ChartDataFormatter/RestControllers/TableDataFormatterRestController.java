@@ -44,7 +44,7 @@ public class TableDataFormatterRestController {
     @PostMapping(consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")
     public @ResponseBody
-    ResponseEntity<JsonResponse>
+    ResponseEntity<?>
     postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
 
         JsonResponse responseData;
@@ -53,7 +53,7 @@ public class TableDataFormatterRestController {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
-            return new ResponseEntity<>(e.getHttpStatus());
+            return RequestBodyException.toResponseEntity(e);
         }
 
         return new ResponseEntity<>(responseData, HttpStatus.OK);

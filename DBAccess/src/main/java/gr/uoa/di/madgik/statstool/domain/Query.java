@@ -1,10 +1,12 @@
 package gr.uoa.di.madgik.statstool.domain;
 
 import java.util.List;
+import java.util.Map;
 
 public class Query {
     private String name;
     private List<Object> parameters;
+    private Map<String, Object> namedParameters;
     private List<FilterGroup> filters;
     private List<Select> select;
     private String entity;
@@ -96,6 +98,14 @@ public class Query {
         this.parameters = parameters;
     }
 
+    public Map<String, Object> getNamedParameters() {
+        return namedParameters;
+    }
+
+    public void setNamedParameters(Map<String, Object> namedParameters) {
+        this.namedParameters = namedParameters;
+    }
+
     public boolean isUseCache() {
         return useCache;
     }
@@ -115,6 +125,7 @@ public class Query {
         return "Query{" +
                 "name='" + name + '\'' +
                 ", parameters=" + parameters +
+                ", namedParameters=" + namedParameters +
                 ", filters=" + filters +
                 ", select=" + select +
                 ", entity='" + entity + '\'' +

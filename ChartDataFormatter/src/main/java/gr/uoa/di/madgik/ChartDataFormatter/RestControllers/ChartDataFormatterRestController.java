@@ -66,7 +66,7 @@ public class ChartDataFormatterRestController {
      */
     @PostMapping(consumes = "application/json; charset=UTF-8",
                 produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JsonResponse>
+    public @ResponseBody ResponseEntity<?>
     postFullChartRepresentation(@RequestBody RequestInfo requestJson)  {
 
         JsonResponse responseData;
@@ -77,7 +77,7 @@ public class ChartDataFormatterRestController {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
-            return new ResponseEntity<>(e.getHttpStatus());
+            return RequestBodyException.toResponseEntity(e);
         } catch (Exception e) {
             log.error("Chart request failed", e);
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -174,7 +174,7 @@ public class ChartDataFormatterRestController {
 
     @GetMapping( path = "/json",
             produces = "application/json; charset=UTF-8")
-    public @ResponseBody ResponseEntity<JsonResponse> json(
+    public @ResponseBody ResponseEntity<?> json(
             @RequestParam(name="json") String json){
 
         JsonResponse responseData;
@@ -186,7 +186,7 @@ public class ChartDataFormatterRestController {
             responseData = requestBodyHandler.handleRequest(requestJson);
         } catch (RequestBodyException e) {
             log.error(e.getMessage(), e);
-            return new ResponseEntity<>(e.getHttpStatus());
+            return RequestBodyException.toResponseEntity(e);
         } catch (IOException e) {
             log.error(e);
             return new ResponseEntity<JsonResponse>(HttpStatus.BAD_REQUEST);

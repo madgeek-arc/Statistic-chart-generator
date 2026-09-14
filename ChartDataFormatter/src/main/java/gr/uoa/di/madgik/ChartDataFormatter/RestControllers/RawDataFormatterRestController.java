@@ -26,7 +26,7 @@ public class RawDataFormatterRestController {
     }
 
     @GetMapping
-    public @ResponseBody ResponseEntity<JsonResponse> getRawData(@RequestParam(name="json") String json) throws IOException {
+    public @ResponseBody ResponseEntity<?> getRawData(@RequestParam(name="json") String json) throws IOException {
         RawDataRequestInfo requestInfo = new ObjectMapper().readValue(json, RawDataRequestInfo.class);
 
         JsonResponse responseData;
@@ -35,7 +35,7 @@ public class RawDataFormatterRestController {
             responseData = requestBodyHandler.handleRawDataRequest(requestInfo);
         } catch (RequestBodyException e) {
             log.error("Error getting data", e);
-            return new ResponseEntity<>(e.getHttpStatus());
+            return RequestBodyException.toResponseEntity(e);
         }
 
         return new ResponseEntity<>(responseData, HttpStatus.OK);

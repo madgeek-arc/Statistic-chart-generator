@@ -17,6 +17,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -329,5 +330,158 @@ public class StatsServiceImplTest {
         assertTrue(sql.contains("LEFT JOIN q2"), "q2 must be LEFT JOINed, got: " + sql);
         // q1 must not drive — the old broken pattern
         assertFalse(sql.matches("(?s).*FROM q1\\s+LEFT JOIN q2.*"), "q1 must not drive x-axis unilaterally, got: " + sql);
+    }
+
+    @Test
+    void namedQuery_withoutNamedParameters_usesPositionalParametersUnchanged() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setParameters(Arrays.asList("value1"));
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col1 = ?");
+
+        Result result = new Result();
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
+                .thenReturn(new TimedResult(result, 1, 1));
+
+        List<Result> results = statsService.query(Arrays.asList(q));
+        assertEquals(1, results.size());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<List<Object>> paramsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), paramsCaptor.capture(), anyString());
+
+        assertEquals("SELECT * FROM t WHERE col1 = ?", sqlCaptor.getValue());
+        assertEquals(Arrays.asList("value1"), paramsCaptor.getValue());
+    }
+
+    @Test
+    void namedQuery_withNamedParameters_resolvesToPositionalSqlAndExpandsListParams() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setNamedParameters(Map.of(
+                "param1", "value1",
+                "param2", Arrays.asList("a", "b", "c")
+        ));
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col1 = :param1 AND col2 IN (:param2)");
+
+        Result result = new Result();
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
+                .thenReturn(new TimedResult(result, 1, 1));
+
+        List<Result> results = statsService.query(Arrays.asList(q));
+        assertEquals(1, results.size());
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<List<Object>> paramsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), paramsCaptor.capture(), anyString());
+
+        String sql = sqlCaptor.getValue();
+        List<Object> params = paramsCaptor.getValue();
+
+        // No named tokens should remain, only positional `?` marks: one for param1, three for the list
+        assertFalse(sql.contains(":param1"), "Expected :param1 to be resolved, got: " + sql);
+        assertFalse(sql.contains(":param2"), "Expected :param2 to be resolved, got: " + sql);
+        assertEquals(4, sql.chars().filter(c -> c == '?').count(), "Expected 4 total placeholders, got: " + sql);
+
+        assertEquals(4, params.size());
+        assertEquals("value1", params.get(0));
+        assertEquals(Arrays.asList("a", "b", "c"), params.subList(1, 4));
+    }
+
+    @Test
+    void namedQuery_withBothParametersAndNamedParameters_throws() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setParameters(Arrays.asList("value1"));
+        q.setNamedParameters(Map.of("param1", "value1"));
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col1 = :param1");
+
+        StatsServiceException ex = assertThrows(StatsServiceException.class,
+                () -> statsService.query(Arrays.asList(q)));
+        assertInstanceOf(NamedParametersValidationException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("both 'parameters' and 'namedParameters'"),
+                "Expected conflict message, got: " + ex.getCause().getMessage());
+        verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
+    }
+
+    @Test
+    void namedQuery_withEmptyListNamedParameter_throws() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setNamedParameters(Map.of("param2", new ArrayList<>()));
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col2 IN (:param2)");
+
+        StatsServiceException ex = assertThrows(StatsServiceException.class,
+                () -> statsService.query(Arrays.asList(q)));
+        assertInstanceOf(NamedParametersValidationException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("param2"),
+                "Expected message to name the empty parameter, got: " + ex.getCause().getMessage());
+        verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
+    }
+
+    @Test
+    void namedQuery_withMissingNamedParameterValue_reportsAllMissingNames() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setNamedParameters(Map.of("param1", "value1")); // SQL also references :param2 and :param3
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col1 = :param1 AND col2 = :param2 AND col3 = :param3");
+
+        StatsServiceException ex = assertThrows(StatsServiceException.class,
+                () -> statsService.query(Arrays.asList(q)));
+        assertInstanceOf(NamedParametersValidationException.class, ex.getCause());
+        String message = ex.getCause().getMessage();
+        assertTrue(message.contains("param2"), "Expected missing param2 to be named, got: " + message);
+        assertTrue(message.contains("param3"), "Expected missing param3 to be named, got: " + message);
+        assertFalse(message.contains("param1"), "param1 was supplied and should not be reported missing, got: " + message);
+        verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
+    }
+
+    @Test
+    void namedQuery_withUnreferencedNamedParameter_throws() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setNamedParameters(Map.of("param1", "value1", "param2", "value2")); // SQL only references :param1
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t WHERE col1 = :param1");
+
+        StatsServiceException ex = assertThrows(StatsServiceException.class,
+                () -> statsService.query(Arrays.asList(q)));
+        assertInstanceOf(NamedParametersValidationException.class, ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("param2"),
+                "Expected unreferenced param2 to be named, got: " + ex.getCause().getMessage());
+        verify(statsRepository, never()).executeQuery(anyString(), anyList(), anyString());
+    }
+
+    @Test
+    void namedQuery_withCommentContainingColonToken_isNotTreatedAsRequiredParameter() throws Exception {
+        Query q = newQuery("p", false);
+        q.setName("some.named.query");
+        q.setNamedParameters(Map.of("param1", "value1"));
+
+        when(namedQueryRepository.getQuery("some.named.query"))
+                .thenReturn("SELECT * FROM t -- filter by :notAParam later\n" +
+                        "WHERE col1 = :param1 /* also mentions :stillNotAParam here */");
+
+        Result result = new Result();
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString()))
+                .thenReturn(new TimedResult(result, 1, 1));
+
+        List<Result> results = statsService.query(Arrays.asList(q));
+        assertEquals(1, results.size());
+
+        ArgumentCaptor<List<Object>> paramsCaptor = ArgumentCaptor.forClass(List.class);
+        verify(statsRepository).executeQuery(anyString(), paramsCaptor.capture(), anyString());
+        assertEquals(Arrays.asList("value1"), paramsCaptor.getValue());
     }
 }

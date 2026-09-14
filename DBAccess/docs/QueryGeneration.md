@@ -149,9 +149,86 @@ If all queries have `useCache=true`, the merged SQL + parameters + profile are u
 Called for single queries, fallback from profile/xCount mismatch, or explicit per-query execution.
 
 For each query:
-1. If `query.getName() != null` → load named SQL from `NamedQueryRepository` (properties file).
+1. If `query.getName() != null` → load named SQL from `NamedQueryRepository` (properties file), then resolve its parameters — see [Named Query Parameters](#named-query-parameters) below.
 2. Otherwise → build SQL via `SqlQueryBuilder` + `SqlQueryTree`.
 3. Check `StatsCache`; on miss, call `StatsRepository.executeQuery()`.
+
+---
+
+## Named Query Parameters
+
+Named queries support two ways to bind request-supplied values into their SQL, resolved by
+`StatsServiceImpl.resolveNamedQuery()` (called from both `runIndividually` and the multi-query
+merge path). A single query must use only one of the two — see **Validation** below.
+
+**`parameters` — original mechanism, kept for backward compatibility.** The SQL text uses raw
+`?` placeholders; the request's `query.parameters` (`List<Object>`) is bound to them
+**positionally**, in order. `StatsRepository` validates that the `?` count exactly matches
+`parameters.size()` and rejects `null` values. This is how every named query worked before
+`namedParameters` was added, and it still works exactly the same way today — existing named
+queries and existing callers require no changes.
+
+**`namedParameters` — new feature, added to support named/keyed and list-valued (`IN (...)`)
+parameters.** The `?` mechanism above has no way to bind a variable-length list to a single
+placeholder, which the original positional-only design couldn't express. `namedParameters`
+solves this: the SQL text uses `:paramName` tokens (standard JDBC/Spring named-parameter syntax)
+instead of `?`, and the request's `query.namedParameters` (`Map<String, Object>`) supplies the
+values by name rather than by position. Resolution uses Spring's
+`org.springframework.jdbc.core.namedparam.NamedParameterUtils` (already on the classpath via
+`spring-jdbc`, pulled in transitively by `spring-boot-starter-data-jpa`) to rewrite the SQL back
+down to plain `?` placeholders and build the matching value list — so from `StatsRepository`
+downward, a `namedParameters`-resolved query is indistinguishable from a hand-written positional
+one. A `List`/`Collection`-valued named parameter **automatically expands into one `?` per
+element**, which is how `IN (:list)` clauses are supported — this only ever produces plain
+positional `?` binds, so it works identically across Postgres, Impala, and HSQLDB (no
+driver-specific SQL array type involved).
+
+Whichever form is used, resolution always produces a plain SQL string with positional `?` marks
+plus a matching ordered `List<Object>`, which is what `StatsRepository.ResultCallable.call()`
+binds via JDBC `PreparedStatement.setObject()` — so downstream execution, `StatsCache`
+cache-key computation, and the CTE-merge logic never need to know which form was used.
+
+Example — the SQL text:
+```sql
+WHERE t0.domain = :domain
+  AND t0.technology_l3 IN (:technologiesL3)
+```
+resolves (given `{"domain": "Digital Twins", "technologiesL3": ["AI", "IoT"]}`) to:
+```sql
+WHERE t0.domain = ?
+  AND t0.technology_l3 IN (?, ?)
+```
+with parameters `["Digital Twins", "AI", "IoT"]`.
+
+Request body:
+```json
+{"series":[{"query":{"name":"sciance.f61","profile":"sciance",
+  "namedParameters": {"domain": "Digital Twins", "technologiesL3": ["AI", "IoT"]}
+}}]}
+```
+
+Note this is distinct from the `${key}` syntax already used in some named-query SQL texts
+(e.g. `namedqueries.properties` entries) — that is resolved once at *query-load time* by
+`NamedQueryRepository`, against other keys in the same properties file, never from the request
+body. It exists for values shared statically across queries, and `${...}` is also reserved
+syntax for Hive/Impala's own server-side variable substitution, so it's kept separate from
+`namedParameters`.
+
+**Validation** — four `namedParameters` mistakes are checked upfront, before any SQL is built,
+and all throw `NamedParametersValidationException`:
+- providing both `parameters` and `namedParameters` on the same query,
+- an empty-list-valued named parameter (which would produce an invalid `IN ()`),
+- a `:name` token referenced in the SQL text with no matching entry in `namedParameters` — all
+  missing names are collected and reported together, not just the first one,
+- a `namedParameters` key not referenced by any `:name` token in the SQL text (catches typos in
+  the request) — likewise all unreferenced keys are collected and reported together.
+
+`NamedParametersValidationException` is a request/input error, distinct from other failures:
+`StatsServiceImpl.query()` still wraps it as `StatsServiceException` like everything else, but
+`RequestBodyHandler` (`ChartDataFormatter`) specifically recognizes it via `getCause()` and
+surfaces it as **`400 Bad Request`** with the specific reason in the response body
+(`{"error": "..."}`), instead of the generic `422 Unprocessable Entity` (empty body) given to
+every other `StatsServiceException`.
 
 ---
 
