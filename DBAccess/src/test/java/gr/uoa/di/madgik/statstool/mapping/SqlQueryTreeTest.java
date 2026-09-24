@@ -95,7 +95,7 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void filterOnRelatedTable_buildsExistsSubquery_andBindsParams() {
+    public void filterOnRelatedTable_buildsSemiJoinSubquery_andBindsParams() {
         ProfileConfiguration pc = buildProfile();
         // Build filter on related table field
         Filter f = new Filter("result.project_results.value", "=", Collections.singletonList("5"), "int");
@@ -108,9 +108,10 @@ public class SqlQueryTreeTest {
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
-        // EXISTS with correlation r0.id = s0.result_id and predicate on s0.value
-        assertTrue(sql.contains("EXISTS (SELECT 1 FROM project_results s0 WHERE r0.id=s0.result_id AND s0.value=?)"),
-                "Filter must be translated to EXISTS correlated subquery with bound parameter");
+        // Non-correlated semi-join: IN (SELECT DISTINCT ...) avoids per-row EXISTS scan on Impala
+        assertTrue(sql.contains("r0.id IN (SELECT DISTINCT s0.result_id FROM project_results s0 WHERE s0.result_id IS NOT NULL AND s0.value=?)"),
+                "Filter must be translated to non-correlated semi-join with IS NOT NULL guard");
+        assertFalse(sql.contains("EXISTS"), "Must not use correlated EXISTS");
         assertEquals(1, params.size(), "One bound parameter expected");
         assertEquals(5, params.get(0), "Parameter should be integer 5");
     }
@@ -264,9 +265,9 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void orFilterGroup_singleHop_generatesDirect_correlatedExists() {
-        // Single hop-based filter in an OR group must emit a direct correlated EXISTS,
-        // not a derived-table wrapper (which would be: EXISTS (SELECT 1 FROM (SELECT rid ...) u WHERE u.rid=...)).
+    public void orFilterGroup_singleHop_generatesSemiJoin() {
+        // Single hop-based filter in an OR group must emit a non-correlated semi-join (IN),
+        // not a correlated EXISTS. Impala evaluates IN as a hash join.
         ProfileConfiguration pc = buildProfile();
 
         Filter f = new Filter("result.project_results.value", "=", Collections.singletonList("5"), "int");
@@ -279,18 +280,17 @@ public class SqlQueryTreeTest {
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
-        assertTrue(sql.contains("EXISTS"),       "Must generate EXISTS");
-        assertFalse(sql.contains("UNION ALL"),   "Single-branch OR must not generate UNION ALL");
-        assertFalse(sql.contains("AS rid"),      "Single-branch OR must not generate derived table with rid alias");
-        assertTrue(sql.matches("(?s).*EXISTS\\s*\\(SELECT 1 FROM project_results s0 WHERE r0\\.id=s0\\.result_id AND s0\\.value=\\?\\).*"),
-                "Must generate direct correlated EXISTS with correlation and predicate in WHERE");
+        assertFalse(sql.contains("EXISTS"),       "Must not generate correlated EXISTS");
+        assertFalse(sql.contains("UNION ALL"),    "Single-branch OR must not generate UNION ALL");
+        assertTrue(sql.contains("r0.id IN (SELECT DISTINCT s0.result_id FROM project_results s0 WHERE s0.result_id IS NOT NULL AND s0.value=?)"),
+                "Must generate non-correlated semi-join with IS NOT NULL guard");
         assertEquals(1, params.size());
         assertEquals(5, params.get(0));
     }
 
     @Test
-    public void orFilterGroup_withHops_generatesExistsWithUnionAll() {
-        // Multiple hop-based filters in an OR group must use EXISTS+UNION ALL.
+    public void orFilterGroup_withHops_generatesSemiJoinWithUnionAll() {
+        // Multiple hop-based filters in an OR group must use IN+UNION ALL (non-correlated semi-join).
         ProfileConfiguration pc = buildProfile();
 
         Filter f1 = new Filter("result.project_results.value", "=", Collections.singletonList("5"),  "int");
@@ -304,8 +304,12 @@ public class SqlQueryTreeTest {
         List<Object> params = new ArrayList<>();
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
-        assertTrue(sql.contains("EXISTS"),    "Hop-based OR must still use EXISTS");
+        assertFalse(sql.contains("EXISTS"),   "Must not use correlated EXISTS");
         assertTrue(sql.contains("UNION ALL"), "Multiple-branch OR must use UNION ALL");
+        assertTrue(sql.contains("r0.id IN (SELECT u.rid FROM ("),
+                "Multi-branch OR must wrap UNION ALL in IN (SELECT u.rid FROM (...) u)");
+        assertTrue(sql.contains("IS NOT NULL"),
+                "Each UNION ALL branch must include IS NOT NULL guard");
         assertEquals(2, params.size());
         assertEquals(5,  params.get(0));
         assertEquals(10, params.get(1));
@@ -721,12 +725,12 @@ public class SqlQueryTreeTest {
     }
 
     @Test
-    public void andFilter_throughDirectJoinToNonJoinedTable_usesDirectAliasForExistsCorrelation() {
+    public void andFilter_throughDirectJoinToNonJoinedTable_usesCutoffAliasForSemiJoin() {
         // Regression: result.datasource.organization.country = 'GR'
         // datasource is directly joined (it's also a GROUP BY SELECT field),
         // organization is NOT directly joined.
-        // Expected: EXISTS (SELECT 1 FROM organization s0 WHERE d1.<fk>=s0.<pk> AND s0.country=?)
-        // NOT:      EXISTS (SELECT 1 FROM datasource s0 JOIN organization s1 ... WHERE r0.id=s0.result_id ...)
+        // Expected: d1.id IN (SELECT DISTINCT s0.datasource_id FROM organization s0 WHERE s0.datasource_id IS NOT NULL AND s0.country=?)
+        // NOT:      ... FROM datasource s0 JOIN organization s1 ... WHERE r0.id=s0.result_id ...
         ProfileConfiguration pc = buildProfile();
         pc.tables.put("datasource", new Table("datasource", "id", null));
         pc.tables.put("organization", new Table("organization", "id", null));
@@ -752,11 +756,13 @@ public class SqlQueryTreeTest {
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, "yaxis");
         System.out.println("[DEBUG_LOG] SQL andFilter_throughDirectJoinToNonJoinedTable: \n" + sql);
 
-        // EXISTS must be anchored to the direct-join alias (d1), not spawn a fresh datasource alias
-        assertFalse(sql.matches("(?s).*EXISTS.*FROM datasource.*JOIN organization.*"),
-                "EXISTS must not re-join datasource; got: " + sql);
-        assertTrue(sql.matches("(?s).*EXISTS.*FROM organization\\s+s0.*WHERE.*\\.id=s0\\.datasource_id.*"),
-                "EXISTS must start from organization and correlate via d1.id; got: " + sql);
+        // Semi-join must start from organization, anchored to cutoff alias (d1), not re-join datasource
+        assertFalse(sql.matches("(?s).*EXISTS.*"),
+                "Must not use correlated EXISTS; got: " + sql);
+        assertFalse(sql.matches("(?s).*FROM datasource.*JOIN organization.*"),
+                "Must not re-join datasource; got: " + sql);
+        assertTrue(sql.contains("d1.id IN (SELECT DISTINCT s0.datasource_id FROM organization s0 WHERE s0.datasource_id IS NOT NULL AND s0.country=?)"),
+                "Semi-join must be anchored to d1 (direct-join alias) and start from organization; got: " + sql);
         assertEquals(1, params.size());
         assertEquals("GR", params.get(0));
     }

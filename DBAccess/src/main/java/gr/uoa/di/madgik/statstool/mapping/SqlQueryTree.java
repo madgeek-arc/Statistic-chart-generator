@@ -550,9 +550,10 @@ public class SqlQueryTree {
                             String pred = buildPredicate.apply(qualifiedCol, filter);
                             if (pred != null) {
                                 String corrCondition = this.root.alias + "." + h0.fromField + "=s0." + h0.toField;
-                                hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred});
-                                // Also build the UNION ALL branch string (used when there are multiple branches)
-                                unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE " + pred);
+                                // Store fromField [3] and toField [4] for semi-join rewrite
+                                hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred, h0.fromField, h0.toField});
+                                // IS NOT NULL guard ensures IN semantics match EXISTS when FK can be null
+                                unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE s0." + h0.toField + " IS NOT NULL AND " + pred);
                             }
                         }
                     }
@@ -562,12 +563,14 @@ public class SqlQueryTree {
                     groupFilters.add("(" + String.join(" OR ", rootOrPredicates) + ")");
                 }
                 if (hopBranchMeta.size() == 1) {
-                    // Single hop branch: emit a direct correlated EXISTS (no derived table wrapper)
+                    // Single hop branch: non-correlated semi-join — Impala evaluates as hash join
                     String[] m = hopBranchMeta.get(0);
-                    groupFilters.add("EXISTS (SELECT 1 FROM " + m[0] + "WHERE " + m[1] + " AND " + m[2] + ")");
+                    // m[3]=fromField on root alias, m[4]=toField on subquery table, m[0]=FROM chain, m[2]=predicate
+                    groupFilters.add(this.root.alias + "." + m[3] + " IN (SELECT DISTINCT s0." + m[4] + " FROM " + m[0] + "WHERE s0." + m[4] + " IS NOT NULL AND " + m[2] + ")");
                 } else if (hopBranchMeta.size() > 1) {
                     String corrField = (correlationField != null) ? correlationField : "id";
-                    groupFilters.add("EXISTS (SELECT 1 FROM (" + String.join(" UNION ALL ", unionBranches) + ") u WHERE u.rid = " + this.root.alias + "." + corrField + ")");
+                    // Multi-branch: non-correlated IN over UNION ALL — hash join on Impala
+                    groupFilters.add(this.root.alias + "." + corrField + " IN (SELECT u.rid FROM (" + String.join(" UNION ALL ", unionBranches) + ") u)");
                 }
             } else {
                 // Default behavior (mostly AND): build simple predicates or EXISTS per filter
@@ -631,30 +634,33 @@ public class SqlQueryTree {
 
                             int firstIdx = cutoff + 1;
                             Hop firstHop = hops.get(firstIdx);
-                            StringBuilder exists = new StringBuilder("EXISTS (SELECT 1 FROM ");
-                            exists.append(firstHop.toTable).append(" s0 ");
+                            // Non-correlated semi-join: root.fromField IN (SELECT DISTINCT s0.toField FROM ... WHERE pred)
+                            // Impala evaluates as hash join; avoids per-row correlated EXISTS scan.
+                            String corrBase = (cutoff >= 0) ? cutoffAlias : this.root.alias;
+                            StringBuilder semi = new StringBuilder();
+                            semi.append(corrBase).append(".").append(firstHop.fromField)
+                                .append(" IN (SELECT DISTINCT s0.").append(firstHop.toField)
+                                .append(" FROM ").append(firstHop.toTable).append(" s0 ");
                             for (int i = firstIdx + 1; i < hops.size(); i++) {
                                 Hop hi = hops.get(i);
                                 String prevAlias = "s" + (i - firstIdx - 1);
                                 String curAlias  = "s" + (i - firstIdx);
-                                exists.append("JOIN ")
-                                      .append(hi.toTable).append(" ").append(curAlias)
-                                      .append(" ON ")
-                                      .append(prevAlias).append(".").append(hi.fromField)
-                                      .append("=")
-                                      .append(curAlias).append(".").append(hi.toField)
-                                      .append(" ");
+                                semi.append("JOIN ")
+                                    .append(hi.toTable).append(" ").append(curAlias)
+                                    .append(" ON ")
+                                    .append(prevAlias).append(".").append(hi.fromField)
+                                    .append("=")
+                                    .append(curAlias).append(".").append(hi.toField)
+                                    .append(" ");
                             }
-                            String corrBase = (cutoff >= 0) ? cutoffAlias : this.root.alias;
-                            exists.append("WHERE ")
-                                  .append(corrBase).append(".").append(firstHop.fromField)
-                                  .append("=s0.").append(firstHop.toField);
                             String lastAlias = "s" + (hops.size() - firstIdx - 1);
                             String qualifiedCol = lastAlias + "." + targetColumn;
                             String pred = buildPredicate.apply(qualifiedCol, filter);
-                            if (pred != null) exists.append(" AND ").append(pred);
-                            exists.append(")");
-                            groupFilters.add(exists.toString());
+                            // IS NOT NULL guard: prevents NOT IN from returning no rows when subquery has NULLs
+                            semi.append("WHERE s0.").append(firstHop.toField).append(" IS NOT NULL");
+                            if (pred != null) semi.append(" AND ").append(pred);
+                            semi.append(")");
+                            groupFilters.add(semi.toString());
                         }
                     }
                 }

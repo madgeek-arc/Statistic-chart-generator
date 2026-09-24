@@ -53,10 +53,10 @@ Translates a `Query` object into an intermediate `SqlQueryTree` by:
 
 Produces the final SQL string. Key behaviours:
 
-- **Impala compatibility** — avoids scalar subqueries in SELECT (not supported by Impala). Cross-entity filters use EXISTS subqueries; OR filter groups on the root table use plain `(col=? OR col=?)`.
+- **Impala compatibility** — avoids scalar subqueries in SELECT (not supported by Impala). Cross-entity filters use non-correlated semi-joins (`IN (SELECT DISTINCT …)`); OR filter groups on the root table use plain `(col=? OR col=?)`.
 - **Numeric table aliases** — `r0`, `j0`, `t1`, `t2`, … to avoid SQL reserved word collisions.
 - **CTEs** — complex queries with multiple join paths use WITH clauses.
-- **EXISTS for AND filters** on related entities; plain OR predicates on root-table fields.
+- **Semi-join for AND/OR filters** on related entities: `root.fk IN (SELECT DISTINCT s0.pk FROM related_table s0 WHERE s0.pk IS NOT NULL AND <pred>)`. This lets Impala use a hash join instead of per-row correlated EXISTS evaluation. The `IS NOT NULL` guard on the subquery key prevents `NOT IN` from silently dropping all rows when NULLs are present. Plain OR predicates are still used for root-table fields.
 
 ### Multi-Query Merging
 
