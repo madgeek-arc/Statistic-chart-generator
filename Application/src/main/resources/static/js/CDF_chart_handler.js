@@ -24,6 +24,11 @@ function formatIfNumeric(data) {
     if (isAlphanumericRegex.test(data)) {
         return data
     }
+    // Only parse strings that are proper numbers (integer or decimal, optional sign).
+    // Anything else (e.g. "2023-12", "2023-Q1") is a label — return as-is.
+    if (!/^[-+]?\d+(\.\d+)?$/.test(data)) {
+        return data;
+    }
     let num = parseFloat(data);
     // Never group 1-4 digit values (likely years, e.g. "2020") in any locale - anchored so it
     // matches the whole string, not just a trailing 1-4 digit chunk of a larger number.
