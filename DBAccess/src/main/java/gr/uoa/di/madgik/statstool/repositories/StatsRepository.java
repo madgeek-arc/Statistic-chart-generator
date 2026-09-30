@@ -134,6 +134,7 @@ public class StatsRepository {
             long execStart = System.currentTimeMillis();
             try (Connection connection = dataSource.getConnection();
                  PreparedStatement st = connection.prepareStatement(sql)) {
+                st.setFetchSize(10000);
                 int index = 1;
                 if (params != null) {
                     for (Object param : params) {
