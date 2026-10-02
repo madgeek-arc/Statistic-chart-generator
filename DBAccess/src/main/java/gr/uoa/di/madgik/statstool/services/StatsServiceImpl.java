@@ -131,7 +131,10 @@ public class StatsServiceImpl implements StatsService {
                 // "yaxis" also uses the keys-CTE so that disjoint-series queries (e.g. q1=Ireland,
                 // q2=all other countries) all appear on the x-axis rather than q1 silently
                 // defining the entire universe (which would suppress q2's exclusive rows).
-                boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || "yaxis".equals(orderBy) || orderBy == null;
+                // "xaxis" uses it too: categories present only in a later series must not be dropped.
+                // Joins on x are null-safe (IS NOT DISTINCT FROM) so a NULL category keeps its values.
+                boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || "yaxis".equals(orderBy)
+                        || "xaxis".equals(orderBy) || orderBy == null;
                 StringBuilder cteColumns = new StringBuilder("(y");
                 for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
                 cteColumns.append(")");
@@ -186,7 +189,7 @@ public class StatsServiceImpl implements StatsService {
                         for (int xi = 1; xi <= xCount; xi++) {
                             if (xi > 1) fromJoins.append(" AND ");
                             fromJoins.append("q").append(i).append(".x").append(xi)
-                                     .append(" = keys.x").append(xi);
+                                     .append(" IS NOT DISTINCT FROM keys.x").append(xi);
                         }
                     }
 
@@ -207,7 +210,7 @@ public class StatsServiceImpl implements StatsService {
                         for (int xi = 1; xi <= xCount; xi++) {
                             if (xi > 1) fromJoins.append(" AND ");
                             fromJoins.append("q").append(i).append(".x").append(xi)
-                                     .append(" = q1.x").append(xi);
+                                     .append(" IS NOT DISTINCT FROM q1.x").append(xi);
                         }
                     }
 

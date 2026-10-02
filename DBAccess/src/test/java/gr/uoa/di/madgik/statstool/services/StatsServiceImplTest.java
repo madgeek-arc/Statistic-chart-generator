@@ -94,16 +94,16 @@ public class StatsServiceImplTest {
         List<Object> params = paramsCaptor.getValue();
         String profile = profileCaptor.getValue();
 
-        // SQL should contain WITH CTEs, LEFT JOIN (q1 drives), q1.x as the join key, and outer ORDER BY x
+        // SQL should contain WITH CTEs, a keys CTE joined null-safely, and outer ORDER BY x
         assertTrue(sql.toUpperCase().contains("WITH"), "Expected WITH CTE in merged SQL, got: " + sql);
         assertTrue(sql.toUpperCase().contains("LEFT JOIN"), "Expected LEFT JOIN in merged SQL, got: " + sql);
         assertFalse(sql.toUpperCase().contains("FULL OUTER JOIN"), "Expected no FULL OUTER JOIN in merged SQL, got: " + sql);
         assertTrue(sql.contains("ORDER BY x1"), "Expected ORDER BY x1 in merged SQL, got: " + sql);
 
-        // Multi-column SELECT: y1 and y2 selected together, no UNION ALL
+        // Multi-column SELECT: y1 and y2 selected together (UNION ALL only appears inside the keys CTE)
         assertTrue(sql.contains("y1"), "Expected y1 column in merged SQL, got: " + sql);
         assertTrue(sql.contains("y2"), "Expected y2 column in merged SQL, got: " + sql);
-        assertFalse(sql.toUpperCase().contains("UNION ALL"), "Expected no UNION ALL in merged SQL, got: " + sql);
+        assertTrue(sql.contains("SELECT y1, y2, x1 FROM t"), "Expected single multi-column final SELECT, got: " + sql);
 
         // Parameters must be concatenated in the same order as subqueries
         assertEquals(Arrays.asList(1, "A", 2, "B"), params);
@@ -231,6 +231,60 @@ public class StatsServiceImplTest {
         assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, not q1");
         assertTrue(sql.contains("LEFT JOIN q2") && sql.contains("LEFT JOIN q3"),
                 "All series must be LEFT JOINed to keys");
+    }
+
+    @Test
+    void xaxisMode_usesKeysCte_soCategoriesOnlyInLaterSeriesAreKept() throws Exception {
+        // Regression: orderBy=xaxis used q1 as the x-axis driver, dropping categories that exist
+        // only in q2..qn (e.g. 39 FOS categories collapsed to the 35 present in q1).
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), eq("xaxis"))).thenReturn("SELECT 10, 'A'");
+        when(mapper.map(eq(q2), anyList(), eq("xaxis"))).thenReturn("SELECT 5, 'B'");
+
+        Result merged = new Result();
+        merged.setRows(new ArrayList<>());
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
+
+        statsService.query(Arrays.asList(q1, q2), "xaxis");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+        String sql = sqlCaptor.getValue();
+
+        assertTrue(sql.contains("keys AS ("), "xaxis mode must build a keys CTE, got: " + sql);
+        assertTrue(sql.contains("FROM keys LEFT JOIN q1"), "Final join must drive from keys, got: " + sql);
+        assertTrue(sql.contains("ORDER BY x1"), "xaxis must still order by x1, got: " + sql);
+    }
+
+    @Test
+    void mergedJoins_areNullSafe_soNullCategoryKeepsItsValues() throws Exception {
+        // Regression: "LEFT JOIN q ON q.x1 = keys.x1" never matches a NULL x, so the NULL category
+        // came back with all-null y values (and sorted last). Joins must use IS NOT DISTINCT FROM.
+        Query q1 = newQuery("p", true);
+        Query q2 = newQuery("p", true);
+
+        when(mapper.map(eq(q1), anyList(), eq("yaxis"))).thenReturn("SELECT 10, NULL");
+        when(mapper.map(eq(q2), anyList(), eq("yaxis"))).thenReturn("SELECT 5, NULL");
+
+        Result merged = new Result();
+        merged.setRows(new ArrayList<>());
+        when(statsCache.isEnabled()).thenReturn(true);
+        when(statsCache.get(anyString())).thenReturn(null);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(merged, 10, 5));
+
+        statsService.query(Arrays.asList(q1, q2), "yaxis");
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sqlCaptor.capture(), anyList(), anyString());
+        String sql = sqlCaptor.getValue();
+
+        assertTrue(sql.contains("LEFT JOIN q1 ON q1.x1 IS NOT DISTINCT FROM keys.x1"), "got: " + sql);
+        assertTrue(sql.contains("LEFT JOIN q2 ON q2.x1 IS NOT DISTINCT FROM keys.x1"), "got: " + sql);
+        assertFalse(sql.contains("= keys.x1"), "plain '=' join would drop NULL categories, got: " + sql);
     }
 
     @Test
