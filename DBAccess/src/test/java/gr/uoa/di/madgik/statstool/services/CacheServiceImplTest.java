@@ -229,6 +229,18 @@ public class CacheServiceImplTest {
     // -------------------------------------------------------------------------
 
     @Test
+    public void invalidateCache_callsMarkAllStale() throws Exception {
+        service.invalidateCache("ie_monitor");
+        verify(statsCache).markAllStale("ie_monitor");
+    }
+
+    @Test
+    public void invalidateCache_nullProfile_callsMarkAllStaleWithNull() throws Exception {
+        service.invalidateCache(null);
+        verify(statsCache).markAllStale(null);
+    }
+
+    @Test
     public void stopUpdate_setsFlag_whenUpdateRunning() throws Exception {
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);

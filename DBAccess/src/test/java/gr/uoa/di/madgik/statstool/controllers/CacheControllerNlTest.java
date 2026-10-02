@@ -26,6 +26,20 @@ public class CacheControllerNlTest {
     }
 
     @Test
+    void invalidateCache_noProfile_callsInvalidateWithNull() throws Exception {
+        mockMvc.perform(get("/cache/invalidate"))
+                .andExpect(status().isOk());
+        verify(cacheService).invalidateCache(null);
+    }
+
+    @Test
+    void invalidateCache_withProfile_callsInvalidateWithProfile() throws Exception {
+        mockMvc.perform(get("/cache/invalidate").param("profile", "ie_monitor"))
+                .andExpect(status().isOk());
+        verify(cacheService).invalidateCache("ie_monitor");
+    }
+
+    @Test
     void dropNlCache_noProfile_callsDropWithNull() throws Exception {
         mockMvc.perform(get("/cache/dropNlCache"))
                 .andExpect(status().isOk());

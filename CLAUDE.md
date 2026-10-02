@@ -68,7 +68,7 @@ Configured in `DBAccess/src/main/resources/application.yml` (template) and overr
 - `GET /prometheus` — Prometheus metrics
 - Chart/data endpoints on `ChartDataFormatterRestController`
 - Schema endpoints on `SchemaController`
-- Cache management on `CacheController`: `updateCache`, `stopUpdate`, `promoteCache`, `trickleUpdate`, `dropCache`, `stats`
+- Cache management on `CacheController`: `updateCache`, `stopUpdate`, `promoteCache`, `trickleUpdate`, `dropCache`, `invalidate`, `stats`
 
 Sample JSON request payloads are in `Application/src/main/resources/public/jsonFiles/`.
 
