@@ -133,6 +133,12 @@ public class CacheServiceImpl implements CacheService {
         this.statsCache.dropCache(profile);
     }
 
+    @Override
+    public void invalidateCache(String profile) throws Exception {
+        log.info("Invalidating cache for " + (profile != null ? "'" + profile + "'" : "all") + " profile(s)");
+        this.statsCache.markAllStale(profile);
+    }
+
     public Map<String, Object> getStats() throws Exception {
         return this.statsCache.stats();
     }

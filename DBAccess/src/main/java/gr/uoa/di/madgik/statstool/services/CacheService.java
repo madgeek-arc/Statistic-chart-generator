@@ -18,6 +18,8 @@ public interface CacheService {
 
     void dropCache(String profile) throws Exception;
 
+    void invalidateCache(String profile) throws Exception;
+
     Map<String, Object> getStats() throws Exception;
 
     void dropNlCache(String profile);

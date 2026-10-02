@@ -41,6 +41,11 @@ public class CacheController {
         cacheService.dropCache(profile);
     }
 
+    @GetMapping("invalidate")
+    public void invalidateCache(@RequestParam(name = "profile", required = false) String profile) throws Exception {
+        cacheService.invalidateCache(profile);
+    }
+
     @GetMapping("stats")
     public Map<String, Object> getStats() throws Exception {
         return cacheService.getStats();
