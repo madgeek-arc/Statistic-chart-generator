@@ -14,6 +14,11 @@ server:
 spring:
     application:
         name: statistic-chart-generator
+    security:
+        oauth2:
+            resourceserver:
+                jwt:
+                    issuer-uri: ${OIDC_ISSUER_URI}
     mvc:
         favicon:
             enabled: false
@@ -61,6 +66,9 @@ nl:
 #        path: classpath:mappings.json
 #        path: file:/etc/sth/
 statstool:
+    oidc:
+        # JWT claim that holds the user's roles (provider-specific, e.g. "roles", "realm_access.roles")
+        roles-claim: roles
     supported-diagrams:
         charts:
             -

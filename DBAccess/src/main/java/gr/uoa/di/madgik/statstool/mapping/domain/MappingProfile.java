@@ -14,7 +14,11 @@ public class MappingProfile {
     private boolean hidden;
     private String file;
 
-    MappingProfile() {}
+    /** Populated when loaded from DB; not present in file-based mappings.json. */
+    @JsonIgnore
+    private Mapping content;
+
+    public MappingProfile() {}
 
     public String getName() {
         return name;
@@ -78,5 +82,13 @@ public class MappingProfile {
 
     public void setComplexity(int complexity) {
         this.complexity = complexity;
+    }
+
+    public Mapping getContent() {
+        return content;
+    }
+
+    public void setContent(Mapping content) {
+        this.content = content;
     }
 }

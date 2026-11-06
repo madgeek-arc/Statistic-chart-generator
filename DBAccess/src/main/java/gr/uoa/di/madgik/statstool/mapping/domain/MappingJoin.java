@@ -6,7 +6,7 @@ public class MappingJoin {
     private String to;
     private String toField;
 
-    MappingJoin() {}
+    public MappingJoin() {}
 
     public String getFrom() {
         return from;

@@ -1,6 +1,10 @@
 spring:
   datasources:
-    - id: monitor.public
+    # Bootstrap datasources — loaded directly at startup before anything else.
+    # All other datasources (Impala, secondary PGs, etc.) live in statstool_datasource.
+    - id: config-db
+      # The PostgreSQL DB that holds statstool_datasource, statstool_mapping_profile,
+      # and statstool_named_query. Override in config/application.yml on the server.
       url: jdbc:postgresql://esperos.di.uoa.gr:5432/monitor
       driver-class-name: org.postgresql.Driver
       username: dnet
@@ -31,8 +35,3 @@ statstool:
     update:
       entries: 5000
       time: 10800
-  namedqueries:
-    path: ...
-  mappings:
-    file:
-      path: classpath:mappings.json

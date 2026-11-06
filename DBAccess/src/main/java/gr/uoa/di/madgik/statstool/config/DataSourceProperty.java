@@ -7,6 +7,10 @@ public class DataSourceProperty {
     private String username;
     private String password;
     private String driverClassName;
+    /** HikariCP maximum pool size. 0 = use default (10). */
+    private int maxPoolSize;
+    /** HikariCP connection timeout in ms. 0 = use default (20000). */
+    private int connTimeoutMs;
 
     public String getId() {
         return id;
@@ -46,5 +50,21 @@ public class DataSourceProperty {
 
     public void setDriverClassName(String driverClassName) {
         this.driverClassName = driverClassName;
+    }
+
+    public int getMaxPoolSize() {
+        return maxPoolSize;
+    }
+
+    public void setMaxPoolSize(int maxPoolSize) {
+        this.maxPoolSize = maxPoolSize;
+    }
+
+    public int getConnTimeoutMs() {
+        return connTimeoutMs;
+    }
+
+    public void setConnTimeoutMs(int connTimeoutMs) {
+        this.connTimeoutMs = connTimeoutMs;
     }
 }

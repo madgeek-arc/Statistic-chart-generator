@@ -8,7 +8,7 @@ public class MappingField {
     private String description;
     private boolean visible = true;
 
-    MappingField() {}
+    public MappingField() {}
 
     public String getColumn() {
         return column;
