@@ -14,11 +14,6 @@ server:
 spring:
     application:
         name: statistic-chart-generator
-    security:
-        oauth2:
-            resourceserver:
-                jwt:
-                    issuer-uri: ${OIDC_ISSUER_URI}
     mvc:
         favicon:
             enabled: false

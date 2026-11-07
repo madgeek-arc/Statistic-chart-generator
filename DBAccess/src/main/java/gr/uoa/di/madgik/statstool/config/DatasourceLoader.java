@@ -8,34 +8,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Populates DynamicDataSourceRegistry at startup:
- *  1. YAML-defined datasources (excluding config-db which has its own bean).
- *  2. DB-defined datasources from statstool_datasource.
- *
- * Runs after ConfigRepository is ready (declared as @Autowired dependency).
+ * Loads DB-defined datasources into DynamicDataSourceRegistry at startup.
+ * YAML datasources are registered earlier (synchronously in DatasourceFactory.routingDataSource)
+ * so they are available before any @PostConstruct methods on routing-datasource consumers.
+ * This loader only adds datasources stored in statstool_datasource, which may override
+ * or supplement the YAML-defined ones.
  */
 @Component
 public class DatasourceLoader {
 
-    private static final String CONFIG_DB_ID = "config-db";
-
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    @Autowired private DataSourceProperties yamlProps;
     @Autowired private DynamicDataSourceRegistry registry;
     @Autowired private ConfigRepository configRepository;
 
     @PostConstruct
     public void load() {
-        // Register YAML datasources (skip config-db — it has a dedicated bean).
-        yamlProps.getDataSources().stream()
-            .filter(p -> !CONFIG_DB_ID.equals(p.getId()))
-            .forEach(p -> {
-                registry.register(p);
-                log.info("Loaded YAML datasource '{}'", p.getId());
-            });
-
-        // Register DB-defined datasources (may override YAML ones by same id).
         configRepository.loadDatasources().forEach(p -> {
             registry.register(p);
             log.info("Loaded DB datasource '{}'", p.getId());

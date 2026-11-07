@@ -25,9 +25,8 @@ public class DatasourceFactory {
     private final Logger log = LogManager.getLogger(this.getClass());
 
     /**
-     * Dedicated datasource for config tables (statstool_datasource, statstool_mapping_profile,
-     * statstool_named_query). Never goes through the routing datasource to avoid a circular
-     * dependency at startup. Must be declared in spring.datasources with id="config-db".
+     * Dedicated datasource for config tables. Never goes through the routing datasource
+     * to avoid a circular dependency at startup. Must be in spring.datasources with id="config-db".
      */
     @Bean("configDataSource")
     public DataSource configDataSource(DataSourceProperties props) {
@@ -51,15 +50,25 @@ public class DatasourceFactory {
     }
 
     /**
-     * Primary routing datasource. Delegates pool lookup to DynamicDataSourceRegistry,
-     * which is populated by DatasourceLoader after Spring context is fully wired.
+     * Primary routing datasource. YAML datasources (excluding config-db) are registered
+     * into the registry HERE — synchronously during bean creation — so they are available
+     * before any @PostConstruct methods run on beans that use the routing datasource.
+     * DB-sourced datasources are added later by DatasourceLoader.@PostConstruct.
      */
     @Bean("routingDataSource")
     @Primary
-    public DataSource routingDataSource(DynamicDataSourceRegistry registry) {
+    public DataSource routingDataSource(DataSourceProperties props, DynamicDataSourceRegistry registry) {
+        // Register all YAML datasources except config-db immediately.
+        props.getDataSources().stream()
+            .filter(p -> !CONFIG_DB_ID.equals(p.getId()))
+            .forEach(p -> {
+                registry.register(p);
+                log.info("Registered YAML datasource '{}'", p.getId());
+            });
+
         StatsRoutingDatasource ds = new StatsRoutingDatasource(registry);
-        // AbstractRoutingDataSource requires a non-null target map; we pass empty
-        // because actual routing bypasses the resolved map via determineTargetDataSource().
+        // AbstractRoutingDataSource requires a non-null target map; we pass empty because
+        // routing bypasses the resolved map via our overridden determineTargetDataSource().
         ds.setTargetDataSources(Collections.emptyMap());
         ds.afterPropertiesSet();
         return ds;

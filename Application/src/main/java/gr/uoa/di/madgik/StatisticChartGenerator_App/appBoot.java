@@ -12,7 +12,7 @@ import gr.uoa.di.madgik.ChartDataFormatter.Utility.YamlPropertySourceFactory;
 
 import java.util.Properties;
 
-@SpringBootApplication(scanBasePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool"})
+@SpringBootApplication(scanBasePackages = {"gr/uoa/di/madgik/ChartDataFormatter", "gr/uoa/di/madgik/statstool", "gr/uoa/di/madgik/StatisticChartGenerator_App"})
 @EnableScheduling
 @PropertySource(value="classpath:application.yml", factory = YamlPropertySourceFactory.class)
 public class appBoot extends SpringBootServletInitializer {
