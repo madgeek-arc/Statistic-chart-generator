@@ -1,28 +1,45 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
+import com.zaxxer.hikari.HikariDataSource;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
-import org.hsqldb.jdbc.JDBCDataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Testcontainers(disabledWithoutDocker = true)
 public class DbNlSqlCacheTest {
+
+    @Container
+    static PostgreSQLContainer<?> pg = new PostgreSQLContainer<>("postgres:15");
 
     private static final String FP = "fingerprint-v1";
 
+    private HikariDataSource ds;
     private DbNlSqlCache cache;
 
     @BeforeEach
     void setup() throws Exception {
-        JDBCDataSource ds = new JDBCDataSource();
-        ds.setUrl("jdbc:hsqldb:mem:nl_sql_cache_test_" + System.nanoTime() + ";hsqldb.tx=mvcc");
-        ds.setUser("sa");
-        ds.setPassword("");
+        ds = new HikariDataSource();
+        ds.setJdbcUrl(pg.getJdbcUrl());
+        ds.setUsername(pg.getUsername());
+        ds.setPassword(pg.getPassword());
+        ds.setMaximumPoolSize(5);
         cache = new DbNlSqlCache(ds);
         cache.init();
+        new JdbcTemplate(ds).execute("DELETE FROM nl_sql_cache");
+    }
+
+    @AfterEach
+    void teardown() {
+        if (ds != null) ds.close();
     }
 
     private static NlCachedEntry entry(String sql) {
@@ -112,8 +129,6 @@ public class DbNlSqlCacheTest {
         assertEquals("SELECT 2 FROM result", cache.get("openaire", "query two", FP).qwp().getQuery());
     }
 
-    // --- evict ---
-
     @Test
     void evict_removesEntry() {
         cache.put("openaire", "nl", entry("SELECT 1"), FP);
@@ -134,8 +149,6 @@ public class DbNlSqlCacheTest {
     void evict_nonExistentEntry_doesNotThrow() {
         assertDoesNotThrow(() -> cache.evict("openaire", "does not exist"));
     }
-
-    // --- drop ---
 
     @Test
     void drop_withProfile_removesOnlyThatProfile() {

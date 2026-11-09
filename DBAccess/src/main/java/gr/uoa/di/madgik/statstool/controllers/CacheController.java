@@ -1,9 +1,11 @@
 package gr.uoa.di.madgik.statstool.controllers;
 
 import gr.uoa.di.madgik.statstool.services.CacheService;
-import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -11,13 +13,25 @@ import java.util.Map;
 @RequestMapping(value = "/cache")
 @CrossOrigin(methods = {RequestMethod.GET, RequestMethod.POST} , origins = "*")
 public class CacheController {
+
     @Autowired
     private CacheService cacheService;
+
+    @Value("${STATS_ROLE:master}")
+    private String statsRole;
+
+    private void requireMaster() {
+        if ("backup".equalsIgnoreCase(statsRole)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "cache mutations not allowed on backup node");
+        }
+    }
 
     @GetMapping("updateCache")
     public void updateCache(@RequestParam(name = "profile", required = false) String profile,
                             @RequestParam(name = "limit", required = false) Integer limit,
                             @RequestParam(name = "maxSeconds", required = false) Integer maxSeconds) {
+        requireMaster();
         cacheService.updateCache(profile, limit, maxSeconds);
     }
 
@@ -28,11 +42,13 @@ public class CacheController {
 
     @GetMapping("trickleUpdate")
     public void trickleUpdate(@RequestParam(name = "profile", required = false) String profile) {
+        requireMaster();
         cacheService.trickleUpdate(profile);
     }
 
     @GetMapping("promoteCache")
     public void promoteCache(@RequestParam(name = "profile", required = false) String profile) {
+        requireMaster();
         cacheService.promoteCache(profile);
     }
 

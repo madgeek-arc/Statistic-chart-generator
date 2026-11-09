@@ -22,6 +22,7 @@ import java.util.Collections;
 public class DatasourceFactory {
 
     private static final String CONFIG_DB_ID = "config-db";
+    private static final String CACHE_DB_ID  = "cache-db";
     private final Logger log = LogManager.getLogger(this.getClass());
 
     /**
@@ -50,7 +51,32 @@ public class DatasourceFactory {
     }
 
     /**
-     * Primary routing datasource. YAML datasources (excluding config-db) are registered
+     * Dedicated datasource for cache tables (cache_entry, nl_sql_cache, nl_options_cache).
+     * Never goes through the routing datasource. Must be in spring.datasources with id="cache-db".
+     */
+    @Bean("cacheDataSource")
+    public DataSource cacheDataSource(DataSourceProperties props) {
+        DataSourceProperty p = props.getDataSources().stream()
+            .filter(ds -> CACHE_DB_ID.equals(ds.getId()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException(
+                "Required datasource '" + CACHE_DB_ID + "' not found in spring.datasources. " +
+                "Add it to config/application.yml."));
+
+        HikariDataSource ds = new HikariDataSource();
+        ds.setPoolName("pool-cache-db");
+        ds.setJdbcUrl(p.getUrl());
+        ds.setUsername(p.getUsername());
+        ds.setPassword(p.getPassword());
+        ds.setDriverClassName(p.getDriverClassName());
+        ds.setMaximumPoolSize(p.getMaxPoolSize() > 0 ? p.getMaxPoolSize() : 10);
+        ds.setConnectionTimeout(p.getConnTimeoutMs() > 0 ? p.getConnTimeoutMs() : 20_000);
+        log.info("Created cache-db datasource: {}", p.getUrl());
+        return ds;
+    }
+
+    /**
+     * Primary routing datasource. YAML datasources (excluding config-db and cache-db) are registered
      * into the registry HERE — synchronously during bean creation — so they are available
      * before any @PostConstruct methods run on beans that use the routing datasource.
      * DB-sourced datasources are added later by DatasourceLoader.@PostConstruct.
@@ -58,9 +84,9 @@ public class DatasourceFactory {
     @Bean("routingDataSource")
     @Primary
     public DataSource routingDataSource(DataSourceProperties props, DynamicDataSourceRegistry registry) {
-        // Register all YAML datasources except config-db immediately.
+        // Register all YAML datasources except config-db and cache-db immediately.
         props.getDataSources().stream()
-            .filter(p -> !CONFIG_DB_ID.equals(p.getId()))
+            .filter(p -> !CONFIG_DB_ID.equals(p.getId()) && !CACHE_DB_ID.equals(p.getId()))
             .forEach(p -> {
                 registry.register(p);
                 log.info("Registered YAML datasource '{}'", p.getId());

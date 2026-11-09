@@ -61,17 +61,29 @@
     <artifactId>commons-lang3</artifactId>
   </dependency>
 
-  <!-- In-memory cache DB -->
-  <dependency>
-    <groupId>org.hsqldb</groupId>
-    <artifactId>hsqldb</artifactId>
-    <version>2.7.4</version>
-  </dependency>
-
   <!-- Testing -->
   <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-test</artifactId>
+    <scope>test</scope>
+  </dependency>
+
+  <dependency>
+    <groupId>org.hsqldb</groupId>
+    <artifactId>hsqldb</artifactId>
+    <version>2.7.4</version>
+    <scope>test</scope>
+  </dependency>
+
+  <dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>postgresql</artifactId>
+    <scope>test</scope>
+  </dependency>
+
+  <dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>junit-jupiter</artifactId>
     <scope>test</scope>
   </dependency>
 
@@ -138,6 +150,18 @@
             </resource>
         </resources>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <!-- Docker Desktop on macOS exposes socket here; symlink at /var/run/docker.sock
+                             does not propagate into Surefire's forked JVM without explicit env override -->
+                        <DOCKER_HOST>unix:///var/run/docker.sock</DOCKER_HOST>
+                        <TESTCONTAINERS_RYUK_DISABLED>true</TESTCONTAINERS_RYUK_DISABLED>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
             <!--
                 hive-jdbc-4.0.1-standalone.jar bundles its own SLF4J implementation
                 (NOPLoggerFactory) which conflicts with Spring Boot's Logback.

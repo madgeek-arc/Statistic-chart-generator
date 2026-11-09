@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.cache.CacheEntry;
-import gr.uoa.di.madgik.statstool.repositories.datasource.DatasourceContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -20,10 +20,6 @@ import java.util.*;
 @Repository
 public class StatsDBRepository implements StatsCache {
 
-    public static final String CACHE_DB_NAME = "cache";
-
-    // A LONGVARCHAR column / cast resolves to VARCHAR(16M) in HSQLDB. Stay safely below that
-    // ceiling: an oversized payload is skipped (logged) rather than failing the whole write.
     private static final int MAX_CACHE_VALUE_CHARS = 15 * 1024 * 1024;
 
     @Value("${statstool.cache.enabled:true}")
@@ -33,59 +29,32 @@ public class StatsDBRepository implements StatsCache {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public StatsDBRepository(DataSource dataSource) {
+    public StatsDBRepository(@Qualifier("cacheDataSource") DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
     @PostConstruct
     public void postInit() {
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
         log.debug("Creating cache table");
-        jdbcTemplate.execute("create table if not exists cache_entry (" +
-                        "key varchar(64) not null," +
-                        "result longvarchar not null, " +
-                        "shadow longvarchar, " +
-                        "query longvarchar not null," +
-                        "created timestamp default now() not null, " +
-                        "updated timestamp default now() not null, " +
-                        "total_hits int default 0 not null," +
-                        "session_hits int default 0 not null," +
-                        "pinned boolean default false not null," +
-                        "exectime int default 0 not null," +
-                        "queuetime int default 0 not null," +
-                        "profile varchar(255) not null," +
-                        "fresh boolean default false not null)" );
-
-        // Migrate existing tables that predate the queuetime column
-        try {
-            jdbcTemplate.execute("alter table cache_entry add column if not exists queuetime int default 0 not null");
-        } catch (Exception ignored) {
-            // Column may already exist or DB may not support IF NOT EXISTS; safe to ignore
-        }
-
-        // Migrate existing tables created by older builds with narrow VARCHAR columns.
-        // `create table if not exists` above never re-applies the widened types to a
-        // persisted cache_entry, so a stale /tmp/cache volume keeps e.g. query VARCHAR(10000)
-        // and overflows with "string data, right truncation" on large cached SQL.
-        // Each ALTER is idempotent (a no-op when the column already has the target type).
-        for (String migration : new String[]{
-                "alter table cache_entry alter column query longvarchar",
-                "alter table cache_entry alter column result longvarchar",
-                "alter table cache_entry alter column shadow longvarchar",
-                "alter table cache_entry alter column profile varchar(255)",
-                "alter table cache_entry add column if not exists valid boolean default true not null",
-                "alter table cache_entry add column if not exists fresh boolean default false not null",
-        }) {
-            try {
-                jdbcTemplate.execute(migration);
-            } catch (Exception ignored) {
-                // Already the target type, or the DB rejects a no-op change; safe to ignore
-            }
-        }
-        log.info("cache_entry schema migration checks complete");
-
-        jdbcTemplate.execute("create index if not exists key_idx on cache_entry(key)");
+        jdbcTemplate.execute(
+            "CREATE TABLE IF NOT EXISTS cache_entry (" +
+            "  key          VARCHAR(64)  NOT NULL," +
+            "  result       TEXT         NOT NULL," +
+            "  shadow       TEXT," +
+            "  query        TEXT         NOT NULL," +
+            "  created      TIMESTAMP    DEFAULT NOW() NOT NULL," +
+            "  updated      TIMESTAMP    DEFAULT NOW() NOT NULL," +
+            "  total_hits   INT          DEFAULT 0 NOT NULL," +
+            "  session_hits INT          DEFAULT 0 NOT NULL," +
+            "  pinned       BOOLEAN      DEFAULT FALSE NOT NULL," +
+            "  exectime     INT          DEFAULT 0 NOT NULL," +
+            "  queuetime    INT          DEFAULT 0 NOT NULL," +
+            "  profile      VARCHAR(255) NOT NULL," +
+            "  fresh        BOOLEAN      DEFAULT FALSE NOT NULL," +
+            "  PRIMARY KEY (key)" +
+            ")"
+        );
+        log.info("cache_entry table ready");
     }
 
     @Override
@@ -98,20 +67,15 @@ public class StatsDBRepository implements StatsCache {
         if (!enableCache)
             return null;
 
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
-        // Increment hit counters unconditionally — reflects true demand even for stale misses.
-        // 0 rows = key absent → true cache miss.
         int rows = jdbcTemplate.update(
-                "update cache_entry set total_hits=total_hits+1, session_hits=session_hits+1 where key=?", key);
+                "UPDATE cache_entry SET total_hits=total_hits+1, session_hits=session_hits+1 WHERE key=?", key);
 
         if (rows == 0)
             return null;
 
-        // Entry exists: return result only if fresh; stale returns null (caller re-executes).
-        return jdbcTemplate.queryForObject("select result, fresh from cache_entry where key=?", new Object[]{key}, (resultSet, i) -> {
+        return jdbcTemplate.queryForObject("SELECT result, fresh FROM cache_entry WHERE key=?", new Object[]{key}, (resultSet, i) -> {
             if (!resultSet.getBoolean("fresh"))
-                return null; // stale miss — counters already incremented above
+                return null;
             try {
                 return new ObjectMapper().readValue(resultSet.getString("result"), Result.class);
             } catch (IOException e) {
@@ -122,13 +86,9 @@ public class StatsDBRepository implements StatsCache {
     }
 
     public void dropCache(String profile) throws Exception {
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
-        String sql = "delete from cache_entry";
-
+        String sql = "DELETE FROM cache_entry";
         if (profile != null && !profile.isEmpty()) {
-            sql += " where profile=?";
-            jdbcTemplate.update(sql, profile);
+            jdbcTemplate.update(sql + " WHERE profile=?", profile);
         } else {
             jdbcTemplate.execute(sql);
         }
@@ -136,7 +96,6 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public void save(QueryWithParameters fullSqlQuery, Result result, int execTime, int queueTime) throws Exception {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         if (!enableCache)
             return;
         String key = StatsCache.getCacheKey(fullSqlQuery);
@@ -144,28 +103,17 @@ public class StatsDBRepository implements StatsCache {
         entry.setExecTime(execTime);
         entry.setQueueTime(queueTime);
         entry.setProfile(fullSqlQuery.getDbId());
-        entry.setFresh(true); // result is fresh from main DB
+        entry.setFresh(true);
         storeEntry(entry);
     }
 
     @Override
     public void storeEntry(CacheEntry entry) throws Exception {
-        DatasourceContext.setContext(CACHE_DB_NAME);
-        // Every param in the `values(...)` derived table is explicitly CAST: HSQLDB types an
-        // uninferable `?` there as VARCHAR(32768) and truncates any larger result/shadow/query
-        // payload with "string data, right truncation", regardless of the real column width.
-        // (Casting only some params breaks HSQLDB's type inference for the rest, so cast all.)
-        // Counters (total_hits, session_hits) are intentionally excluded from the UPDATE clause:
-        // they are managed exclusively by user-facing events (get() increments, save() on
-        // invalid-entry repopulation, resetSessionHits() at promote). The update/promote cycle
-        // must not overwrite them.
-        String query = "merge into cache_entry as t using (values(cast(? as varchar(64)), cast(? as longvarchar), cast(? as longvarchar), cast(? as longvarchar), cast(? as timestamp), cast(? as timestamp), cast(? as int), cast(? as int), cast(? as boolean), cast(? as int), cast(? as int), cast(? as varchar(255)), cast(? as boolean))) as vals(key, result, shadow, query, created, updated, total, session, pinned, exectime, queuetime, profile, fresh) on t.key=vals.key when matched then update set t.result=vals.result, t.shadow=vals.shadow, t.query=vals.query, t.created=vals.updated, t.updated=vals.updated, t.pinned=vals.pinned, t.exectime=vals.exectime, t.queuetime=vals.queuetime, t.profile=vals.profile, t.fresh=vals.fresh when not matched then insert (key, result, shadow, query, created, updated, total_hits, session_hits, pinned, exectime, queuetime, profile, fresh) values (vals.key, vals.result, vals.shadow, vals.query, vals.created, vals.updated, vals.total, vals.session, vals.pinned, vals.exectime, vals.queuetime, vals.profile, vals.fresh);";
-
-        log.debug("Storing entry " + entry);
-
         if (!enableCache) {
             throw new RuntimeException("Cache is not enabled!");
         }
+
+        log.debug("Storing entry " + entry);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String resultJson = entry.getResult() == null ? null : objectMapper.writeValueAsString(entry.getResult());
@@ -179,29 +127,36 @@ public class StatsDBRepository implements StatsCache {
             return;
         }
 
-        jdbcTemplate.update(query,
-                entry.getKey(),
-                resultJson,
-                shadowJson,
-                queryJson,
-                Timestamp.from(entry.getCreated().toInstant()),
-                Timestamp.from(entry.getUpdated().toInstant()),
-                entry.getTotalHits(),
-                entry.getSessionHits(),
-                entry.isPinned(),
-                entry.getExecTime(),
-                entry.getQueueTime(),
-                entry.getProfile(),
-                entry.isFresh()
+        // Counters (total_hits, session_hits) excluded from UPDATE — managed by get() / resetSessionHits().
+        jdbcTemplate.update(
+            "INSERT INTO cache_entry " +
+            "  (key, result, shadow, query, created, updated, total_hits, session_hits, pinned, exectime, queuetime, profile, fresh) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+            "ON CONFLICT (key) DO UPDATE SET " +
+            "  result=EXCLUDED.result, shadow=EXCLUDED.shadow, query=EXCLUDED.query," +
+            "  created=EXCLUDED.updated, updated=EXCLUDED.updated, pinned=EXCLUDED.pinned," +
+            "  exectime=EXCLUDED.exectime, queuetime=EXCLUDED.queuetime," +
+            "  profile=EXCLUDED.profile, fresh=EXCLUDED.fresh",
+            entry.getKey(),
+            resultJson,
+            shadowJson,
+            queryJson,
+            Timestamp.from(entry.getCreated().toInstant()),
+            Timestamp.from(entry.getUpdated().toInstant()),
+            entry.getTotalHits(),
+            entry.getSessionHits(),
+            entry.isPinned(),
+            entry.getExecTime(),
+            entry.getQueueTime(),
+            entry.getProfile(),
+            entry.isFresh()
         );
     }
 
     private static int maxLength(String... values) {
         int max = 0;
         for (String value : values) {
-            if (value != null && value.length() > max) {
-                max = value.length();
-            }
+            if (value != null && value.length() > max) max = value.length();
         }
         return max;
     }
@@ -239,17 +194,15 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public List<CacheEntry> getEntries(String profile) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
         if (!enableCache) {
             log.debug("Cache is not enabled. Returning empty list");
             return Collections.emptyList();
         }
 
-        String sql = "select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
+        String sql = "SELECT * FROM cache_entry WHERE key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
 
         if (profile != null && !profile.isEmpty()) {
-            sql += " and profile=?";
+            sql += " AND profile=?";
             return jdbcTemplate.query(sql, new Object[]{profile}, this::mapCacheEntry);
         }
 
@@ -258,65 +211,59 @@ public class StatsDBRepository implements StatsCache {
 
     @Override
     public void resetSessionHits(String profile) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         if (profile != null && !profile.isEmpty()) {
-            jdbcTemplate.update("update cache_entry set session_hits=0 where profile=?", profile);
+            jdbcTemplate.update("UPDATE cache_entry SET session_hits=0 WHERE profile=?", profile);
         } else {
-            jdbcTemplate.execute("update cache_entry set session_hits=0");
+            jdbcTemplate.execute("UPDATE cache_entry SET session_hits=0");
         }
     }
 
     @Override
     public boolean hasShadowEntries(String profile) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         if (profile != null && !profile.isEmpty()) {
             Integer count = jdbcTemplate.queryForObject(
-                    "select count(*) from cache_entry where shadow is not null and profile=?",
+                    "SELECT count(*) FROM cache_entry WHERE shadow IS NOT NULL AND profile=?",
                     new Object[]{profile}, Integer.class);
             return count != null && count > 0;
         }
         Integer count = jdbcTemplate.queryForObject(
-                "select count(*) from cache_entry where shadow is not null",
+                "SELECT count(*) FROM cache_entry WHERE shadow IS NOT NULL",
                 new Object[]{}, Integer.class);
         return count != null && count > 0;
     }
 
     @Override
     public List<String> getProfilesWithShadows() {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         return jdbcTemplate.queryForList(
-                "select distinct profile from cache_entry where shadow is not null",
+                "SELECT DISTINCT profile FROM cache_entry WHERE shadow IS NOT NULL",
                 String.class);
     }
 
     @Override
     public void markAllStale(String profile) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         if (profile != null && !profile.isEmpty()) {
-            jdbcTemplate.update("update cache_entry set fresh=false where profile=?", profile);
+            jdbcTemplate.update("UPDATE cache_entry SET fresh=false WHERE profile=?", profile);
         } else {
-            jdbcTemplate.execute("update cache_entry set fresh=false");
+            jdbcTemplate.execute("UPDATE cache_entry SET fresh=false");
         }
     }
 
     @Override
     public List<CacheEntry> getStaleEntries(String profile) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         if (!enableCache) return Collections.emptyList();
 
-        String baseSql = "select * from cache_entry where fresh=false" +
-                " and key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
+        String baseSql = "SELECT * FROM cache_entry WHERE fresh=false" +
+                " AND key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')";
 
         if (profile != null && !profile.isEmpty()) {
-            return jdbcTemplate.query(baseSql + " and profile=? order by total_hits desc",
+            return jdbcTemplate.query(baseSql + " AND profile=? ORDER BY total_hits DESC",
                     new Object[]{profile}, this::mapCacheEntry);
         }
-        return jdbcTemplate.query(baseSql + " order by total_hits desc", this::mapCacheEntry);
+        return jdbcTemplate.query(baseSql + " ORDER BY total_hits DESC", this::mapCacheEntry);
     }
 
     @Override
     public void trickleRefreshEntry(String key, Result result, int execTime, int queueTime) throws Exception {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         ObjectMapper objectMapper = new ObjectMapper();
         String resultJson = result == null ? null : objectMapper.writeValueAsString(result);
         if (resultJson != null && resultJson.length() > MAX_CACHE_VALUE_CHARS) {
@@ -324,40 +271,36 @@ public class StatsDBRepository implements StatsCache {
             return;
         }
         jdbcTemplate.update(
-                "update cache_entry set result=cast(? as longvarchar), fresh=true, exectime=?, queuetime=?, updated=now() where key=?",
+                "UPDATE cache_entry SET result=?, fresh=true, exectime=?, queuetime=?, updated=NOW() WHERE key=?",
                 resultJson, execTime, queueTime, key);
     }
 
     @Override
     public void deleteEntry(String key) {
-        DatasourceContext.setContext(CACHE_DB_NAME);
-
         if (!enableCache) {
             throw new RuntimeException("Cache is not enabled!");
         }
-
-        jdbcTemplate.update("delete from cache_entry where key=?", key);
+        jdbcTemplate.update("DELETE FROM cache_entry WHERE key=?", key);
     }
 
     public Map<String, Object> stats() {
-        DatasourceContext.setContext(CACHE_DB_NAME);
         Map<String, Object> stats = new LinkedHashMap<>();
 
-        stats.put("total", jdbcTemplate.queryForObject("select count(*) from cache_entry", new Object[] {}, Integer.class));
-        stats.put("fresh", jdbcTemplate.queryForObject("select count(*) from cache_entry where fresh=true", new Object[] {}, Integer.class));
-        stats.put("stale", jdbcTemplate.queryForObject("select count(*) from cache_entry where fresh=false", new Object[] {}, Integer.class));
-        stats.put("with_shadow", jdbcTemplate.queryForObject("select count(*) from cache_entry where shadow is not null", new Object[] {}, Integer.class));
+        stats.put("total", jdbcTemplate.queryForObject("SELECT count(*) FROM cache_entry", new Object[] {}, Integer.class));
+        stats.put("fresh", jdbcTemplate.queryForObject("SELECT count(*) FROM cache_entry WHERE fresh=true", new Object[] {}, Integer.class));
+        stats.put("stale", jdbcTemplate.queryForObject("SELECT count(*) FROM cache_entry WHERE fresh=false", new Object[] {}, Integer.class));
+        stats.put("with_shadow", jdbcTemplate.queryForObject("SELECT count(*) FROM cache_entry WHERE shadow IS NOT NULL", new Object[] {}, Integer.class));
         stats.put("profiles", jdbcTemplate.query(
-                "select profile," +
-                "  count(*) as queries," +
-                "  sum(case when fresh=true then 1 else 0 end) as fresh," +
-                "  sum(case when fresh=false then 1 else 0 end) as stale," +
-                "  sum(case when shadow is not null then 1 else 0 end) as with_shadow," +
-                "  avg(exectime) as avg_exec_time," +
-                "  avg(queuetime) as avg_queue_time" +
-                " from cache_entry" +
-                " where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')" +
-                " group by profile order by count(*) desc",
+                "SELECT profile," +
+                "  count(*) AS queries," +
+                "  sum(CASE WHEN fresh=true THEN 1 ELSE 0 END) AS fresh," +
+                "  sum(CASE WHEN fresh=false THEN 1 ELSE 0 END) AS stale," +
+                "  sum(CASE WHEN shadow IS NOT NULL THEN 1 ELSE 0 END) AS with_shadow," +
+                "  avg(exectime) AS avg_exec_time," +
+                "  avg(queuetime) AS avg_queue_time" +
+                " FROM cache_entry" +
+                " WHERE key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS')" +
+                " GROUP BY profile ORDER BY count(*) DESC",
                 (rs, rowNum) -> {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("profile", rs.getString("profile"));
@@ -370,82 +313,34 @@ public class StatsDBRepository implements StatsCache {
                     return map;
                 }));
 
-        stats.put("total.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by total_hits desc limit 10", (rs, rowNum) -> {
-            CacheEntry entry = null;
-
-            try {
-                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                String key = rs.getString("key");
-
-                entry = new CacheEntry(key, query, null);
-
-                if (rs.getTimestamp("created") != null)
-                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                if (rs.getTimestamp("updated") != null)
-                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-
-                entry.setTotalHits(rs.getInt("total_hits"));
-                entry.setSessionHits(rs.getInt("session_hits"));
-                entry.setPinned(rs.getBoolean("pinned"));
-                entry.setExecTime(rs.getInt("exectime"));
-                entry.setProfile(rs.getString("profile"));
-            } catch (IOException e) {
-                log.error("Error reading entry", e);
-            }
-
-            return entry;
-        }));
-        stats.put("session.top10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by session_hits desc limit 10", (rs, rowNum) -> {
-            CacheEntry entry = null;
-
-            try {
-                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                String key = rs.getString("key");
-
-                entry = new CacheEntry(key, query, null);
-
-                if (rs.getTimestamp("created") != null)
-                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                if (rs.getTimestamp("updated") != null)
-                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-
-                entry.setTotalHits(rs.getInt("total_hits"));
-                entry.setSessionHits(rs.getInt("session_hits"));
-                entry.setPinned(rs.getBoolean("pinned"));
-                entry.setExecTime(rs.getInt("exectime"));
-                entry.setProfile(rs.getString("profile"));
-            } catch (IOException e) {
-                log.error("Error reading entry", e);
-            }
-
-            return entry;
-        }));
-        stats.put("total.heavy10", jdbcTemplate.query("select * from cache_entry where key not in ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') order by exectime desc limit 10", (rs, rowNum) -> {
-            CacheEntry entry = null;
-
-            try {
-                QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
-                String key = rs.getString("key");
-
-                entry = new CacheEntry(key, query, null);
-
-                if (rs.getTimestamp("created") != null)
-                    entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
-                if (rs.getTimestamp("updated") != null)
-                    entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
-
-                entry.setTotalHits(rs.getInt("total_hits"));
-                entry.setSessionHits(rs.getInt("session_hits"));
-                entry.setPinned(rs.getBoolean("pinned"));
-                entry.setExecTime(rs.getInt("exectime"));
-                entry.setProfile(rs.getString("profile"));
-            } catch (IOException e) {
-                log.error("Error reading entry", e);
-            }
-
-            return entry;
-        }));
+        stats.put("total.top10", jdbcTemplate.query(
+            "SELECT * FROM cache_entry WHERE key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') ORDER BY total_hits DESC LIMIT 10",
+            (rs, rowNum) -> statsEntry(rs)));
+        stats.put("session.top10", jdbcTemplate.query(
+            "SELECT * FROM cache_entry WHERE key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') ORDER BY session_hits DESC LIMIT 10",
+            (rs, rowNum) -> statsEntry(rs)));
+        stats.put("total.heavy10", jdbcTemplate.query(
+            "SELECT * FROM cache_entry WHERE key NOT IN ('SHADOW_STATS_NUMBERS', 'STATS_NUMBERS') ORDER BY exectime DESC LIMIT 10",
+            (rs, rowNum) -> statsEntry(rs)));
 
         return stats;
+    }
+
+    private CacheEntry statsEntry(java.sql.ResultSet rs) {
+        try {
+            QueryWithParameters query = new ObjectMapper().readValue(rs.getString("query"), QueryWithParameters.class);
+            CacheEntry entry = new CacheEntry(rs.getString("key"), query, null);
+            if (rs.getTimestamp("created") != null) entry.setCreated(new Date(rs.getTimestamp("created").getTime()));
+            if (rs.getTimestamp("updated") != null) entry.setUpdated(new Date(rs.getTimestamp("updated").getTime()));
+            entry.setTotalHits(rs.getInt("total_hits"));
+            entry.setSessionHits(rs.getInt("session_hits"));
+            entry.setPinned(rs.getBoolean("pinned"));
+            entry.setExecTime(rs.getInt("exectime"));
+            entry.setProfile(rs.getString("profile"));
+            return entry;
+        } catch (Exception e) {
+            log.error("Error reading stats entry", e);
+            return null;
+        }
     }
 }

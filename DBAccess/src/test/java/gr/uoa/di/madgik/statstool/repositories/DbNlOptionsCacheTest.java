@@ -1,25 +1,42 @@
 package gr.uoa.di.madgik.statstool.repositories;
 
-import org.hsqldb.jdbc.JDBCDataSource;
+import com.zaxxer.hikari.HikariDataSource;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Testcontainers(disabledWithoutDocker = true)
 public class DbNlOptionsCacheTest {
+
+    @Container
+    static PostgreSQLContainer<?> pg = new PostgreSQLContainer<>("postgres:15");
 
     private static final String VER = "v1";
 
+    private HikariDataSource ds;
     private DbNlOptionsCache cache;
 
     @BeforeEach
     void setup() throws Exception {
-        JDBCDataSource ds = new JDBCDataSource();
-        ds.setUrl("jdbc:hsqldb:mem:nl_options_cache_test_" + System.nanoTime() + ";hsqldb.tx=mvcc");
-        ds.setUser("sa");
-        ds.setPassword("");
+        ds = new HikariDataSource();
+        ds.setJdbcUrl(pg.getJdbcUrl());
+        ds.setUsername(pg.getUsername());
+        ds.setPassword(pg.getPassword());
+        ds.setMaximumPoolSize(5);
         cache = new DbNlOptionsCache(ds);
         cache.init();
+        new JdbcTemplate(ds).execute("DELETE FROM nl_options_cache");
+    }
+
+    @AfterEach
+    void teardown() {
+        if (ds != null) ds.close();
     }
 
     @Test
@@ -79,8 +96,6 @@ public class DbNlOptionsCacheTest {
         assertEquals("{\"b\":2}", cache.get("HighCharts", "desc two", VER));
     }
 
-    // --- evict ---
-
     @Test
     void evict_removesEntry() {
         cache.put("HighCharts", "desc", "{}", VER);
@@ -101,8 +116,6 @@ public class DbNlOptionsCacheTest {
     void evict_nonExistentEntry_doesNotThrow() {
         assertDoesNotThrow(() -> cache.evict("HighCharts", "does not exist"));
     }
-
-    // --- drop ---
 
     @Test
     void drop_withLibrary_removesOnlyThatLibrary() {
