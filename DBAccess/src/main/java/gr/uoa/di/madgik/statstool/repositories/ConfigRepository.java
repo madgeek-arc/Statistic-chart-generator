@@ -38,7 +38,7 @@ public class ConfigRepository {
 
     public List<DataSourceProperty> loadDatasources() {
         return jdbc.query(
-            "SELECT id, url, driver_class, username, password, max_pool_size, conn_timeout_ms " +
+            "SELECT id, url, driver_class, username, password, max_pool_size, conn_timeout_ms, connection_init_sql " +
             "FROM statstool_datasource WHERE enabled = TRUE",
             (rs, row) -> {
                 DataSourceProperty p = new DataSourceProperty();
@@ -49,6 +49,7 @@ public class ConfigRepository {
                 p.setPassword(rs.getString("password"));
                 p.setMaxPoolSize(rs.getInt("max_pool_size"));
                 p.setConnTimeoutMs(rs.getInt("conn_timeout_ms"));
+                p.setConnectionInitSql(rs.getString("connection_init_sql"));
                 return p;
             });
     }
@@ -56,16 +57,17 @@ public class ConfigRepository {
     public void saveDatasource(DataSourceProperty p) {
         jdbc.update(
             "INSERT INTO statstool_datasource " +
-            "(id, url, driver_class, username, password, max_pool_size, conn_timeout_ms, enabled, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, NOW()) " +
+            "(id, url, driver_class, username, password, max_pool_size, conn_timeout_ms, connection_init_sql, enabled, updated_at) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, NOW()) " +
             "ON CONFLICT (id) DO UPDATE SET " +
             "  url = EXCLUDED.url, driver_class = EXCLUDED.driver_class, " +
             "  username = EXCLUDED.username, password = EXCLUDED.password, " +
             "  max_pool_size = EXCLUDED.max_pool_size, conn_timeout_ms = EXCLUDED.conn_timeout_ms, " +
+            "  connection_init_sql = EXCLUDED.connection_init_sql, " +
             "  enabled = TRUE, updated_at = NOW()",
             p.getId(), p.getUrl(), p.getDriverClassName(),
             p.getUsername(), p.getPassword(),
-            p.getMaxPoolSize(), p.getConnTimeoutMs());
+            p.getMaxPoolSize(), p.getConnTimeoutMs(), p.getConnectionInitSql());
     }
 
     public void deleteDatasource(String id) {

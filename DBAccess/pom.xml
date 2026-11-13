@@ -48,6 +48,17 @@
     <classifier>standalone</classifier>
   </dependency>
 
+  <!-- Apache Arrow Flight SQL JDBC driver — connects to DuckDB served by GizmoSQL -->
+  <!-- Configure datasources with: url=jdbc:arrow-flight-sql://host:31337?useEncryption=false -->
+  <!--                              driver-class-name=org.apache.arrow.driver.jdbc.ArrowFlightJdbcDriver -->
+  <!-- Requires JVM flag: add-opens java.base/java.nio=ALL-UNNAMED (Arrow memory access). -->
+  <dependency>
+    <groupId>org.apache.arrow</groupId>
+    <artifactId>flight-sql-jdbc-driver</artifactId>
+    <version>18.1.0</version>
+    <scope>runtime</scope>
+  </dependency>
+
   <!-- Groovy (modern, Java 17–compatible) -->
   <dependency>
     <groupId>org.apache.groovy</groupId>

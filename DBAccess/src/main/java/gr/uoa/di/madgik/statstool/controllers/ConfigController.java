@@ -173,12 +173,12 @@ public class ConfigController {
     /** Datasource view that never exposes the password. */
     public record DatasourceView(
         String id, String url, String driverClass,
-        String username, int maxPoolSize, int connTimeoutMs) {
+        String username, int maxPoolSize, int connTimeoutMs, String connectionInitSql) {
 
         static DatasourceView from(DataSourceProperty p) {
             return new DatasourceView(
                 p.getId(), p.getUrl(), p.getDriverClassName(),
-                p.getUsername(), p.getMaxPoolSize(), p.getConnTimeoutMs());
+                p.getUsername(), p.getMaxPoolSize(), p.getConnTimeoutMs(), p.getConnectionInitSql());
         }
     }
 

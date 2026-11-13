@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS statstool_datasource (
     enabled         BOOLEAN DEFAULT TRUE,
     updated_at      TIMESTAMP DEFAULT NOW()
 );
+-- Per-connection init SQL (e.g. "USE <db>" for DuckDB/GizmoSQL). Added after the first release.
+ALTER TABLE statstool_datasource ADD COLUMN IF NOT EXISTS connection_init_sql TEXT;
 
 CREATE TABLE IF NOT EXISTS statstool_mapping_profile (
     name            VARCHAR(100) PRIMARY KEY,

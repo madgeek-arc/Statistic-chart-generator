@@ -11,6 +11,8 @@ public class DataSourceProperty {
     private int maxPoolSize;
     /** HikariCP connection timeout in ms. 0 = use default (20000). */
     private int connTimeoutMs;
+    /** SQL run by HikariCP on every new connection (e.g. "USE <db>"). null/blank = none. */
+    private String connectionInitSql;
 
     public String getId() {
         return id;
@@ -66,5 +68,13 @@ public class DataSourceProperty {
 
     public void setConnTimeoutMs(int connTimeoutMs) {
         this.connTimeoutMs = connTimeoutMs;
+    }
+
+    public String getConnectionInitSql() {
+        return connectionInitSql;
+    }
+
+    public void setConnectionInitSql(String connectionInitSql) {
+        this.connectionInitSql = connectionInitSql;
     }
 }

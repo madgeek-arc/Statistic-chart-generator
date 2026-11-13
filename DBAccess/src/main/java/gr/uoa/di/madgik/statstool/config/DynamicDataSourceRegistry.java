@@ -67,6 +67,9 @@ public class DynamicDataSourceRegistry {
         ds.setDriverClassName(props.getDriverClassName());
         ds.setMaximumPoolSize(props.getMaxPoolSize() > 0 ? props.getMaxPoolSize() : DEFAULT_POOL_SIZE);
         ds.setConnectionTimeout(props.getConnTimeoutMs() > 0 ? props.getConnTimeoutMs() : DEFAULT_CONN_TIMEOUT);
+        if (props.getConnectionInitSql() != null && !props.getConnectionInitSql().isBlank()) {
+            ds.setConnectionInitSql(props.getConnectionInitSql());
+        }
 
         // HiveConnection.isValid() throws "Method not supported" — use a fallback query.
         if (props.getUrl() != null && props.getUrl().startsWith("jdbc:hive2://")) {
