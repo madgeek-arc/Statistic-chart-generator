@@ -64,12 +64,39 @@ public class NlOptionsServiceTest {
     @Test
     void execute_cacheHit_returnsJsonNode() {
         when(nlOptionsCache.get("HighCharts", "blue chart", VER))
-                .thenReturn("{\"title\":{\"text\":\"My Chart\"}}");
+                .thenReturn("{\"colors\":[\"blue\"],\"title\":{\"style\":{\"color\":\"red\"}}}");
 
         JsonNode result = service.execute("HighCharts", "blue chart");
 
         assertNotNull(result);
-        assertEquals("My Chart", result.get("title").get("text").asText());
+        assertEquals("blue", result.get("colors").get(0).asText());
+        assertEquals("red", result.get("title").get("style").get("color").asText());
+    }
+
+    // --- execute: content fields are always stripped (caller owns title/subtitle text) ---
+
+    @Test
+    void execute_cacheHit_stripsTitleAndSubtitleText() {
+        when(nlOptionsCache.get("HighCharts", "blue chart", VER))
+                .thenReturn("{\"title\":{\"text\":\"My Chart\",\"style\":{\"color\":\"red\"}},"
+                        + "\"subtitle\":{\"text\":\"Sub\"}}");
+
+        JsonNode result = service.execute("HighCharts", "blue chart");
+
+        assertFalse(result.get("title").has("text"), "title.text must be stripped");
+        assertEquals("red", result.get("title").get("style").get("color").asText());
+        assertFalse(result.has("subtitle"), "subtitle left empty after stripping must be removed");
+    }
+
+    @Test
+    void execute_cacheMiss_stripsTitleText() {
+        when(nlOptionsCache.get(any(), any(), any())).thenReturn(null);
+        when(optionsGenerator.generate(any(), any())).thenReturn("{\"title\":{\"text\":\"Placeholder\"},\"b\":2}");
+
+        JsonNode result = service.execute("HighCharts", "some description");
+
+        assertFalse(result.has("title"), "title left empty after stripping must be removed");
+        assertEquals(2, result.get("b").asInt());
     }
 
     // --- execute: cache miss ---
