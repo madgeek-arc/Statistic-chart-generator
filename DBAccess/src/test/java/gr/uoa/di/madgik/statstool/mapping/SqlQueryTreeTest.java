@@ -895,6 +895,33 @@ public class SqlQueryTreeTest {
                 "Denormalized filter must reference column directly on root table alias; got: " + sql);
     }
 
+    // --- boolean datatype: bound as a real Boolean (Arrow Flight SQL rejects Integer/String for BOOLEAN) ---
+
+    @Test
+    public void booleanFilter_bindsBooleanParameter_forTrueFalseAndOneZero() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        String[][] cases = {{"true", "true"}, {"1", "true"}, {"TRUE", "true"}, {"false", "false"}, {"0", "false"}};
+        for (String[] c : cases) {
+            // datatype comes from the profile field, not from the request
+            Filter f = new Filter("result.indi_pub_gold.is_gold_oa", "=", Collections.singletonList(c[0]), null);
+            Query apiQuery = new Query(null, null,
+                    Collections.singletonList(new FilterGroup(Collections.singletonList(f), "AND")),
+                    Arrays.asList(new Select("result.id", null, 1)),
+                    "result", "test", 0, null, false);
+
+            List<Object> params = new ArrayList<>();
+            new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+            assertEquals(Collections.singletonList(Boolean.valueOf(c[1])), params,
+                    "value '" + c[0] + "' must bind as Boolean " + c[1]);
+        }
+    }
+
+    @Test
+    public void parseBoolean_rejectsNonBooleanValue() {
+        assertThrows(IllegalArgumentException.class, () -> SqlQueryTree.parseBoolean("maybe"));
+    }
+
     @Test
     public void denormField_deeperPath_joinsAncestorChain_skipsIntermediateTable() {
         // project -> result -> indi_pub_gold.is_gold_oa (denorm)

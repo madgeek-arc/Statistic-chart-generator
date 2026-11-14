@@ -683,8 +683,24 @@ public class SqlQueryTree {
                 return Integer.parseInt(value);
             case "float":
                 return Float.parseFloat(value);
+            case "boolean":
+            case "bool":
+                // Bind a real Boolean: drivers with typed parameters (Arrow Flight SQL / DuckDB)
+                // reject Integer/String for BOOLEAN columns. Accept 1/0 too, as chart JSONs send them.
+                return parseBoolean(value);
             default:
                 return value;
+        }
+    }
+
+    static Boolean parseBoolean(String value) {
+        switch (value.trim().toLowerCase()) {
+            case "true": case "1": case "t": case "yes": case "y":
+                return Boolean.TRUE;
+            case "false": case "0": case "f": case "no": case "n":
+                return Boolean.FALSE;
+            default:
+                throw new IllegalArgumentException("Not a boolean value: '" + value + "'");
         }
     }
 
