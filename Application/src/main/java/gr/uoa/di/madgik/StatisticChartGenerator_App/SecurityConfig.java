@@ -35,7 +35,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .csrf(csrf -> csrf.disable());
+            .csrf(csrf -> csrf.disable())
+            // Charts are embedded in iframes on third-party sites (monitor dashboards etc.):
+            // drop Spring Security's default X-Frame-Options: DENY.
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         if (oidcIssuerUri != null && !oidcIssuerUri.isBlank()) {
             log.info("OIDC enabled — issuer: {}", oidcIssuerUri);
