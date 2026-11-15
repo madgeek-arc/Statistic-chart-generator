@@ -34,7 +34,9 @@ public class SqlQueryBuilder {
     }
 
     String getSqlQuery(List<Object> parameters, String orderBy) {
-        return new SqlQueryTree(mapIntermediate()).makeQuery(parameters, orderBy);
+        Table entityTable = profileConfiguration.tables.get(query.getEntity());
+        String rootKey = entityTable != null ? entityTable.getKey() : null;
+        return new SqlQueryTree(mapIntermediate(), rootKey).makeQuery(parameters, orderBy);
     }
 
     private Query mapIntermediate() {

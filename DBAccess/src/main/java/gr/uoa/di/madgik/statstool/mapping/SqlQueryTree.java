@@ -13,7 +13,16 @@ public class SqlQueryTree {
     private final int limit;
     private final List<FilterGroup> filterGroups = new ArrayList<>();
 
+    // Key column of the root entity (profile "key"); used to merge OR branches that start from
+    // different root columns into one semi-join. null = unknown.
+    private final String rootKey;
+
     public SqlQueryTree(Query query) {
+        this(query, null);
+    }
+
+    public SqlQueryTree(Query query, String rootKey) {
+        this.rootKey = rootKey;
         this.root = new Node();
         this.root.table = query.getEntity();
         this.root.alias = query.getEntity().charAt(0) + Integer.toString(this.count);
@@ -474,11 +483,18 @@ public class SqlQueryTree {
                 // Rewrite OR of (possibly) subqueries into one EXISTS with UNION ALL of rid values.
                 // Root-level filters (no hops) are collected as simple predicates and combined with OR.
                 // Hop-based filters with a single branch use a direct correlated EXISTS (no derived table).
-                List<String> unionBranches = new ArrayList<>();
-                // Parallel metadata for single-branch optimisation: [fromClause, corrCondition, predicate]
-                List<String[]> hopBranchMeta = new ArrayList<>();
+                // Hop branches grouped by the root column their first hop starts from: branches that
+                // start from different root columns (e.g. project.id -> project_organizations.id and
+                // project.funder -> funder.name) need separate "root.<col> IN (...)" semi-joins.
+                // Each branch: [fromClause, firstHopTable, predicate, fromField, toField].
+                Map<String, List<String[]>> hopBranchesByField = new LinkedHashMap<>();
+                Map<String[], List<Object>> branchParams = new IdentityHashMap<>();
                 List<String> rootOrPredicates = new ArrayList<>();
-                String correlationField = null; // r0.<correlationField>
+                List<Object> rootOrParams = new ArrayList<>();
+                // Predicates are emitted in a different order than the filters arrive (root predicates
+                // first, then the semi-joins per root column), so bind parameters per predicate and
+                // append them below in emission order.
+                final int paramBase = parameters.size();
 
                 for (Filter filter : filterGroup.getGroupFilters()) {
                     // Parse the encoded path
@@ -511,8 +527,10 @@ public class SqlQueryTree {
                         // Root-level: emit a plain predicate to be combined with OR — no EXISTS needed
                         String qualifiedCol = this.root.alias + "." + targetColumn;
                         String pred = buildPredicate.apply(qualifiedCol, filter);
+                        List<Object> p = takeParams(parameters, paramBase);
                         if (pred != null) {
                             rootOrPredicates.add(pred);
+                            rootOrParams.addAll(p);
                         }
                     } else {
                         // If the last hop's target table is directly joined (it is a GROUP BY SELECT column),
@@ -524,12 +542,13 @@ public class SqlQueryTree {
                         if (directAlias != null) {
                             String qualifiedCol = directAlias + "." + targetColumn;
                             String pred = buildPredicate.apply(qualifiedCol, filter);
+                            List<Object> p = takeParams(parameters, paramBase);
                             if (pred != null) {
                                 rootOrPredicates.add(pred);
+                                rootOrParams.addAll(p);
                             }
                         } else {
                             Hop h0 = hops.get(0);
-                            if (correlationField == null) correlationField = h0.fromField;
                             String lastAlias = "s" + (hops.size() - 1);
                             // Build the FROM/JOIN chain (shared by both single-branch and UNION ALL forms)
                             StringBuilder fromClause = new StringBuilder();
@@ -548,12 +567,11 @@ public class SqlQueryTree {
                             }
                             String qualifiedCol = lastAlias + "." + targetColumn;
                             String pred = buildPredicate.apply(qualifiedCol, filter);
+                            List<Object> p = takeParams(parameters, paramBase);
                             if (pred != null) {
-                                String corrCondition = this.root.alias + "." + h0.fromField + "=s0." + h0.toField;
-                                // Store fromField [3] and toField [4] for semi-join rewrite
-                                hopBranchMeta.add(new String[]{fromClause.toString(), corrCondition, pred, h0.fromField, h0.toField});
-                                // IS NOT NULL guard ensures IN semantics match EXISTS when FK can be null
-                                unionBranches.add("SELECT s0." + h0.toField + " AS rid FROM " + fromClause + "WHERE s0." + h0.toField + " IS NOT NULL AND " + pred);
+                                String[] branch = {fromClause.toString(), h0.toTable, pred, h0.fromField, h0.toField};
+                                hopBranchesByField.computeIfAbsent(h0.fromField, k -> new ArrayList<>()).add(branch);
+                                branchParams.put(branch, p);
                             }
                         }
                     }
@@ -561,16 +579,47 @@ public class SqlQueryTree {
 
                 if (!rootOrPredicates.isEmpty()) {
                     groupFilters.add("(" + String.join(" OR ", rootOrPredicates) + ")");
+                    parameters.addAll(rootOrParams);
                 }
-                if (hopBranchMeta.size() == 1) {
-                    // Single hop branch: non-correlated semi-join — Impala evaluates as hash join
-                    String[] m = hopBranchMeta.get(0);
-                    // m[3]=fromField on root alias, m[4]=toField on subquery table, m[0]=FROM chain, m[2]=predicate
-                    groupFilters.add(this.root.alias + "." + m[3] + " IN (SELECT DISTINCT s0." + m[4] + " FROM " + m[0] + "WHERE s0." + m[4] + " IS NOT NULL AND " + m[2] + ")");
-                } else if (hopBranchMeta.size() > 1) {
-                    String corrField = (correlationField != null) ? correlationField : "id";
-                    // Multi-branch: non-correlated IN over UNION ALL — hash join on Impala
-                    groupFilters.add(this.root.alias + "." + corrField + " IN (SELECT u.rid FROM (" + String.join(" UNION ALL ", unionBranches) + ") u)");
+                // The group's parts are combined with OR by the caller (op of this group).
+                if (hopBranchesByField.size() > 1 && rootKey != null) {
+                    // Branches start from different root columns. Impala rejects subqueries inside OR,
+                    // so keep a single semi-join on the root key: branches that start from another
+                    // column are mapped back to the key through the root table.
+                    List<String> unionBranches = new ArrayList<>();
+                    for (Map.Entry<String, List<String[]>> e : hopBranchesByField.entrySet()) {
+                        for (String[] m : e.getValue()) {
+                            if (e.getKey().equals(rootKey)) {
+                                unionBranches.add("SELECT s0." + m[4] + " AS rid FROM " + m[0] + "WHERE s0." + m[4] + " IS NOT NULL AND " + m[2]);
+                            } else {
+                                String rest = m[0].substring((m[1] + " s0 ").length());
+                                unionBranches.add("SELECT rx." + rootKey + " AS rid FROM " + this.root.table + " rx JOIN " + m[1]
+                                        + " s0 ON rx." + e.getKey() + "=s0." + m[4] + " " + rest + "WHERE " + m[2]);
+                            }
+                            parameters.addAll(branchParams.get(m));
+                        }
+                    }
+                    groupFilters.add(this.root.alias + "." + rootKey + " IN (SELECT u.rid FROM (" + String.join(" UNION ALL ", unionBranches) + ") u)");
+                } else {
+                    // One root column (the usual case), or root key unknown: one semi-join per column.
+                    for (Map.Entry<String, List<String[]>> e : hopBranchesByField.entrySet()) {
+                        List<String[]> branches = e.getValue();
+                        if (branches.size() == 1) {
+                            // Single hop branch: non-correlated semi-join — Impala evaluates as hash join
+                            String[] m = branches.get(0);
+                            // m[3]=fromField on root alias, m[4]=toField on subquery table, m[0]=FROM chain, m[2]=predicate
+                            groupFilters.add(this.root.alias + "." + m[3] + " IN (SELECT DISTINCT s0." + m[4] + " FROM " + m[0] + "WHERE s0." + m[4] + " IS NOT NULL AND " + m[2] + ")");
+                        } else {
+                            // Multi-branch: non-correlated IN over UNION ALL — hash join on Impala.
+                            // IS NOT NULL guard ensures IN semantics match EXISTS when FK can be null.
+                            List<String> unionBranches = new ArrayList<>();
+                            for (String[] m : branches) {
+                                unionBranches.add("SELECT s0." + m[4] + " AS rid FROM " + m[0] + "WHERE s0." + m[4] + " IS NOT NULL AND " + m[2]);
+                            }
+                            groupFilters.add(this.root.alias + "." + e.getKey() + " IN (SELECT u.rid FROM (" + String.join(" UNION ALL ", unionBranches) + ") u)");
+                        }
+                        for (String[] m : branches) parameters.addAll(branchParams.get(m));
+                    }
                 }
             } else {
                 // Default behavior (mostly AND): build simple predicates or EXISTS per filter
@@ -672,6 +721,14 @@ public class SqlQueryTree {
             }
         }
         return mappedFilters;
+    }
+
+    /** Removes and returns the parameters bound after position {@code base}. */
+    private static List<Object> takeParams(List<Object> parameters, int base) {
+        List<Object> tail = parameters.subList(base, parameters.size());
+        List<Object> taken = new ArrayList<>(tail);
+        tail.clear();
+        return taken;
     }
 
     private Object mapType(String value, String datatype) {

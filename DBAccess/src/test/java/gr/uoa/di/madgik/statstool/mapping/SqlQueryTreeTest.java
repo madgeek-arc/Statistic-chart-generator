@@ -13,7 +13,9 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -1075,5 +1077,119 @@ public class SqlQueryTreeTest {
                 "Denorm filter in deep path must not reference indi_pub_gold; got: " + sql);
         assertTrue(sql.matches("(?s).*\\.is_gold_oa\\b.*"),
                 "Column is_gold_oa must appear in filter output; got: " + sql);
+    }
+
+    // --- OR groups whose branches start from different root columns ---
+    // project.organization.* starts from project.id (-> project_organizations.id),
+    // project.funder.* starts from project.funder (-> funder.name).
+
+    private ProfileConfiguration buildProjectProfile() {
+        ProfileConfiguration pc = new ProfileConfiguration();
+        pc.tables.put("project", new Table("project", "id", null));
+        pc.tables.put("organization", new Table("organization", "id", null));
+        pc.tables.put("funder", new Table("funder", "id", null));
+        pc.tables.put("project_classification", new Table("project_classification", "id", null));
+        pc.fields.put("project.id", new Field("project", "id", "int"));
+        pc.fields.put("project.funding_lvl0", new Field("project", "funding_lvl0", "text"));
+        pc.fields.put("organization.country", new Field("organization", "country", "text"));
+        pc.fields.put("funder.country", new Field("funder", "country", "text"));
+        pc.fields.put("funder.name", new Field("funder", "name", "text"));
+        pc.fields.put("project_classification.level2", new Field("project_classification", "level2", "text"));
+        pc.relations.put("project.organization", Arrays.asList(
+                new Join("project", "id", "project_organizations", "id"),
+                new Join("project_organizations", "organization", "organization", "id")));
+        pc.relations.put("project.funder", Collections.singletonList(new Join("project", "funder", "funder", "name")));
+        pc.relations.put("project.project_classification",
+                Collections.singletonList(new Join("project", "id", "project_classification", "id")));
+        return pc;
+    }
+
+    private static Filter eq(String field, String value) {
+        return new Filter(field, "=", Collections.singletonList(value), null);
+    }
+
+    private static String sqlFor(ProfileConfiguration pc, List<Object> params, FilterGroup... groups) {
+        Query q = new Query(null, null, Arrays.asList(groups),
+                Arrays.asList(new Select("project", "count", 1)), "project", "test", 0, null, false);
+        return new SqlQueryBuilder(q, pc).getSqlQuery(params, null);
+    }
+
+    @Test
+    public void orFilter_branchesFromDifferentRootColumns_eachBranchCorrelatesOnItsOwnColumn() {
+        List<Object> params = new ArrayList<>();
+        String sql = sqlFor(buildProjectProfile(), params, new FilterGroup(Arrays.asList(
+                eq("project.organization.country", "IE"), eq("project.funder.country", "GR")), "OR"));
+
+        // single semi-join on the key (Impala rejects subqueries inside OR) ...
+        assertTrue(sql.contains("p0.id IN (SELECT u.rid FROM ("), sql);
+        assertFalse(sql.matches("(?s).*\\bIN \\(.*\\bOR\\b.*\\bIN \\(.*"), "no OR between subqueries: " + sql);
+        // ... organization branch unchanged, funder branch mapped back to project.id via project.funder
+        assertTrue(sql.contains("SELECT s0.id AS rid FROM project_organizations s0 JOIN organization s1 ON s0.organization=s1.id WHERE s0.id IS NOT NULL AND s1.country=?"), sql);
+        assertTrue(sql.contains("SELECT rx.id AS rid FROM project rx JOIN funder s0 ON rx.funder=s0.name WHERE s0.country=?"), sql);
+        assertFalse(sql.contains("s0.name AS rid"), "funder names must never be compared with project ids: " + sql);
+        assertEquals(Arrays.asList("IE", "GR"), params);
+    }
+
+    @Test
+    public void orFilter_branchesFromSameRootColumn_keepSingleUnionOnThatColumn() {
+        List<Object> params = new ArrayList<>();
+        String sql = sqlFor(buildProjectProfile(), params, new FilterGroup(Arrays.asList(
+                eq("project.funder.name", "European Commission"), eq("project.funder.country", "GR")), "OR"));
+
+        assertTrue(sql.contains("p0.funder IN (SELECT u.rid FROM (SELECT s0.name AS rid FROM funder s0 WHERE s0.name IS NOT NULL AND s0.name=? "
+                + "UNION ALL SELECT s0.name AS rid FROM funder s0 WHERE s0.name IS NOT NULL AND s0.country=?) u)"), sql);
+        assertFalse(sql.contains("rx."), sql);
+        assertEquals(Arrays.asList("European Commission", "GR"), params);
+    }
+
+    @Test
+    public void orFilter_mixedRootColumns_withSameColumnBranches_mergesIntoOneKeyUnion() {
+        List<Object> params = new ArrayList<>();
+        String sql = sqlFor(buildProjectProfile(), params, new FilterGroup(Arrays.asList(
+                eq("project.organization.country", "IE"),
+                eq("project.funder.country", "GR"),
+                new Filter("project.project_classification.level2", "is_not_null", Collections.emptyList(), null)), "OR"));
+
+        assertTrue(sql.contains("p0.id IN (SELECT u.rid FROM (SELECT s0.id AS rid FROM project_organizations s0"), sql);
+        assertTrue(sql.contains("UNION ALL SELECT s0.id AS rid FROM project_classification s0 WHERE s0.id IS NOT NULL AND s0.level2 IS NOT NULL"), sql);
+        assertTrue(sql.contains("UNION ALL SELECT rx.id AS rid FROM project rx JOIN funder s0 ON rx.funder=s0.name WHERE s0.country=?"), sql);
+        // id branches first, then the funder branch: parameters follow the SQL order
+        assertEquals(Arrays.asList("IE", "GR"), params);
+    }
+
+    @Test
+    public void orFilter_rootPredicateAfterHopPredicate_parametersFollowSqlOrder() {
+        // The root predicate is emitted first in the SQL although it comes last in the filter list.
+        List<Object> params = new ArrayList<>();
+        String sql = sqlFor(buildProjectProfile(), params, new FilterGroup(Arrays.asList(
+                eq("project.organization.country", "IE"), eq("project.funding_lvl0", "H2020")), "OR"));
+
+        assertTrue(sql.indexOf("p0.funding_lvl0=?") < sql.indexOf("s1.country=?"), sql);
+        assertEquals(Arrays.asList("H2020", "IE"), params);
+    }
+
+    @Test
+    public void orFilter_parametersOfOtherGroupsKeepTheirPositions() {
+        List<Object> params = new ArrayList<>();
+        String sql = sqlFor(buildProjectProfile(), params,
+                new FilterGroup(Collections.singletonList(eq("project.funding_lvl0", "FP7")), "AND"),
+                new FilterGroup(Arrays.asList(eq("project.funder.country", "GR"), eq("project.organization.country", "IE")), "OR"),
+                new FilterGroup(Collections.singletonList(eq("project.funder.name", "EC")), "AND"));
+
+        // pair every placeholder (in SQL order) with the column in front of it
+        assertEquals(Map.of("p0.funding_lvl0", "FP7", "s0.country", "GR", "s1.country", "IE", "s0.name", "EC"),
+                placeholderBindings(sql, params), sql);
+    }
+
+    /** Maps "<alias>.<column>" in front of each "=?" to the parameter bound to that placeholder. */
+    private static Map<String, Object> placeholderBindings(String sql, List<Object> params) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("([a-z]+[0-9]+\\.[a-z_0-9]+)=\\?").matcher(sql);
+        Map<String, Object> out = new HashMap<>();
+        int i = 0;
+        while (m.find()) {
+            assertNull(out.put(m.group(1), params.get(i++)), "column bound twice: " + m.group(1));
+        }
+        assertEquals(params.size(), i, "every parameter must have a placeholder: " + sql);
+        return out;
     }
 }
