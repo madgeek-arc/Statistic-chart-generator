@@ -59,7 +59,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_happyPath_returnsConfirmation() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
 
         NlMcpTools.clearSignedQuery();
@@ -70,7 +70,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_happyPath_populatesThreadLocal() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
 
         NlMcpTools.clearSignedQuery();
@@ -85,7 +85,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_happyPath_cachesGeneratedSql() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of("pub")));
 
         NlMcpTools.clearSignedQuery();
@@ -99,7 +99,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_happyPath_signatureIsVerifiable() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
 
         NlMcpTools.clearSignedQuery();
@@ -113,7 +113,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_generationFails_returnsErrorString() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("LLM parse error"));
 
         NlMcpTools.clearSignedQuery();
@@ -124,7 +124,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_generationFails_doesNotCache() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("fail"));
 
         NlMcpTools.clearSignedQuery();
@@ -135,7 +135,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_generationFails_doesNotPopulateThreadLocal() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("fail"));
 
         NlMcpTools.clearSignedQuery();
@@ -148,7 +148,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_unknownTable_returnsErrorString() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT * FROM unknown_table", List.of()));
 
         NlMcpTools.clearSignedQuery();
@@ -161,7 +161,7 @@ public class NlMcpToolsTest {
 
     @Test
     void signNlQuery_ddlSql_returnsErrorString() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("DROP TABLE result", List.of()));
 
         NlMcpTools.clearSignedQuery();
@@ -175,7 +175,7 @@ public class NlMcpToolsTest {
 
     @Test
     void clearSignedQuery_preventsConsuming() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
         tools.signNlQuery("openaire", "nl");
 
@@ -186,7 +186,7 @@ public class NlMcpToolsTest {
 
     @Test
     void consumeSignedQuery_clearsThreadLocal() {
-        when(sqlGenerator.generate(any(), any(), any()))
+        when(sqlGenerator.generate(any(), any(), any(), any()))
                 .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
         NlMcpTools.clearSignedQuery();
         tools.signNlQuery("openaire", "nl");
@@ -261,5 +261,42 @@ public class NlMcpToolsTest {
         List<String> result = tools.getFieldValues("openaire", "result.type", 5);
 
         assertTrue(result.isEmpty());
+    }
+
+    // --- signNlQuery: SQL is run before it is cached ---
+
+    @Test
+    void signNlQuery_dbRejectsSql_returnsErrorAndDoesNotCache() throws Exception {
+        when(sqlGenerator.generate(any(), any(), any(), any()))
+                .thenReturn(new SqlResult("SELECT COUNT(*) FROM result", List.of()));
+        when(statsService.queryRaw(any()))
+                .thenThrow(new gr.uoa.di.madgik.statstool.services.StatsServiceException("AnalysisException"));
+
+        NlMcpTools.clearSignedQuery();
+        String result = tools.signNlQuery("openaire", "total publications");
+
+        assertTrue(result.startsWith("ERROR:"));
+        verify(nlSqlCache, never()).put(any(), any(), any(), any());
+        assertNull(NlMcpTools.consumeSignedQuery());
+    }
+
+    @Test
+    void signNlQuery_dbRejectsSql_repairedSqlIsCachedAndSigned() throws Exception {
+        String bad = "SELECT COUNT(*) FROM result WHERE x";
+        String good = "SELECT COUNT(*) FROM result";
+        when(sqlGenerator.generate(any(), any(), any(), any()))
+                .thenReturn(new SqlResult(bad, List.of()));
+        when(statsService.queryRaw(argThat(q -> q != null && bad.equals(q.getQuery()))))
+                .thenThrow(new gr.uoa.di.madgik.statstool.services.StatsServiceException("AnalysisException"));
+        when(sqlGenerator.repair(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new SqlResult(good, List.of()));
+
+        NlMcpTools.clearSignedQuery();
+        String result = tools.signNlQuery("openaire", "total publications");
+
+        assertEquals("Signed successfully.", result);
+        verify(nlSqlCache).put(eq("openaire"), eq("total publications"),
+                argThat((NlCachedEntry e) -> good.equals(e.qwp().getQuery())), anyString());
+        assertEquals(good, NlMcpTools.consumeSignedQuery().sql());
     }
 }

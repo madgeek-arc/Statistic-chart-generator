@@ -2,17 +2,14 @@ package gr.uoa.di.madgik.ChartDataFormatter.nl;
 
 import gr.uoa.di.madgik.ChartDataFormatter.nl.signing.NlRequestSigner;
 import gr.uoa.di.madgik.statstool.domain.FilterGroup;
-import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
-import gr.uoa.di.madgik.statstool.mapping.SqlSafetyValidator;
 import gr.uoa.di.madgik.statstool.repositories.NlCachedEntry;
 import gr.uoa.di.madgik.statstool.repositories.NlSqlCache;
 import gr.uoa.di.madgik.statstool.mapping.domain.ProfileConfiguration;
 import gr.uoa.di.madgik.statstool.services.StatsService;
 import gr.uoa.di.madgik.statstool.services.StatsServiceException;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
@@ -77,16 +74,12 @@ public class NlQueryService {
         }
 
         ProfileSchema schema = schemaBuilder.build(profile);
-        SqlResult sqlResult = sqlGenerator.generate(canonicalNl, profile, schema, extraFilters);
+        NlSqlRunner.Verified verified = NlSqlRunner.generateAndRun(
+                sqlGenerator, statsService, config, profile, canonicalNl, schema, extraFilters);
 
-        SqlSafetyValidator.validate(sqlResult.getSql(), config);
-
-        QueryWithParameters qwp = new QueryWithParameters(
-                sqlResult.getSql(),
-                new ArrayList<>(sqlResult.getParameters()),
-                profile + ".public"
-        );
-        nlSqlCache.put(profile, cacheKey, new NlCachedEntry(qwp, sqlResult.getDescription()), fingerprint);
-        return statsService.queryRaw(qwp);
+        // Cache only SQL that has actually run on the profile's backend.
+        nlSqlCache.put(profile, cacheKey,
+                new NlCachedEntry(verified.qwp(), verified.sql().getDescription()), fingerprint);
+        return verified.result();
     }
 }

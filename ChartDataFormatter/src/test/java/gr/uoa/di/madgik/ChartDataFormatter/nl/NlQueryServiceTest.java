@@ -158,4 +158,74 @@ public class NlQueryServiceTest {
 
         verify(nlSqlCache, never()).put(any(), any(), any(), any());
     }
+
+    // --- execute: database rejects the generated SQL ---
+
+    private static final String BAD_SQL = "SELECT COUNT(DISTINCT result.id), result.type FROM result";
+    private static final String GOOD_SQL = "SELECT COUNT(DISTINCT result.id), result.type FROM result GROUP BY result.type";
+
+    private void stubCacheMissWithGeneratedSql(String sql) {
+        when(nlSqlCache.get(any(), any(), any())).thenReturn(null);
+        when(mapper.getEntities("openaire")).thenReturn(new java.util.HashMap<>());
+        when(sqlGenerator.generate(any(), any(), any(), any()))
+                .thenReturn(new SqlResult(sql, new ArrayList<>()));
+    }
+
+    @Test
+    void execute_dbRejectsSql_noRepair_throwsAndDoesNotCache() throws StatsServiceException {
+        stubCacheMissWithGeneratedSql(BAD_SQL);
+        when(statsService.queryRaw(any())).thenThrow(new StatsServiceException("AnalysisException: missing from GROUP BY"));
+
+        assertThrows(StatsServiceException.class, () -> service.execute("openaire", "results per type"));
+
+        verify(nlSqlCache, never()).put(any(), any(), any(), any());
+    }
+
+    @Test
+    void execute_dbRejectsSql_repairedSqlRunsAndIsCached() throws StatsServiceException {
+        stubCacheMissWithGeneratedSql(BAD_SQL);
+        Result expected = new Result();
+        when(statsService.queryRaw(argThat(q -> q != null && BAD_SQL.equals(q.getQuery()))))
+                .thenThrow(new StatsServiceException("AnalysisException: missing from GROUP BY"));
+        when(statsService.queryRaw(argThat(q -> q != null && GOOD_SQL.equals(q.getQuery()))))
+                .thenReturn(expected);
+        when(sqlGenerator.repair(eq("results per type"), eq("openaire"), any(), any(),
+                argThat(f -> BAD_SQL.equals(f.getSql())), contains("GROUP BY")))
+                .thenReturn(new SqlResult(GOOD_SQL, new ArrayList<>(), "Results per type"));
+
+        Result actual = service.execute("openaire", "results per type");
+
+        assertSame(expected, actual);
+        verify(nlSqlCache).put(eq("openaire"), eq("results per type"),
+                argThat((NlCachedEntry e) -> GOOD_SQL.equals(e.qwp().getQuery())), anyString());
+        verify(nlSqlCache, never()).put(any(), any(),
+                argThat((NlCachedEntry e) -> BAD_SQL.equals(e.qwp().getQuery())), any());
+    }
+
+    @Test
+    void execute_repairedSqlAlsoFails_throwsAndDoesNotCache() throws StatsServiceException {
+        stubCacheMissWithGeneratedSql(BAD_SQL);
+        when(statsService.queryRaw(any())).thenThrow(new StatsServiceException("still broken"));
+        when(sqlGenerator.repair(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new SqlResult(GOOD_SQL, new ArrayList<>()));
+
+        assertThrows(StatsServiceException.class, () -> service.execute("openaire", "results per type"));
+
+        verify(sqlGenerator, times(1)).repair(any(), any(), any(), any(), any(), any());
+        verify(nlSqlCache, never()).put(any(), any(), any(), any());
+    }
+
+    @Test
+    void execute_invalidSql_isRepairedBeforeRunning() throws StatsServiceException {
+        stubCacheMissWithGeneratedSql("SELECT * FROM unknown_table");
+        when(sqlGenerator.repair(any(), any(), any(), any(), any(), any()))
+                .thenReturn(new SqlResult(GOOD_SQL, new ArrayList<>()));
+        when(statsService.queryRaw(any())).thenReturn(new Result());
+
+        service.execute("openaire", "results per type");
+
+        verify(statsService, times(1)).queryRaw(argThat(q -> GOOD_SQL.equals(q.getQuery())));
+        verify(nlSqlCache).put(eq("openaire"), eq("results per type"),
+                argThat((NlCachedEntry e) -> GOOD_SQL.equals(e.qwp().getQuery())), anyString());
+    }
 }

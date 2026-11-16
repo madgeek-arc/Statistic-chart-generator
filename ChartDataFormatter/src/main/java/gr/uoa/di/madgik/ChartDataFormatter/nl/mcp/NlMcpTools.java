@@ -1,12 +1,12 @@
 package gr.uoa.di.madgik.ChartDataFormatter.nl.mcp;
 
 import gr.uoa.di.madgik.ChartDataFormatter.nl.NlSqlGenerator;
+import gr.uoa.di.madgik.ChartDataFormatter.nl.NlSqlRunner;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.ProfileSchema;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.ProfileSchemaBuilder;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.SqlResult;
 import gr.uoa.di.madgik.ChartDataFormatter.nl.signing.NlRequestSigner;
 import gr.uoa.di.madgik.statstool.domain.Query;
-import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.Select;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
@@ -104,22 +104,21 @@ public class NlMcpTools {
     @Tool(description = "Generates SQL, signs the canonical NL query, caches the result, and returns a confirmation. Call this when the conversation is complete and the user is satisfied.")
     public String signNlQuery(String profile, String canonicalNl) {
         ProfileSchema schema = getSchema(profile);
-        SqlResult sqlResult;
+        ProfileConfiguration config = mapper.getProfileConfiguration(profile);
+        NlSqlRunner.Verified verified;
         try {
-            sqlResult = sqlGenerator.generate(canonicalNl, profile, schema);
-            SqlSafetyValidator.validate(sqlResult.getSql(), mapper.getProfileConfiguration(profile));
+            // Runs the SQL once (repairing it once from the database error if needed), so only
+            // SQL that works on the profile's backend is cached and signed.
+            verified = NlSqlRunner.generateAndRun(sqlGenerator, statsService, config, profile,
+                    canonicalNl, schema, List.of());
         } catch (Exception e) {
             return "ERROR: Could not generate valid SQL for this query: " + e.getMessage()
                     + ". Please refine the query description and try again.";
         }
+        SqlResult sqlResult = verified.sql();
 
-        String fingerprint = NlSqlCache.fingerprint(mapper.getProfileConfiguration(profile));
-        QueryWithParameters qwp = new QueryWithParameters(
-                sqlResult.getSql(),
-                new java.util.ArrayList<>(sqlResult.getParameters()),
-                profile + ".public"
-        );
-        nlSqlCache.put(profile, canonicalNl, new NlCachedEntry(qwp, sqlResult.getDescription()), fingerprint);
+        String fingerprint = NlSqlCache.fingerprint(config);
+        nlSqlCache.put(profile, canonicalNl, new NlCachedEntry(verified.qwp(), sqlResult.getDescription()), fingerprint);
 
         String sig = signer.sign(profile, canonicalNl);
         pendingSign.set(new SignedQuery(canonicalNl, sig, sqlResult.getSql(), sqlResult.getDescription()));

@@ -93,4 +93,18 @@ public class ClaudeNlSqlGeneratorParseTest {
         SqlResult result = generator.parseResponse(response);
         assertEquals("SELECT 1 FROM result", result.getSql());
     }
+
+    @Test
+    void repairPrompt_containsOriginalPromptFailedSqlParametersAndError() {
+        String prompt = ClaudeNlSqlGenerator.buildRepairPrompt(
+                "Schema:\n...\n\nQuery: results per country",
+                new SqlResult("SELECT COUNT(DISTINCT r.id), c.name FROM result r", List.of("2023")),
+                "AnalysisException: missing from GROUP BY clause");
+
+        assertTrue(prompt.startsWith("Schema:"));
+        assertTrue(prompt.contains("Query: results per country"));
+        assertTrue(prompt.contains("SQL: SELECT COUNT(DISTINCT r.id), c.name FROM result r"));
+        assertTrue(prompt.contains("Parameters: [2023]"));
+        assertTrue(prompt.contains("Error: AnalysisException: missing from GROUP BY clause"));
+    }
 }
