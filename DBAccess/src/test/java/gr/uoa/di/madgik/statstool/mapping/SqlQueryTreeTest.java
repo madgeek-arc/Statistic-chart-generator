@@ -939,11 +939,33 @@ public class SqlQueryTreeTest {
                     "result", "test", 0, null, false);
 
             List<Object> params = new ArrayList<>();
-            new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+            String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
 
             assertEquals(Collections.singletonList(c[3]), params,
                     c[0] + " value '" + c[2] + "' must bind as " + c[3].getClass().getSimpleName());
+            // double/number: cast the placeholder so DuckDB binds DOUBLE regardless of DECIMAL scale
+            String expected = c[3] instanceof Long ? c[1] + "?" : c[1] + "CAST(? AS DOUBLE)";
+            assertTrue(sql.contains(expected), "expected '" + expected + "' in: " + sql);
         }
+    }
+
+    @Test
+    public void numericFilter_inListAndBetween_castEveryPlaceholder() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        pc.fields.put("result.score_dec", new Field("result", "score_dec", "double"));
+        Filter in = new Filter("result.score_dec", "=", Arrays.asList("1", "2"), null);
+        Filter between = new Filter("result.score_dec", "between", Arrays.asList("0.5", "3"), null);
+        Query apiQuery = new Query(null, null,
+                Collections.singletonList(new FilterGroup(Arrays.asList(in, between), "AND")),
+                Arrays.asList(new Select("result.id", null, 1)),
+                "result", "test", 0, null, false);
+
+        List<Object> params = new ArrayList<>();
+        String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+        assertTrue(sql.contains(" IN (CAST(? AS DOUBLE), CAST(? AS DOUBLE))"), sql);
+        assertTrue(sql.contains(" BETWEEN CAST(? AS DOUBLE) AND CAST(? AS DOUBLE)"), sql);
+        assertEquals(4, params.size());
     }
 
     @Test

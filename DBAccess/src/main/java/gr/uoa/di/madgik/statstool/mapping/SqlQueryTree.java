@@ -427,16 +427,17 @@ public class SqlQueryTree {
 
             // Helper to build predicate for a qualified column and bind params
             java.util.function.BiFunction<String, Filter, String> buildPredicate = (qualifiedCol, f) -> {
+                String ph = placeholder(f.getDatatype());
                 switch (f.getType()) {
                     case "=":
                     case "!=": {
                         List<String> vals = f.getValues();
                         if (vals.size() == 1) {
                             parameters.add(mapType(vals.get(0), f.getDatatype()));
-                            return qualifiedCol + f.getType() + "?";
+                            return qualifiedCol + f.getType() + ph;
                         }
                         // Multiple values: use IN / NOT IN
-                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), "?")) + ")";
+                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), ph)) + ")";
                         for (String value : vals) {
                             parameters.add(mapType(value, f.getDatatype()));
                         }
@@ -446,7 +447,7 @@ public class SqlQueryTree {
                     case "not_in": {
                         // Explicit set membership: always emit IN / NOT IN, regardless of value count
                         List<String> vals = f.getValues();
-                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), "?")) + ")";
+                        String placeholder = "(" + String.join(", ", Collections.nCopies(vals.size(), ph)) + ")";
                         for (String value : vals) {
                             parameters.add(mapType(value, f.getDatatype()));
                         }
@@ -457,11 +458,11 @@ public class SqlQueryTree {
                     case "<":
                     case "<=":
                         parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
-                        return qualifiedCol + f.getType() + "?";
+                        return qualifiedCol + f.getType() + ph;
                     case "between":
                         parameters.add(mapType(f.getValues().get(0), f.getDatatype()));
                         parameters.add(mapType(f.getValues().get(1), f.getDatatype()));
-                        return qualifiedCol + " BETWEEN ? AND ?";
+                        return qualifiedCol + " BETWEEN " + ph + " AND " + ph;
                     case "contains":
                         parameters.add(mapType(f.getValues().get(0).toLowerCase(), f.getDatatype()));
                         return "lower(" + qualifiedCol + ") LIKE CONCAT('%', ?, '%')";
@@ -731,6 +732,14 @@ public class SqlQueryTree {
         return taken;
     }
 
+    /**
+     * Placeholder for a filter value. double/number fields may be DECIMAL(p,s), DOUBLE or BIGINT
+     * columns; the explicit cast gives the parameter one type that both drivers bind from a Number.
+     */
+    static String placeholder(String datatype) {
+        return "double".equals(datatype) || "number".equals(datatype) ? "CAST(? AS DOUBLE)" : "?";
+    }
+
     private Object mapType(String value, String datatype) {
         switch (datatype) {
             case "text":
@@ -744,9 +753,10 @@ public class SqlQueryTree {
                 return Long.parseLong(value.trim());
             case "double":
             case "number":
-                // BigDecimal, not Double: Arrow Flight SQL (DuckDB) binds DECIMAL columns only from
-                // BigDecimal and DOUBLE/BIGINT columns from any Number; Hive JDBC (Impala) inlines it
-                // as a plain numeric literal. Bound as String these failed on DuckDB.
+                // Exact numeric literal; Hive JDBC (Impala) inlines it as-is. The placeholder is
+                // CAST(? AS DOUBLE) (see placeholder()), so Arrow Flight SQL (DuckDB) binds it as
+                // DOUBLE whatever the column type: bound as String it failed, and a BigDecimal bound
+                // straight to a DECIMAL column must match the column's scale.
                 return new java.math.BigDecimal(value.trim());
             case "boolean":
             case "bool":
