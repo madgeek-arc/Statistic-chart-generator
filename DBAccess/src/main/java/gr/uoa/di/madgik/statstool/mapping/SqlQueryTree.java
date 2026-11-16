@@ -740,6 +740,14 @@ public class SqlQueryTree {
                 return Integer.parseInt(value);
             case "float":
                 return Float.parseFloat(value);
+            case "bigint":
+                return Long.parseLong(value.trim());
+            case "double":
+            case "number":
+                // BigDecimal, not Double: Arrow Flight SQL (DuckDB) binds DECIMAL columns only from
+                // BigDecimal and DOUBLE/BIGINT columns from any Number; Hive JDBC (Impala) inlines it
+                // as a plain numeric literal. Bound as String these failed on DuckDB.
+                return new java.math.BigDecimal(value.trim());
             case "boolean":
             case "bool":
                 // Bind a real Boolean: drivers with typed parameters (Arrow Flight SQL / DuckDB)

@@ -920,6 +920,47 @@ public class SqlQueryTreeTest {
     }
 
     @Test
+    public void numericFilters_bindTypedParameters_forDoubleNumberAndBigint() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        pc.fields.put("result.score_dec", new Field("result", "score_dec", "double"));
+        pc.fields.put("result.total", new Field("result", "total", "number"));
+        pc.fields.put("result.big", new Field("result", "big", "bigint"));
+        Object[][] cases = {
+                {"result.score_dec", ">", "0", new java.math.BigDecimal("0")},
+                {"result.score_dec", "=", " 2.5 ", new java.math.BigDecimal("2.5")},
+                {"result.total", ">=", "10", new java.math.BigDecimal("10")},
+                {"result.big", "<", "9000000000", 9000000000L},
+        };
+        for (Object[] c : cases) {
+            Filter f = new Filter((String) c[0], (String) c[1], Collections.singletonList((String) c[2]), null);
+            Query apiQuery = new Query(null, null,
+                    Collections.singletonList(new FilterGroup(Collections.singletonList(f), "AND")),
+                    Arrays.asList(new Select("result.id", null, 1)),
+                    "result", "test", 0, null, false);
+
+            List<Object> params = new ArrayList<>();
+            new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
+
+            assertEquals(Collections.singletonList(c[3]), params,
+                    c[0] + " value '" + c[2] + "' must bind as " + c[3].getClass().getSimpleName());
+        }
+    }
+
+    @Test
+    public void numericFilter_rejectsNonNumericValue() {
+        ProfileConfiguration pc = buildProfileWithDenormField();
+        pc.fields.put("result.score_dec", new Field("result", "score_dec", "double"));
+        Filter f = new Filter("result.score_dec", ">", Collections.singletonList("abc"), null);
+        Query apiQuery = new Query(null, null,
+                Collections.singletonList(new FilterGroup(Collections.singletonList(f), "AND")),
+                Arrays.asList(new Select("result.id", null, 1)),
+                "result", "test", 0, null, false);
+
+        assertThrows(NumberFormatException.class,
+                () -> new SqlQueryBuilder(apiQuery, pc).getSqlQuery(new ArrayList<>(), null));
+    }
+
+    @Test
     public void parseBoolean_rejectsNonBooleanValue() {
         assertThrows(IllegalArgumentException.class, () -> SqlQueryTree.parseBoolean("maybe"));
     }
