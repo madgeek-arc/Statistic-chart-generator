@@ -198,40 +198,119 @@ public class SqlQueryTree {
             }
         }
 
-        // Build direct JOINs for non-root non-aggregate selects (GROUP BY columns)
-        StringBuilder directJoins = new StringBuilder();
-        Set<Node> directJoinedNodes = new LinkedHashSet<>();
+        // Direct JOINs for non-root non-aggregate selects (GROUP BY columns).
         // Map table name → direct-join alias so AND filters on the same path skip EXISTS and apply inline.
         // This ensures e.g. "datasource.type != 'Other'" is applied as WHERE d1.type != 'Other' rather than
         // EXISTS(...type != 'Other'), which would still allow 'Other' rows through the GROUP BY.
+        Set<Node> directJoinedNodes = new LinkedHashSet<>();   // parents before children
         Map<String, String> directJoinTableToAlias = new LinkedHashMap<>();
         for (Map.Entry<Node, List<Select>> e : nonRootDirectSelects.entrySet()) {
-            Node nd = e.getKey();
             List<Node> path = new ArrayList<>();
-            Node cur = nd;
+            Node cur = e.getKey();
             while (cur != null && cur != this.root) {
                 path.add(cur);
                 cur = cur.parent;
             }
             Collections.reverse(path);
-            if (path.isEmpty()) continue;
-
-            for (int i = 0; i < path.size(); i++) {
-                Node node = path.get(i);
+            for (Node node : path) {
                 if (directJoinedNodes.add(node)) {
-                    Node parentNode = (i == 0) ? this.root : path.get(i - 1);
-                    directJoins.append("JOIN ").append(node.table).append(" ").append(node.alias)
-                               .append(" ON ").append(parentNode.alias).append(".").append(node.parentJoinFrom)
-                               .append("=").append(node.alias).append(".").append(node.parentJoinTo)
-                               .append(" ");
                     directJoinTableToAlias.put(node.table, node.alias);
                 }
             }
-            for (Select s : e.getValue()) {
-                selects.add(new OrderedSelect(s.getOrder(), s.getField()));
-                if (!group.contains(s.getField())) group.add(s.getField());
+        }
+
+        // A joined path can hold several rows per root row with the same grouped values (a project has one
+        // project_classification row per programme code, so 1-3 rows per level1; a result has one
+        // result_organization row per organisation, so several rows per country). The plain JOINs then repeat
+        // the root row. COUNT(DISTINCT), MIN and MAX do not change with repeated rows; any other aggregate does
+        // (SUM inflated, AVG weighted by the repeats). Non-root aggregates are summed in the outer query
+        // (SUM(dN.cK)), so they are affected whatever their own function is. In that case each path from the
+        // root is joined as ONE subquery, SELECT DISTINCT <first join key>, <columns the query uses> FROM <path>
+        // WHERE <its AND filters>, so a root row meets exactly one row per distinct combination of grouped values.
+        boolean dedupe = !directJoinedNodes.isEmpty()
+                && (!nonRootSelects.isEmpty() || this.root.selects.stream()
+                        .anyMatch(sel -> sel.getAggregate() != null && !isRepeatInsensitive(sel.getAggregate())));
+        Map<String, String> aliasToDerived = new HashMap<>();   // node alias -> alias of its path subquery
+        Map<Node, List<Node>> pathNodes = new LinkedHashMap<>(); // first node of a path -> nodes of the path
+        if (dedupe) {
+            for (Node node : directJoinedNodes) {
+                Node top = node;
+                while (top.parent != this.root) top = top.parent;
+                pathNodes.computeIfAbsent(top, k -> new ArrayList<>()).add(node);
+            }
+            int i = 0;
+            for (Map.Entry<Node, List<Node>> e : pathNodes.entrySet()) {
+                String dj = "dj" + (++i);   // node aliases are one letter + digits, so "djN" cannot collide
+                for (Node n : e.getValue()) aliasToDerived.put(n.alias, dj);
             }
         }
+        // Outer reference to column col of joined alias a: a.col, or djN.a_col when a is inside a path subquery
+        java.util.function.BinaryOperator<String> joinedColRef = (a, col) ->
+                aliasToDerived.containsKey(a) ? aliasToDerived.get(a) + "." + a + "_" + col : a + "." + col;
+
+        for (Map.Entry<Node, List<Select>> e : nonRootDirectSelects.entrySet()) {
+            for (Select s : e.getValue()) {
+                String f = s.getField();
+                String ref = joinedColRef.apply(f.substring(0, f.indexOf(".")), f.substring(f.indexOf(".") + 1));
+                selects.add(new OrderedSelect(s.getOrder(), ref));
+                if (!group.contains(ref)) group.add(ref);
+            }
+        }
+
+        // Filters are mapped before the JOINs are written: with dedupe, AND filters on a joined alias move inside
+        // its path subquery (filtering first and joining after gives the same rows as joining and then filtering),
+        // and their parameters come first, as the JOINs precede WHERE. Predicates of OR groups stay in WHERE.
+        Map<String, List<String>> pushedPreds = dedupe ? new HashMap<>() : null;
+        Map<String, List<Object>> pushedParams = dedupe ? new HashMap<>() : null;
+        Map<String, Set<String>> inlineCols = new HashMap<>();
+        List<Object> whereParams = new ArrayList<>();
+        List<String> op = new ArrayList<>();
+        List<List<String>> allTheFilters = mapFilters(filterGroups, whereParams, op, directJoinTableToAlias,
+                pushedPreds, pushedParams, inlineCols, joinedColRef);
+
+        StringBuilder directJoins = new StringBuilder();
+        if (!dedupe) {
+            for (Node node : directJoinedNodes) {
+                directJoins.append("JOIN ").append(node.table).append(" ").append(node.alias)
+                           .append(" ON ").append(node.parent.alias).append(".").append(node.parentJoinFrom)
+                           .append("=").append(node.alias).append(".").append(node.parentJoinTo)
+                           .append(" ");
+            }
+        } else {
+            for (Map.Entry<Node, List<Node>> e : pathNodes.entrySet()) {
+                Node top = e.getKey();
+                String dj = aliasToDerived.get(top.alias);
+                StringBuilder sub = new StringBuilder("(SELECT DISTINCT ");
+                sub.append(top.alias).append(".").append(top.parentJoinTo).append(" AS k");
+                for (Node n : e.getValue()) {
+                    Set<String> cols = new LinkedHashSet<>();
+                    for (Select s : nonRootDirectSelects.getOrDefault(n, Collections.emptyList())) {
+                        cols.add(s.getField().substring(s.getField().indexOf(".") + 1));
+                    }
+                    cols.addAll(inlineCols.getOrDefault(n.alias, Collections.emptySet()));
+                    for (String c : cols) {
+                        sub.append(", ").append(n.alias).append(".").append(c).append(" AS ").append(n.alias).append("_").append(c);
+                    }
+                }
+                sub.append(" FROM ").append(top.table).append(" ").append(top.alias);
+                List<String> preds = new ArrayList<>();
+                for (Node n : e.getValue()) {
+                    if (n != top) {
+                        sub.append(" JOIN ").append(n.table).append(" ").append(n.alias)
+                           .append(" ON ").append(n.parent.alias).append(".").append(n.parentJoinFrom)
+                           .append("=").append(n.alias).append(".").append(n.parentJoinTo);
+                    }
+                    preds.addAll(pushedPreds.getOrDefault(n.alias, Collections.emptyList()));
+                    parameters.addAll(pushedParams.getOrDefault(n.alias, Collections.emptyList()));
+                }
+                if (!preds.isEmpty()) sub.append(" WHERE ").append(String.join(" AND ", preds));
+                sub.append(")");
+                directJoins.append("JOIN ").append(sub).append(" ").append(dj)
+                           .append(" ON ").append(this.root.alias).append(".").append(top.parentJoinFrom)
+                           .append("=").append(dj).append(".k ");
+            }
+        }
+        parameters.addAll(whereParams);
 
         // Build derived subqueries and map their columns to select orders
         StringBuilder joins = new StringBuilder();
@@ -348,8 +427,6 @@ public class SqlQueryTree {
         query.append(directJoins);
         query.append(joins);
 
-        List<String> op = new ArrayList<>();
-        List<List<String>> allTheFilters = mapFilters(filterGroups, parameters, op, directJoinTableToAlias);
         if (!allTheFilters.isEmpty()) {
             query.append("WHERE ");
             first = true;
@@ -419,8 +496,20 @@ public class SqlQueryTree {
         return query.toString();
     }
 
+    /**
+     * @param pushedPreds  when not null, AND-group predicates that reference only one directly joined alias are
+     *                     collected here (alias → predicates) instead of the WHERE clause, with their bound
+     *                     parameters in {@code pushedParams}; the caller puts them inside that table's subquery
+     * @param inlineCols   filled with alias → columns of directly joined aliases that stay referenced in WHERE
+     * @param colRef       outer reference of (joined alias, column); differs from alias.column when the alias is
+     *                     inside a path subquery
+     */
     private List<List<String>> mapFilters(List<FilterGroup> filterGroups, List<Object> parameters, List<String> op,
-                                          Map<String, String> directJoinTableToAlias) {
+                                          Map<String, String> directJoinTableToAlias,
+                                          Map<String, List<String>> pushedPreds,
+                                          Map<String, List<Object>> pushedParams,
+                                          Map<String, Set<String>> inlineCols,
+                                          java.util.function.BinaryOperator<String> colRef) {
         List<List<String>> mappedFilters = new ArrayList<>();
         for (FilterGroup filterGroup : filterGroups) {
             List<String> groupFilters = new ArrayList<>();
@@ -541,7 +630,8 @@ public class SqlQueryTree {
                         Hop lastHop = hops.get(hops.size() - 1);
                         String directAlias = directJoinTableToAlias.get(lastHop.toTable);
                         if (directAlias != null) {
-                            String qualifiedCol = directAlias + "." + targetColumn;
+                            String qualifiedCol = colRef.apply(directAlias, targetColumn);
+                            inlineCols.computeIfAbsent(directAlias, k -> new LinkedHashSet<>()).add(targetColumn);
                             String pred = buildPredicate.apply(qualifiedCol, filter);
                             List<Object> p = takeParams(parameters, paramBase);
                             if (pred != null) {
@@ -667,8 +757,17 @@ public class SqlQueryTree {
                         String directAlias = directJoinTableToAlias.get(lastHop.toTable);
                         if (directAlias != null) {
                             String qualifiedCol = directAlias + "." + targetColumn;
+                            int base = parameters.size();
                             String pred = buildPredicate.apply(qualifiedCol, filter);
-                            if (pred != null) groupFilters.add(pred);
+                            if (pred != null) {
+                                if (pushedPreds != null) {
+                                    pushedPreds.computeIfAbsent(directAlias, k -> new ArrayList<>()).add(pred);
+                                    pushedParams.computeIfAbsent(directAlias, k -> new ArrayList<>()).addAll(takeParams(parameters, base));
+                                } else {
+                                    inlineCols.computeIfAbsent(directAlias, k -> new LinkedHashSet<>()).add(targetColumn);
+                                    groupFilters.add(pred);
+                                }
+                            }
                         } else {
                             // If the filter path goes through a directly-joined table before reaching
                             // a non-joined one (e.g. result→datasource→organization where datasource
@@ -705,12 +804,19 @@ public class SqlQueryTree {
                             }
                             String lastAlias = "s" + (hops.size() - firstIdx - 1);
                             String qualifiedCol = lastAlias + "." + targetColumn;
+                            int base = parameters.size();
                             String pred = buildPredicate.apply(qualifiedCol, filter);
                             // IS NOT NULL guard: prevents NOT IN from returning no rows when subquery has NULLs
                             semi.append("WHERE s0.").append(firstHop.toField).append(" IS NOT NULL");
                             if (pred != null) semi.append(" AND ").append(pred);
                             semi.append(")");
-                            groupFilters.add(semi.toString());
+                            if (cutoff >= 0 && pushedPreds != null) {
+                                // anchored on a directly joined alias only: filter that table inside its subquery
+                                pushedPreds.computeIfAbsent(cutoffAlias, k -> new ArrayList<>()).add(semi.toString());
+                                pushedParams.computeIfAbsent(cutoffAlias, k -> new ArrayList<>()).addAll(takeParams(parameters, base));
+                            } else {
+                                groupFilters.add(semi.toString());
+                            }
                         }
                     }
                 }
@@ -722,6 +828,12 @@ public class SqlQueryTree {
             }
         }
         return mappedFilters;
+    }
+
+    /** Aggregates whose result does not change when input rows are repeated ("count" is generated as COUNT(DISTINCT)). */
+    static boolean isRepeatInsensitive(String aggregate) {
+        String a = aggregate.trim().toLowerCase(Locale.ROOT);
+        return a.equals("count") || a.equals("min") || a.equals("max");
     }
 
     /** Removes and returns the parameters bound after position {@code base}. */

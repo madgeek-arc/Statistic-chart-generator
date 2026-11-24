@@ -134,17 +134,18 @@ public class SqlQueryTreeTest {
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
         System.out.println("[DEBUG_LOG] SQL rootAggregate_plusNonRootNonAgg_groupsByDirectColumn: \n" + sql);
 
-        // Non-agg non-root must use a direct JOIN, not a derived subquery
+        // Non-agg non-root must use a direct JOIN, not a derived LEFT JOIN subquery. With SUM the joined
+        // table is a SELECT DISTINCT (join key, grouped column) subquery, so repeated rows cannot inflate the sum.
         assertFalse(sql.contains("LEFT JOIN ("), "No derived subquery expected for non-agg non-root select");
-        assertTrue(sql.matches("(?s).*JOIN\\s+project_results\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
-                "Non-root non-agg select must use a direct JOIN on result_id");
+        assertTrue(sql.contains("JOIN (SELECT DISTINCT p1.result_id AS k, p1.category AS p1_category FROM project_results p1) dj1 ON r0.id=dj1.k"),
+                "Non-root non-agg select must use a direct (deduplicated) JOIN on result_id");
         // Outer SELECT: SUM(root) and direct column reference
-        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.category\\s+FROM.*"),
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.\\w*category\\s+FROM.*"),
                 "Outer SELECT should be SUM(root) and the direct non-root column");
         // GROUP BY the direct column
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.category.*"),
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.\\w*category.*"),
                 "Non-agg non-root column must appear directly in GROUP BY");
-        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.category.*"),
+        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.\\w*category.*"),
                 "ORDER BY should follow grouped column by default");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
@@ -193,16 +194,16 @@ public class SqlQueryTreeTest {
         String sql = new SqlQueryBuilder(apiQuery, pc).getSqlQuery(params, null);
         System.out.println("[DEBUG_LOG] SQL rootAggregate_withNonRootNonAgg_andNonRootAgg_directJoinForNonAgg_derivedForAgg: \n" + sql);
 
-        // Non-agg non-root (category) uses a direct JOIN
-        assertTrue(sql.matches("(?s).*JOIN\\s+project_results\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
-                "Non-agg non-root must use a direct JOIN");
+        // Non-agg non-root (category) uses a direct JOIN, deduplicated because the query sums
+        assertTrue(sql.contains("JOIN (SELECT DISTINCT p1.result_id AS k, p1.category AS p1_category FROM project_results p1) dj1 ON r0.id=dj1.k"),
+                "Non-agg non-root must use a direct (deduplicated) JOIN");
         // Agg non-root (sum value) uses a derived LEFT JOIN subquery
         assertTrue(sql.contains("LEFT JOIN ("), "Agg non-root must still use a derived subquery");
         // GROUP BY the direct column
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.category(\\s|,|;).*"),
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.\\w*category(\\s|,|;).*"),
                 "GROUP BY must use the direct non-agg column");
         // Outer SELECT: SUM(root), direct column, SUM(derived agg col)
-        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.category\\s*,\\s*SUM\\(\\w+\\.c3\\)\\s+FROM.*"),
+        assertTrue(sql.matches("(?is)SELECT\\s+SUM\\(r0\\.id\\)\\s*,\\s*\\w+\\.\\w*category\\s*,\\s*SUM\\(\\w+\\.c3\\)\\s+FROM.*"),
                 "Outer SELECT: SUM(root), direct non-agg col, SUM(derived agg col)");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
@@ -224,15 +225,16 @@ public class SqlQueryTreeTest {
 
         // Non-agg non-root multi-hop must use direct JOINs, not a derived subquery
         assertFalse(sql.contains("LEFT JOIN ("), "No derived subquery expected for non-agg non-root select");
-        assertTrue(sql.matches("(?s).*JOIN\\s+result_organization\\s+\\w+\\s+ON\\s+r0\\.id=\\w+\\.result_id.*"),
-                "Must JOIN result_organization on result_id");
-        assertTrue(sql.matches("(?s).*JOIN\\s+organization\\s+\\w+\\s+ON\\s+\\w+\\.organization=\\w+\\.id.*"),
-                "Must JOIN organization on organization/id");
+        // SUM: the whole path is one SELECT DISTINCT (root join key, country) subquery. Deduplicating each table
+        // alone is not enough: a result with two organisations in the same country would still count twice.
+        assertTrue(sql.contains("JOIN (SELECT DISTINCT r1.result_id AS k, o2.country AS o2_country FROM result_organization r1"
+                        + " JOIN organization o2 ON r1.organization=o2.id) dj1 ON r0.id=dj1.k"),
+                "Must JOIN result_organization -> organization as one deduplicated path subquery");
         // No reserved-word aliases ('to', 'or', etc.) from the join chain
         assertFalse(sql.matches("(?is).*\\bto\\b\\..*"), "No alias named 'to' should be used");
         // GROUP BY and ORDER BY on the direct country column
-        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.country.*"), "GROUP BY must use country column");
-        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.country.*"), "ORDER BY must use country column");
+        assertTrue(sql.matches("(?s).*GROUP\\s+BY\\s+\\w+\\.\\w*country.*"), "GROUP BY must use country column");
+        assertTrue(sql.matches("(?s).*ORDER\\s+BY\\s+\\w+\\.\\w*country.*"), "ORDER BY must use country column");
         assertTrue(params.isEmpty(), "No bound parameters expected");
     }
 
@@ -1254,5 +1256,93 @@ public class SqlQueryTreeTest {
         }
         assertEquals(params.size(), i, "every parameter must have a placeholder: " + sql);
         return out;
+    }
+
+    // ── Repeated rows of a joined path and non-COUNT aggregates ───────────────
+
+    /** project_organization_contribution -> project -> project_classification (several rows per project). */
+    private ProfileConfiguration contributionProfile() {
+        ProfileConfiguration pc = new ProfileConfiguration();
+        pc.tables.put("poc", new Table("poc", "project", null));
+        pc.tables.put("project", new Table("project", "id", null));
+        pc.tables.put("project_classification", new Table("project_classification", "id", null));
+        pc.fields.put("poc.contribution", new Field("poc", "contribution", "float"));
+        pc.fields.put("poc.currency", new Field("poc", "currency", "text"));
+        pc.fields.put("project.funder", new Field("project", "funder", "text"));
+        pc.fields.put("project_classification.level1", new Field("project_classification", "level1", "text"));
+        pc.fields.put("project_classification.level2", new Field("project_classification", "level2", "text"));
+        pc.relations.put("poc.project", Collections.singletonList(new Join("poc", "project", "project", "id")));
+        pc.relations.put("project.project_classification", Collections.singletonList(
+                new Join("project", "id", "project_classification", "id")));
+        return pc;
+    }
+
+    private String contributionSql(String aggregate, List<FilterGroup> filters, List<Object> params) {
+        Query q = new Query(null, null, filters,
+                Arrays.asList(new Select("poc.contribution", aggregate, 1),
+                        new Select("poc.project.project_classification.level1", null, 2)),
+                "poc", "test", 0, null, false);
+        String sql = new SqlQueryBuilder(q, contributionProfile()).getSqlQuery(params, null);
+        System.out.println("[DEBUG_LOG] SQL contribution " + aggregate + ": \n" + sql);
+        return sql;
+    }
+
+    @Test
+    public void sumOverOneToManyPath_joinsDistinctPathSubquery() {
+        List<Object> params = new ArrayList<>();
+        String sql = contributionSql("sum", new ArrayList<>(), params);
+        assertEquals("SELECT sum(p0.contribution), dj1.p2_level1 FROM poc p0 "
+                + "JOIN (SELECT DISTINCT p1.id AS k, p2.level1 AS p2_level1 FROM project p1 "
+                + "JOIN project_classification p2 ON p1.id=p2.id) dj1 ON p0.project=dj1.k  "
+                + "GROUP BY dj1.p2_level1 ORDER BY dj1.p2_level1;", sql);
+        assertTrue(params.isEmpty());
+    }
+
+    @Test
+    public void avgAndUnknownAggregates_alsoDeduplicate() {
+        for (String agg : Arrays.asList("avg", "AVG", "stddev")) {
+            String sql = contributionSql(agg, new ArrayList<>(), new ArrayList<>());
+            assertTrue(sql.contains("JOIN (SELECT DISTINCT "), agg + " must deduplicate the joined path: " + sql);
+        }
+    }
+
+    @Test
+    public void countMinMax_keepPlainJoins() {
+        for (String agg : Arrays.asList("count", "min", "MAX")) {
+            String sql = contributionSql(agg, new ArrayList<>(), new ArrayList<>());
+            assertFalse(sql.contains("JOIN (SELECT DISTINCT"), agg + " is not changed by repeated rows; plain JOINs expected: " + sql);
+            assertTrue(sql.contains("JOIN project p1 ON p0.project=p1.id JOIN project_classification p2 ON p1.id=p2.id"), sql);
+        }
+    }
+
+    @Test
+    public void sum_andFilterOnJoinedTable_movesInsidePathSubquery_paramsInTextOrder() {
+        // level2 filter on the joined table + root filter; the joined-table predicate goes inside the subquery
+        // (it precedes WHERE in the text, so its parameter must come first)
+        Filter level2 = new Filter("poc.project.project_classification.level2", "=",
+                Collections.singletonList("LEIT"), "text");
+        Filter currency = new Filter("poc.currency", "=", Collections.singletonList("EUR"), "text");
+        List<FilterGroup> fgs = Arrays.asList(
+                new FilterGroup(Collections.singletonList(currency), "AND"),
+                new FilterGroup(Collections.singletonList(level2), "AND"));
+        List<Object> params = new ArrayList<>();
+        String sql = contributionSql("sum", fgs, params);
+        assertTrue(sql.contains("JOIN (SELECT DISTINCT p1.id AS k, p2.level1 AS p2_level1 FROM project p1 "
+                + "JOIN project_classification p2 ON p1.id=p2.id WHERE p2.level2=?) dj1 ON p0.project=dj1.k"), sql);
+        assertTrue(sql.contains("WHERE p0.currency=?"), sql);
+        assertFalse(sql.contains("p2_level2"), "filter column must not be projected (it would bring repeats back): " + sql);
+        assertEquals(Arrays.asList("LEIT", "EUR"), params);
+    }
+
+    @Test
+    public void sum_orFilterOnJoinedTable_staysInWhere_onProjectedColumn() {
+        Filter a = new Filter("poc.project.project_classification.level2", "=", Collections.singletonList("A"), "text");
+        Filter b = new Filter("poc.currency", "=", Collections.singletonList("EUR"), "text");
+        List<Object> params = new ArrayList<>();
+        String sql = contributionSql("sum", Collections.singletonList(new FilterGroup(Arrays.asList(a, b), "OR")), params);
+        assertTrue(sql.contains("p2.level2 AS p2_level2"), "OR predicate column must be projected: " + sql);
+        assertTrue(sql.contains("dj1.p2_level2=?"), "OR predicate must use the path subquery column: " + sql);
+        assertFalse(sql.matches("(?s).*[^_]p2\\.level2=.*"), "no reference to the inner alias outside the subquery: " + sql);
+        assertEquals(Arrays.asList("A", "EUR"), params);
     }
 }
