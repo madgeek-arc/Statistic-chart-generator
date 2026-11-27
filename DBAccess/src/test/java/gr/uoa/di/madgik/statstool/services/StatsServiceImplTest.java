@@ -578,7 +578,6 @@ public class StatsServiceImplTest {
     }
 
     private String runMerged(List<Query> qs, String orderBy, Result dbResult, List<Object> paramsOut) throws Exception {
-        statsService.setMergeSeries(true);
         stubTopicMapper();
         when(statsCache.isEnabled()).thenReturn(false);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(dbResult, 1, 0));
@@ -602,7 +601,6 @@ public class StatsServiceImplTest {
         db.setRows(new ArrayList<>(Arrays.asList(
                 Arrays.asList(5L, null, null, "1. No poverty"),
                 Arrays.asList(null, null, 7L, "3. Good health"))));
-        statsService.setMergeSeries(true);
         stubTopicMapper();
         when(statsCache.isEnabled()).thenReturn(false);
         when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(db, 1, 0));
@@ -646,17 +644,6 @@ public class StatsServiceImplTest {
         String sql = runMerged(Arrays.asList(topicSeries("A"), topicSeries("B")), "count DESC", emptyResult(), null);
         assertFalse(sql.contains("MAX(CASE"), sql);
         assertTrue(sql.contains("q2(y, x1) AS"), sql);
-    }
-
-    @Test
-    void r2_disabled_notMerged() throws Exception {
-        stubTopicMapper();
-        when(statsCache.isEnabled()).thenReturn(false);
-        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(emptyResult(), 1, 0));
-        statsService.query(Arrays.asList(topicSeries("A"), topicSeries("B")), "xaxis");
-        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(statsRepository).executeQuery(sql.capture(), anyList(), anyString());
-        assertTrue(sql.getValue().contains("keys AS"), sql.getValue());
     }
 
     @Test

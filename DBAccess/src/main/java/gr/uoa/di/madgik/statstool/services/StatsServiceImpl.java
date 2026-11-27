@@ -8,7 +8,6 @@ import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.ParsedSql;
@@ -46,16 +45,8 @@ public class StatsServiceImpl implements StatsService {
     @Autowired
     private Mapper mapper;
 
-    // Rule R2: merge chart series that differ only in the value of one equality filter on the
-    // group-by field into one query + pivot. Off by default.
-    @Value("${statstool.sql.merge-series:false}")
-    private boolean mergeSeries;
-
     private final Logger log = LogManager.getLogger(this.getClass());
 
-    void setMergeSeries(boolean mergeSeries) {
-        this.mergeSeries = mergeSeries;
-    }
 
     @Override
     public List<Result> query(List<Query> queryList) throws StatsServiceException {
@@ -141,7 +132,8 @@ public class StatsServiceImpl implements StatsService {
                 String limitClause = limitClause(queryList);
 
                 String finalSql;
-                SeriesMerge seriesMerge = (mergeSeries && stackedOrder && xCount == 1)
+                // Rule R2: series that differ only in one equality filter on the group-by field -> one query + pivot
+                SeriesMerge seriesMerge = (stackedOrder && xCount == 1)
                         ? tryMergeSeries(queryList, individualSqls, individualParams, orderBy) : null;
                 if (seriesMerge != null) {
                     log.debug("R2: {} series merged into one query", n);
