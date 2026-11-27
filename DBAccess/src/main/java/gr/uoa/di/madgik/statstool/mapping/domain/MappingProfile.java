@@ -1,6 +1,6 @@
 package gr.uoa.di.madgik.statstool.mapping.domain;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
@@ -14,8 +14,11 @@ public class MappingProfile {
     private boolean hidden;
     private String file;
 
-    /** Populated when loaded from DB; not present in file-based mappings.json. */
-    @JsonIgnore
+    /**
+     * Populated when loaded from DB; not present in file-based mappings.json. Serialized as "mappingContent", the
+     * name the PUT/POST /config/profiles body uses, so GET /config/profiles/{name} returns a body that can be sent back.
+     */
+    @JsonProperty("mappingContent")
     private Mapping content;
 
     public MappingProfile() {}
