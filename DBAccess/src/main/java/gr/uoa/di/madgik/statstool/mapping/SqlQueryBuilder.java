@@ -36,7 +36,8 @@ public class SqlQueryBuilder {
     String getSqlQuery(List<Object> parameters, String orderBy) {
         Table entityTable = profileConfiguration.tables.get(query.getEntity());
         String rootKey = entityTable != null ? entityTable.getKey() : null;
-        return new SqlQueryTree(mapIntermediate(), rootKey).makeQuery(parameters, orderBy);
+        boolean rootKeyUnique = entityTable != null && entityTable.isUniqueKey();
+        return new SqlQueryTree(mapIntermediate(), rootKey, rootKeyUnique).makeQuery(parameters, orderBy);
     }
 
     private Query mapIntermediate() {

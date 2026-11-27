@@ -30,6 +30,9 @@ spring:
   # custom configuration
 statstool:
   result_limit: 70
+  sql:
+    # R2: merge chart series that differ only in one equality filter on the group-by field. Off by default.
+    merge-series: false
   cache:
     enabled: false
     update:

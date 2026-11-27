@@ -95,6 +95,7 @@ statstool:
 | `name` | Logical name used in API paths (e.g. `"publication"` in `"publication.year"`). Must be unique within the profile. |
 | `key` | Primary key column. Used as the count target when entity appears alone in a field path (e.g. `"publication"` → `result.id`). Also used as the join column in EXISTS subqueries. |
 | `visible` | Default `true`. `false` hides entity from schema endpoints but keeps SQL generation working. |
+| `uniqueKey` | Default `false`. `true` declares `key` unique in `from` (check: `SELECT COUNT(*), COUNT(DISTINCT <key>) FROM <from>` gives equal numbers, per release). Then a `count` of the entity with no joined select is generated as `COUNT(<key>)` instead of `COUNT(DISTINCT <key>)` (rule R1). Wrong flag = wrong counts, no error. Tool versions before this flag reject a profile that has it (strict JSON parsing; the profile is skipped): deploy the tool first. |
 | `filters` | Default WHERE conditions added to every query touching this entity (see [Entity Filters](#entity-filters)). |
 | `fields` | Exposed columns (see [Field](#field)). |
 | `relations` | Names of joinable entities. Used by schema endpoints to show navigation options; actual join paths defined in top-level `relations`. |

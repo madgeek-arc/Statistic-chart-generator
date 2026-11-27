@@ -1,10 +1,14 @@
 package gr.uoa.di.madgik.statstool.services;
 
+import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.QueryWithParameters;
+import gr.uoa.di.madgik.statstool.domain.Select;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
 import gr.uoa.di.madgik.statstool.repositories.NamedQueryRepository;
 import gr.uoa.di.madgik.statstool.repositories.StatsCache;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterUtils;
 import org.springframework.jdbc.core.namedparam.ParsedSql;
@@ -16,6 +20,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
@@ -41,7 +46,16 @@ public class StatsServiceImpl implements StatsService {
     @Autowired
     private Mapper mapper;
 
+    // Rule R2: merge chart series that differ only in the value of one equality filter on the
+    // group-by field into one query + pivot. Off by default.
+    @Value("${statstool.sql.merge-series:false}")
+    private boolean mergeSeries;
+
     private final Logger log = LogManager.getLogger(this.getClass());
+
+    void setMergeSeries(boolean mergeSeries) {
+        this.mergeSeries = mergeSeries;
+    }
 
     @Override
     public List<Result> query(List<Query> queryList) throws StatsServiceException {
@@ -120,152 +134,133 @@ public class StatsServiceImpl implements StatsService {
                     }
                 }
 
-                // Build CTE column list: (y, x1) for single group-by, (y, x1, x2, ...) for multi.
-                // For "stacked" ordering all CTEs run unlimited (the outer query decides top-N by
-                // combined sum). Otherwise q1 keeps its ORDER BY + LIMIT so it defines the top-N
-                // and secondary CTEs are stripped so they return all rows for the LEFT JOIN.
-                // Null orderBy also uses the keys-CTE approach so that queries with disjoint
-                // x-axis values (e.g. stacked categorical charts) all appear on the x-axis.
-                // "pinned" also uses the keys-CTE so that q1's x-values are always present,
-                // then sorts q1-present rows first and the rest by combined sum DESC.
-                // "yaxis" also uses the keys-CTE so that disjoint-series queries (e.g. q1=Ireland,
-                // q2=all other countries) all appear on the x-axis rather than q1 silently
-                // defining the entire universe (which would suppress q2's exclusive rows).
-                // "xaxis" uses it too: categories present only in a later series must not be dropped.
-                // Joins on x are null-safe (IS NOT DISTINCT FROM) so a NULL category keeps its values.
                 boolean stackedOrder = "stacked".equals(orderBy) || "pinned".equals(orderBy) || "yaxis".equals(orderBy)
                         || "xaxis".equals(orderBy) || orderBy == null;
-                StringBuilder cteColumns = new StringBuilder("(y");
-                for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
-                cteColumns.append(")");
-
-                cteSql.append("WITH ");
-                for (int i = 0; i < individualSqls.size(); i++) {
-                    if (i > 0) cteSql.append(", ");
-                    String qi = "q" + (i + 1);
-                    String subSql = individualSqls.get(i);
-                    if (i > 0 || stackedOrder) {
-                        // Strip trailing ORDER BY (and any LIMIT that follows it)
-                        int orderByIdx = subSql.toUpperCase().lastIndexOf("ORDER BY");
-                        if (orderByIdx >= 0) subSql = subSql.substring(0, orderByIdx).trim();
-                    }
-                    cteSql.append(qi).append(cteColumns).append(" AS (").append(subSql).append(")");
-                    List<Object> params = individualParams.get(i);
-                    if (params != null) mergedParameters.addAll(params);
-                }
-
                 int n = individualSqls.size();
-                StringBuilder selectT = new StringBuilder();
+                String effectiveOrderBy = effectiveOrderBy(orderBy, stackedOrder, n);
+                String limitClause = limitClause(queryList);
 
-                if (stackedOrder) {
-                    // Stacked mode: queries may return disjoint x-axis values (e.g. each series filters
-                    // a different category). Build a "keys" CTE with the UNION of all x values so every
-                    // category appears on the x-axis, then LEFT JOIN each query to it.
-                    cteSql.append(", keys AS (SELECT ");
-                    for (int xi = 1; xi <= xCount; xi++) {
-                        if (xi > 1) cteSql.append(", ");
-                        cteSql.append("x").append(xi);
+                String finalSql;
+                SeriesMerge seriesMerge = (mergeSeries && stackedOrder && xCount == 1)
+                        ? tryMergeSeries(queryList, individualSqls, individualParams, orderBy) : null;
+                if (seriesMerge != null) {
+                    log.debug("R2: {} series merged into one query", n);
+                    finalSql = seriesMerge.sql() + " ORDER BY " + effectiveOrderBy + limitClause;
+                    mergedParameters = seriesMerge.parameters();
+                } else {
+                    // Build CTE column list: (y, x1) for single group-by, (y, x1, x2, ...) for multi.
+                    // For "stacked" ordering all CTEs run unlimited (the outer query decides top-N by
+                    // combined sum). Otherwise q1 keeps its ORDER BY + LIMIT so it defines the top-N
+                    // and secondary CTEs are stripped so they return all rows for the LEFT JOIN.
+                    // Null orderBy also uses the keys-CTE approach so that queries with disjoint
+                    // x-axis values (e.g. stacked categorical charts) all appear on the x-axis.
+                    // "pinned" also uses the keys-CTE so that q1's x-values are always present,
+                    // then sorts q1-present rows first and the rest by combined sum DESC.
+                    // "yaxis" also uses the keys-CTE so that disjoint-series queries (e.g. q1=Ireland,
+                    // q2=all other countries) all appear on the x-axis rather than q1 silently
+                    // defining the entire universe (which would suppress q2's exclusive rows).
+                    // "xaxis" uses it too: categories present only in a later series must not be dropped.
+                    // Joins on x are null-safe (IS NOT DISTINCT FROM) so a NULL category keeps its values.
+                    StringBuilder cteColumns = new StringBuilder("(y");
+                    for (int xi = 1; xi <= xCount; xi++) cteColumns.append(", x").append(xi);
+                    cteColumns.append(")");
+
+                    cteSql.append("WITH ");
+                    for (int i = 0; i < individualSqls.size(); i++) {
+                        if (i > 0) cteSql.append(", ");
+                        String qi = "q" + (i + 1);
+                        String subSql = individualSqls.get(i);
+                        if (i > 0 || stackedOrder) {
+                            // Strip trailing ORDER BY (and any LIMIT that follows it)
+                            int orderByIdx = subSql.toUpperCase().lastIndexOf("ORDER BY");
+                            if (orderByIdx >= 0) subSql = subSql.substring(0, orderByIdx).trim();
+                        }
+                        cteSql.append(qi).append(cteColumns).append(" AS (").append(subSql).append(")");
+                        List<Object> params = individualParams.get(i);
+                        if (params != null) mergedParameters.addAll(params);
                     }
-                    cteSql.append(" FROM (");
-                    for (int i = 1; i <= n; i++) {
-                        if (i > 1) cteSql.append(" UNION ALL ");
-                        cteSql.append("SELECT ");
+
+                    StringBuilder selectT = new StringBuilder();
+
+                    if (stackedOrder) {
+                        // Stacked mode: queries may return disjoint x-axis values (e.g. each series filters
+                        // a different category). Build a "keys" CTE with the UNION of all x values so every
+                        // category appears on the x-axis, then LEFT JOIN each query to it.
+                        cteSql.append(", keys AS (SELECT ");
                         for (int xi = 1; xi <= xCount; xi++) {
                             if (xi > 1) cteSql.append(", ");
                             cteSql.append("x").append(xi);
                         }
-                        cteSql.append(" FROM q").append(i);
-                    }
-                    cteSql.append(") all_keys GROUP BY ");
-                    for (int xi = 1; xi <= xCount; xi++) {
-                        if (xi > 1) cteSql.append(", ");
-                        cteSql.append("x").append(xi);
-                    }
-                    cteSql.append(")");
-
-                    StringBuilder fromJoins = new StringBuilder("FROM keys");
-                    for (int i = 1; i <= n; i++) {
-                        fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
-                        for (int xi = 1; xi <= xCount; xi++) {
-                            if (xi > 1) fromJoins.append(" AND ");
-                            fromJoins.append("q").append(i).append(".x").append(xi)
-                                     .append(" IS NOT DISTINCT FROM keys.x").append(xi);
+                        cteSql.append(" FROM (");
+                        for (int i = 1; i <= n; i++) {
+                            if (i > 1) cteSql.append(" UNION ALL ");
+                            cteSql.append("SELECT ");
+                            for (int xi = 1; xi <= xCount; xi++) {
+                                if (xi > 1) cteSql.append(", ");
+                                cteSql.append("x").append(xi);
+                            }
+                            cteSql.append(" FROM q").append(i);
                         }
-                    }
-
-                    selectT.append(", t AS (SELECT ");
-                    for (int xi = 1; xi <= xCount; xi++) {
-                        if (xi > 1) selectT.append(", ");
-                        selectT.append("keys.x").append(xi).append(" AS x").append(xi);
-                    }
-                    for (int i = 1; i <= n; i++) {
-                        selectT.append(", q").append(i).append(".y AS y").append(i);
-                    }
-                    selectT.append(" ").append(fromJoins).append(")");
-                } else {
-                    // Non-stacked mode: q1 drives the x-axis (defines top-N via its ORDER BY + LIMIT).
-                    StringBuilder fromJoins = new StringBuilder("FROM q1");
-                    for (int i = 2; i <= n; i++) {
-                        fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                        cteSql.append(") all_keys GROUP BY ");
                         for (int xi = 1; xi <= xCount; xi++) {
-                            if (xi > 1) fromJoins.append(" AND ");
-                            fromJoins.append("q").append(i).append(".x").append(xi)
-                                     .append(" IS NOT DISTINCT FROM q1.x").append(xi);
+                            if (xi > 1) cteSql.append(", ");
+                            cteSql.append("x").append(xi);
                         }
+                        cteSql.append(")");
+
+                        StringBuilder fromJoins = new StringBuilder("FROM keys");
+                        for (int i = 1; i <= n; i++) {
+                            fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                            for (int xi = 1; xi <= xCount; xi++) {
+                                if (xi > 1) fromJoins.append(" AND ");
+                                fromJoins.append("q").append(i).append(".x").append(xi)
+                                         .append(" IS NOT DISTINCT FROM keys.x").append(xi);
+                            }
+                        }
+
+                        selectT.append(", t AS (SELECT ");
+                        for (int xi = 1; xi <= xCount; xi++) {
+                            if (xi > 1) selectT.append(", ");
+                            selectT.append("keys.x").append(xi).append(" AS x").append(xi);
+                        }
+                        for (int i = 1; i <= n; i++) {
+                            selectT.append(", q").append(i).append(".y AS y").append(i);
+                        }
+                        selectT.append(" ").append(fromJoins).append(")");
+                    } else {
+                        // Non-stacked mode: q1 drives the x-axis (defines top-N via its ORDER BY + LIMIT).
+                        StringBuilder fromJoins = new StringBuilder("FROM q1");
+                        for (int i = 2; i <= n; i++) {
+                            fromJoins.append(" LEFT JOIN q").append(i).append(" ON ");
+                            for (int xi = 1; xi <= xCount; xi++) {
+                                if (xi > 1) fromJoins.append(" AND ");
+                                fromJoins.append("q").append(i).append(".x").append(xi)
+                                         .append(" IS NOT DISTINCT FROM q1.x").append(xi);
+                            }
+                        }
+
+                        selectT.append(", t AS (SELECT ");
+                        for (int xi = 1; xi <= xCount; xi++) {
+                            if (xi > 1) selectT.append(", ");
+                            selectT.append("q1.x").append(xi).append(" AS x").append(xi);
+                        }
+                        for (int i = 1; i <= n; i++) {
+                            selectT.append(", q").append(i).append(".y AS y").append(i);
+                        }
+                        selectT.append(" ").append(fromJoins).append(")");
                     }
 
-                    selectT.append(", t AS (SELECT ");
-                    for (int xi = 1; xi <= xCount; xi++) {
-                        if (xi > 1) selectT.append(", ");
-                        selectT.append("q1.x").append(xi).append(" AS x").append(xi);
-                    }
+                    // Final SELECT: y1..yn, x1..xm FROM t
+                    StringBuilder finalSelect = new StringBuilder(" SELECT ");
                     for (int i = 1; i <= n; i++) {
-                        selectT.append(", q").append(i).append(".y AS y").append(i);
+                        if (i > 1) finalSelect.append(", ");
+                        finalSelect.append("y").append(i);
                     }
-                    selectT.append(" ").append(fromJoins).append(")");
-                }
+                    for (int xi = 1; xi <= xCount; xi++) finalSelect.append(", x").append(xi);
+                    finalSelect.append(" FROM t");
 
-                // Final SELECT: y1..yn, x1..xm FROM t
-                StringBuilder finalSelect = new StringBuilder(" SELECT ");
-                for (int i = 1; i <= n; i++) {
-                    if (i > 1) finalSelect.append(", ");
-                    finalSelect.append("y").append(i);
-                }
-                for (int xi = 1; xi <= xCount; xi++) finalSelect.append(", x").append(xi);
-                finalSelect.append(" FROM t");
-
-                String finalSql = cteSql.toString() + selectT + finalSelect.toString();
-                // xaxis/null → ORDER BY x1 (alphabetical)
-                // stacked    → ORDER BY COALESCE(y1,0)+COALESCE(y2,0)+...+COALESCE(yn,0) DESC
-                // pinned     → ORDER BY CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE sum DESC
-                //              (q1's x-values appear first, remainder sorted by combined sum)
-                // yaxis/else → ORDER BY 1 DESC  (first y column)
-                String effectiveOrderBy;
-                if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
-                    effectiveOrderBy = "x1";
-                } else if ("pinned".equals(orderBy)) {
-                    StringBuilder pinnedOrder = new StringBuilder("CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE(y1,0)");
-                    for (int i = 2; i <= n; i++) pinnedOrder.append("+COALESCE(y").append(i).append(",0)");
-                    pinnedOrder.append(" DESC");
-                    effectiveOrderBy = pinnedOrder.toString();
-                } else if (stackedOrder) {
-                    StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
-                    for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");
-                    sum.append(" DESC");
-                    effectiveOrderBy = sum.toString();
-                } else {
-                    effectiveOrderBy = "1 DESC";
-                }
-                finalSql += " ORDER BY " + effectiveOrderBy;
-
-                // Derive LIMIT as min positive limit across queries
-                int minLimit = Integer.MAX_VALUE;
-                for (Query q : queryList) {
-                    int lim = q.getLimit();
-                    if (lim > 0 && lim < minLimit) minLimit = lim;
-                }
-                if (minLimit != Integer.MAX_VALUE) {
-                    finalSql += " LIMIT " + minLimit;
+                    finalSql = cteSql.toString() + selectT + finalSelect.toString()
+                            + " ORDER BY " + effectiveOrderBy + limitClause;
                 }
 
                 Result mergedResult;
@@ -305,6 +300,166 @@ public class StatsServiceImpl implements StatsService {
         } catch (Exception e) {
             throw new StatsServiceException(e);
         }
+    }
+
+    // xaxis/null → ORDER BY x1 (alphabetical)
+    // stacked    → ORDER BY COALESCE(y1,0)+COALESCE(y2,0)+...+COALESCE(yn,0) DESC
+    // pinned     → ORDER BY CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE sum DESC
+    //              (q1's x-values appear first, remainder sorted by combined sum)
+    // yaxis/else → ORDER BY 1 DESC  (first y column)
+    private static String effectiveOrderBy(String orderBy, boolean stackedOrder, int n) {
+        if (orderBy == null || orderBy.trim().isEmpty() || orderBy.equals("xaxis")) {
+            return "x1";
+        } else if ("pinned".equals(orderBy)) {
+            StringBuilder pinnedOrder = new StringBuilder("CASE WHEN y1 IS NOT NULL THEN 0 ELSE 1 END, COALESCE(y1,0)");
+            for (int i = 2; i <= n; i++) pinnedOrder.append("+COALESCE(y").append(i).append(",0)");
+            pinnedOrder.append(" DESC");
+            return pinnedOrder.toString();
+        } else if (stackedOrder) {
+            StringBuilder sum = new StringBuilder("COALESCE(y1,0)");
+            for (int i = 2; i <= n; i++) sum.append("+COALESCE(y").append(i).append(",0)");
+            sum.append(" DESC");
+            return sum.toString();
+        }
+        return "1 DESC";
+    }
+
+    // LIMIT of the merged statement: min positive limit across queries
+    private static String limitClause(List<Query> queryList) {
+        int minLimit = Integer.MAX_VALUE;
+        for (Query q : queryList) {
+            int lim = q.getLimit();
+            if (lim > 0 && lim < minLimit) minLimit = lim;
+        }
+        return minLimit != Integer.MAX_VALUE ? " LIMIT " + minLimit : "";
+    }
+
+    record SeriesMerge(String sql, List<Object> parameters) {}
+
+    /**
+     * Rule R2. When the series are description-based queries that are identical except the value of ONE
+     * equality filter, and that filter is on the (single) group-by field (e.g. one series per SDG topic,
+     * grouped by topic), each series returns only the row of its own value. One query with the values as an
+     * IN list returns all those rows in one pass; a pivot puts row x = v_i into column y_i:
+     * <pre>WITH m(y, x1) AS (&lt;merged query&gt;), t AS (SELECT MAX(CASE WHEN x1 = ? THEN y END) AS y1, ...,
+     * x1 FROM m GROUP BY x1) SELECT y1, ..., yn, x1 FROM t</pre>
+     * The caller appends the ORDER BY / LIMIT of the keys-CTE path, so it is only valid there (stacked order).
+     * The series' generated SQL must be identical with parameters that differ in one position only, which
+     * also gives the typed values for the pivot. Returns null when the rule does not apply.
+     */
+    SeriesMerge tryMergeSeries(List<Query> queryList, List<String> sqls, List<List<Object>> params, String orderBy) {
+        int n = queryList.size();
+        Query first = queryList.get(0);
+        for (Query q : queryList) {
+            if (q.getName() != null || q.getSelect() == null || q.getFilters() == null) return null;
+        }
+
+        // Generated SQL identical, parameters differ in exactly one position
+        List<Object> p0 = params.get(0);
+        if (p0 == null) return null;
+        Set<Integer> diffPos = new LinkedHashSet<>();
+        for (int i = 1; i < n; i++) {
+            if (!sqls.get(0).equals(sqls.get(i))) return null;
+            List<Object> pi = params.get(i);
+            if (pi == null || pi.size() != p0.size()) return null;
+            for (int j = 0; j < p0.size(); j++) {
+                if (!Objects.equals(p0.get(j), pi.get(j))) diffPos.add(j);
+            }
+        }
+        if (diffPos.size() != 1) return null;
+        int pos = diffPos.iterator().next();
+        List<Object> seriesValues = new ArrayList<>();
+        for (List<Object> pi : params) {
+            Object v = pi.get(pos);
+            // plain "?" placeholder types only (double/number are written as CAST(? AS DOUBLE))
+            if (!(v instanceof String || v instanceof Integer || v instanceof Long)) return null;
+            seriesValues.add(v);
+        }
+
+        // Same entity, selects, limit and order; exactly one group-by select
+        List<Select> sel0 = first.getSelect();
+        String groupField = null;
+        for (Select s : sel0) {
+            if (s.getAggregate() == null || s.getAggregate().isEmpty()) {
+                if (groupField != null) return null;
+                groupField = s.getField();
+            }
+        }
+        if (groupField == null) return null;
+        for (Query q : queryList) {
+            if (!Objects.equals(q.getEntity(), first.getEntity()) || q.getLimit() != first.getLimit()
+                    || !Objects.equals(q.getOrderBy(), first.getOrderBy())
+                    || !Objects.equals(q.getProfile(), first.getProfile())) return null;
+            if (q.getSelect().size() != sel0.size()) return null;
+            for (int j = 0; j < sel0.size(); j++) {
+                Select a = sel0.get(j), b = q.getSelect().get(j);
+                if (!Objects.equals(a.getField(), b.getField()) || !Objects.equals(a.getAggregate(), b.getAggregate())) return null;
+            }
+        }
+
+        // Filters identical except one: field = group-by field, type "=", one value, in an AND group
+        List<FilterGroup> fg0 = first.getFilters();
+        int[] loc = null;
+        for (Query q : queryList.subList(1, n)) {
+            List<FilterGroup> fg = q.getFilters();
+            if (fg.size() != fg0.size()) return null;
+            for (int g = 0; g < fg0.size(); g++) {
+                FilterGroup a = fg0.get(g), b = fg.get(g);
+                if (!(a.getOp() == null ? b.getOp() == null : a.getOp().equalsIgnoreCase(b.getOp()))) return null;
+                List<Filter> fa = a.getGroupFilters(), fb = b.getGroupFilters();
+                if (fa == null || fb == null || fa.size() != fb.size()) return null;
+                for (int f = 0; f < fa.size(); f++) {
+                    if (fa.get(f).equals(fb.get(f))) continue;
+                    if (loc != null && (loc[0] != g || loc[1] != f)) return null;
+                    loc = new int[]{g, f};
+                }
+            }
+        }
+        if (loc == null) return null;
+        FilterGroup group0 = fg0.get(loc[0]);
+        if (group0.getGroupFilters().size() > 1 && !"AND".equalsIgnoreCase(group0.getOp())) return null;
+        Set<String> values = new LinkedHashSet<>();
+        for (Query q : queryList) {
+            Filter f = q.getFilters().get(loc[0]).getGroupFilters().get(loc[1]);
+            Filter f0 = group0.getGroupFilters().get(loc[1]);
+            if (!groupField.equals(f.getField()) || !"=".equals(f.getType()) || f.getValues() == null
+                    || f.getValues().size() != 1 || !Objects.equals(f.getDatatype(), f0.getDatatype())) return null;
+            values.add(f.getValues().get(0));
+        }
+        if (values.size() < 2) return null;
+
+        // The merged query: the common query with that filter's value list = all series' values
+        List<FilterGroup> mergedFilters = new ArrayList<>();
+        for (int g = 0; g < fg0.size(); g++) {
+            List<Filter> fs = new ArrayList<>(fg0.get(g).getGroupFilters());
+            if (g == loc[0]) {
+                Filter f0 = fs.get(loc[1]);
+                fs.set(loc[1], new Filter(f0.getField(), "=", new ArrayList<>(values), f0.getDatatype()));
+            }
+            mergedFilters.add(new FilterGroup(fs, fg0.get(g).getOp()));
+        }
+        Query merged = new Query(null, null, mergedFilters, sel0, first.getEntity(), first.getProfile(),
+                first.getLimit(), first.getOrderBy(), first.isUseCache());
+        List<Object> mergedParams = new ArrayList<>();
+        String body = mapper.map(merged, mergedParams, orderBy);
+        if (body == null) return null;
+        // The value list replaces one parameter by |values|; anything else means the SQL shape changed
+        if (mergedParams.size() != p0.size() - 1 + values.size()) return null;
+        body = body.trim();
+        if (body.endsWith(";")) body = body.substring(0, body.length() - 1);
+        int orderByIdx = body.toUpperCase().lastIndexOf("ORDER BY");
+        if (orderByIdx >= 0) body = body.substring(0, orderByIdx).trim();
+
+        StringBuilder sql = new StringBuilder("WITH m(y, x1) AS (").append(body).append("), t AS (SELECT ");
+        for (int i = 1; i <= n; i++) {
+            sql.append("MAX(CASE WHEN x1 = ? THEN y END) AS y").append(i).append(", ");
+        }
+        sql.append("x1 FROM m GROUP BY x1) SELECT ");
+        for (int i = 1; i <= n; i++) sql.append("y").append(i).append(", ");
+        sql.append("x1 FROM t");
+        List<Object> allParams = new ArrayList<>(mergedParams);
+        allParams.addAll(seriesValues);
+        return new SeriesMerge(sql.toString(), allParams);
     }
 
     private List<Result> runIndividually(List<Query> queryList, String orderBy) throws Exception {

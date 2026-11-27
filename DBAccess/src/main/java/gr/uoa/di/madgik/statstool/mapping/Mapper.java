@@ -86,10 +86,10 @@ public class Mapper {
                         filter.getValues(), filter.getDatatype()));
                 }
                 cfg.tables.put(entity.getName(),
-                    new Table(entity.getFrom(), entity.getKey(), filters, entityDesc));
+                    new Table(entity.getFrom(), entity.getKey(), filters, entityDesc, entity.isUniqueKey()));
             } else {
                 cfg.tables.put(entity.getName(),
-                    new Table(entity.getFrom(), entity.getKey(), null, entityDesc));
+                    new Table(entity.getFrom(), entity.getKey(), null, entityDesc, entity.isUniqueKey()));
             }
 
             for (MappingField field : entity.getFields()) {

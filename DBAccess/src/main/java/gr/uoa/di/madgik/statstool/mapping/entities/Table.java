@@ -9,12 +9,18 @@ public class Table {
     private final String key;
     private final List<Filter> filters;
     private final String description;
+    private final boolean uniqueKey;
 
     public Table(String table, String key, List<Filter> filters) {
         this(table, key, filters, null);
     }
 
     public Table(String table, String key, List<Filter> filters, String description) {
+        this(table, key, filters, description, false);
+    }
+
+    public Table(String table, String key, List<Filter> filters, String description, boolean uniqueKey) {
+        this.uniqueKey = uniqueKey;
         this.table = table;
         this.key = key;
         this.filters = filters;
@@ -35,5 +41,10 @@ public class Table {
 
     public String getDescription() {
         return description;
+    }
+
+    /** Profile flag "uniqueKey": the key is unique in the table (rule R1). */
+    public boolean isUniqueKey() {
+        return uniqueKey;
     }
 }

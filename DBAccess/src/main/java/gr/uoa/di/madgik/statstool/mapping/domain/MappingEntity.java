@@ -8,6 +8,8 @@ public class MappingEntity {
     private String key;
     private String description;
     private boolean visible = true;
+    // key is unique in the 'from' table (checked by the profile author): enables rule R1 (COUNT without DISTINCT)
+    private boolean uniqueKey = false;
     private List<MappingFilter> filters;
     private List<MappingField> fields;
     private List<String> relations;
@@ -68,6 +70,14 @@ public class MappingEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public boolean isUniqueKey() {
+        return uniqueKey;
+    }
+
+    public void setUniqueKey(boolean uniqueKey) {
+        this.uniqueKey = uniqueKey;
     }
 
     public boolean isVisible() {

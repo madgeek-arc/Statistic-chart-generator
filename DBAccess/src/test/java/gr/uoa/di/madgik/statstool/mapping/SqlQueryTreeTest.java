@@ -1345,4 +1345,79 @@ public class SqlQueryTreeTest {
         assertFalse(sql.matches("(?s).*[^_]p2\\.level2=.*"), "no reference to the inner alias outside the subquery: " + sql);
         assertEquals(Arrays.asList("A", "EUR"), params);
     }
+
+    // ---- R1: COUNT(DISTINCT root.key) -> COUNT(root.key) when no join can repeat a root row ----
+
+    private ProfileConfiguration r1Profile() {
+        ProfileConfiguration pc = buildProfile();
+        pc.fields.put("result.year", new Field("result", "year", "int"));
+        pc.fields.put("result.type", new Field("result", "type", "text"));
+        pc.fields.put("result.publisher", new Field("result", "publisher", "text"));
+        return pc;
+    }
+
+    private static String r1Sql(ProfileConfiguration pc, List<FilterGroup> filters, List<Select> selects, boolean unique) {
+        pc.tables.put("result", new Table("result", "id", null, null, unique));
+        Query q = new Query(null, null, filters, selects, "result", "test", 0, null, false);
+        return new SqlQueryBuilder(q, pc).getSqlQuery(new ArrayList<>(), null);
+    }
+
+    private static FilterGroup and(Filter... fs) { return new FilterGroup(Arrays.asList(fs), "AND"); }
+
+    @Test
+    public void r1_countRootKey_filtersOnly_dropsDistinct() {
+        List<FilterGroup> filters = Arrays.asList(
+                and(new Filter("result.year", "=", Collections.singletonList("2020"), "int"),
+                    new Filter("result.type", "=", Collections.singletonList("publication"), "text"),
+                    new Filter("result.project_results.category", "=", Collections.singletonList("EC"), "string")));
+        String sql = r1Sql(r1Profile(), filters, Arrays.asList(new Select("result", "count", 1), new Select("result.year", null, 2)), true);
+        assertTrue(sql.startsWith("SELECT COUNT(r0.id), r0.year FROM result r0 WHERE "), sql);
+        assertFalse(sql.contains("DISTINCT r0.id"), sql);
+        assertTrue(sql.contains("r0.id IN (SELECT DISTINCT s0.result_id FROM project_results s0"), "semi-join filter kept: " + sql);
+    }
+
+    @Test
+    public void r1_orGroupOfFilters_dropsDistinct() {
+        FilterGroup or = new FilterGroup(Arrays.asList(
+                new Filter("result.project_results.category", "=", Collections.singletonList("EC"), "string"),
+                new Filter("result.result_organization.organization.country", "=", Collections.singletonList("GR"), "string")), "OR");
+        String sql = r1Sql(r1Profile(), Collections.singletonList(or), Collections.singletonList(new Select("result", "count", 1)), true);
+        assertTrue(sql.startsWith("SELECT COUNT(r0.id) FROM result r0 WHERE "), sql);
+        assertTrue(sql.contains("UNION ALL"), "OR of two hop branches stays one semi-join over UNION ALL: " + sql);
+    }
+
+    @Test
+    public void r1_nonRootGroupBy_keepsDistinct() {
+        String sql = r1Sql(r1Profile(), new ArrayList<>(), Arrays.asList(
+                new Select("result", "count", 1),
+                new Select("result.result_organization.organization.country", null, 2)), true);
+        assertTrue(sql.startsWith("SELECT COUNT(DISTINCT r0.id), "), sql);
+    }
+
+    @Test
+    public void r1_nonRootAggregate_keepsDistinct() {
+        String sql = r1Sql(r1Profile(), new ArrayList<>(), Arrays.asList(
+                new Select("result", "count", 1),
+                new Select("result.project_results.value", "sum", 2)), true);
+        assertTrue(sql.contains("LEFT JOIN ("), "derived LEFT JOIN expected: " + sql);
+        assertTrue(sql.startsWith("SELECT COUNT(DISTINCT r0.id), "), sql);
+    }
+
+    @Test
+    public void r1_countOnNonKeyRootField_keepsDistinct() {
+        String sql = r1Sql(r1Profile(), new ArrayList<>(), Arrays.asList(
+                new Select("result.publisher", "count", 1), new Select("result.year", null, 2)), true);
+        assertTrue(sql.startsWith("SELECT COUNT(DISTINCT r0.publisher), r0.year "), sql);
+    }
+
+    @Test
+    public void r1_keyNotFlaggedUnique_keepsDistinct() {
+        String sql = r1Sql(r1Profile(), new ArrayList<>(), Arrays.asList(
+                new Select("result", "count", 1), new Select("result.year", null, 2)), false);
+        assertTrue(sql.startsWith("SELECT COUNT(DISTINCT r0.id), r0.year "), sql);
+        // Table without the flag (old constructors) keeps the old behaviour
+        Query q = new Query(null, null, new ArrayList<>(), Arrays.asList(new Select("result", "count", 1)),
+                "result", "test", 0, null, false);
+        assertTrue(new SqlQueryBuilder(q, buildProfile()).getSqlQuery(new ArrayList<>(), null).startsWith("SELECT COUNT(DISTINCT r0.id) "));
+    }
 }

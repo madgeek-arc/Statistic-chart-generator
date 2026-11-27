@@ -1,6 +1,9 @@
 package gr.uoa.di.madgik.statstool.services;
 
+import gr.uoa.di.madgik.statstool.domain.Filter;
+import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.Query;
+import gr.uoa.di.madgik.statstool.domain.Select;
 import gr.uoa.di.madgik.statstool.domain.Result;
 import gr.uoa.di.madgik.statstool.domain.TimedResult;
 import gr.uoa.di.madgik.statstool.mapping.Mapper;
@@ -537,5 +540,166 @@ public class StatsServiceImplTest {
         ArgumentCaptor<List<Object>> paramsCaptor = ArgumentCaptor.forClass(List.class);
         verify(statsRepository).executeQuery(anyString(), paramsCaptor.capture(), anyString());
         assertEquals(Arrays.asList("value1"), paramsCaptor.getValue());
+    }
+
+    // ---- R2: series that differ only in one equality filter on the group-by field -> one query + pivot ----
+
+    private static final String TOPIC = "result.result_topics.topic";
+
+    /** One series: count results of a type, grouped by topic, filtered on one topic. */
+    private Query topicSeries(String topic) {
+        Query q = newQuery("p", true);
+        q.setEntity("result");
+        q.setLimit(30);
+        q.setSelect(Arrays.asList(new Select("result", "count", 1), new Select(TOPIC, null, 2)));
+        q.setFilters(new ArrayList<>(Arrays.asList(new FilterGroup(new ArrayList<>(Arrays.asList(
+                new Filter("result.type", "=", List.of("publication"), null),
+                new Filter(TOPIC, "=", List.of(topic), null))), "AND"))));
+        return q;
+    }
+
+    /** Fake mapper: writes the topic filter as =? or IN (?, ...) the way SqlQueryTree does. */
+    private void stubTopicMapper() {
+        doAnswer(inv -> {
+            Query q = inv.getArgument(0);
+            List<Object> params = inv.getArgument(1);
+            StringBuilder where = new StringBuilder();
+            for (FilterGroup g : q.getFilters()) {
+                for (Filter f : g.getGroupFilters()) {
+                    String col = f.getField().equals(TOPIC) ? "dj1.t1_topic" : "r0." + f.getField().substring(f.getField().lastIndexOf('.') + 1);
+                    if (where.length() > 0) where.append(" AND ");
+                    where.append(col).append(f.getValues().size() == 1 ? "=?" : " IN (" + String.join(", ", java.util.Collections.nCopies(f.getValues().size(), "?")) + ")");
+                    params.addAll(f.getValues());
+                }
+            }
+            return "SELECT COUNT(DISTINCT r0.id), dj1.t1_topic FROM result r0 JOIN (SELECT DISTINCT t1.id AS k, t1.topic AS t1_topic FROM result_topics t1) dj1 ON r0.id=dj1.k WHERE "
+                    + where + " GROUP BY dj1.t1_topic ORDER BY dj1.t1_topic LIMIT 30;";
+        }).when(mapper).map(any(Query.class), anyList(), any());
+    }
+
+    private String runMerged(List<Query> qs, String orderBy, Result dbResult, List<Object> paramsOut) throws Exception {
+        statsService.setMergeSeries(true);
+        stubTopicMapper();
+        when(statsCache.isEnabled()).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(dbResult, 1, 0));
+        statsService.query(qs, orderBy);
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<List<Object>> params = ArgumentCaptor.forClass(List.class);
+        verify(statsRepository, times(1)).executeQuery(sql.capture(), params.capture(), anyString());
+        if (paramsOut != null) paramsOut.addAll(params.getValue());
+        return sql.getValue();
+    }
+
+    private static Result emptyResult() {
+        Result r = new Result();
+        r.setRows(new ArrayList<>());
+        return r;
+    }
+
+    @Test
+    void r2_seriesDifferingInGroupByFilter_mergedWithPivot() throws Exception {
+        Result db = new Result();
+        db.setRows(new ArrayList<>(Arrays.asList(
+                Arrays.asList(5L, null, null, "1. No poverty"),
+                Arrays.asList(null, null, 7L, "3. Good health"))));
+        statsService.setMergeSeries(true);
+        stubTopicMapper();
+        when(statsCache.isEnabled()).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(db, 1, 0));
+
+        List<Result> out = statsService.query(Arrays.asList(
+                topicSeries("1. No poverty"), topicSeries("2. Zero hunger"), topicSeries("3. Good health")), "xaxis");
+
+        ArgumentCaptor<String> sqlC = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<List<Object>> parC = ArgumentCaptor.forClass(List.class);
+        verify(statsRepository, times(1)).executeQuery(sqlC.capture(), parC.capture(), eq("p.public"));
+        String sql = sqlC.getValue();
+        assertTrue(sql.startsWith("WITH m(y, x1) AS (SELECT COUNT(DISTINCT r0.id), dj1.t1_topic FROM "), sql);
+        assertTrue(sql.contains("dj1.t1_topic IN (?, ?, ?) GROUP BY dj1.t1_topic)"), "IN list, inner ORDER BY/LIMIT stripped: " + sql);
+        assertTrue(sql.contains("t AS (SELECT MAX(CASE WHEN x1 = ? THEN y END) AS y1, MAX(CASE WHEN x1 = ? THEN y END) AS y2, "
+                + "MAX(CASE WHEN x1 = ? THEN y END) AS y3, x1 FROM m GROUP BY x1) SELECT y1, y2, y3, x1 FROM t ORDER BY x1 LIMIT 30"), sql);
+        assertFalse(sql.contains("keys AS"), sql);
+        assertEquals(Arrays.asList("publication", "1. No poverty", "2. Zero hunger", "3. Good health",
+                "1. No poverty", "2. Zero hunger", "3. Good health"), parC.getValue());
+
+        // split into one result per series, same shape as the keys-CTE path
+        assertEquals(3, out.size());
+        assertEquals(Arrays.asList(5L, "1. No poverty"), out.get(0).getRows().get(0));
+        assertEquals(Arrays.asList(null, "3. Good health"), out.get(0).getRows().get(1));
+        assertEquals(Arrays.asList(7L, "3. Good health"), out.get(2).getRows().get(1));
+    }
+
+    @Test
+    void r2_orderByNullOrStacked_merged() throws Exception {
+        String sql = runMerged(Arrays.asList(topicSeries("A"), topicSeries("B")), null, emptyResult(), null);
+        assertTrue(sql.startsWith("WITH m(y, x1) AS ("), sql);
+        assertTrue(sql.endsWith("FROM t ORDER BY x1 LIMIT 30"), sql);
+
+        reset(statsRepository);
+        sql = runMerged(Arrays.asList(topicSeries("A"), topicSeries("B")), "stacked", emptyResult(), null);
+        assertTrue(sql.startsWith("WITH m(y, x1) AS ("), sql);
+        assertTrue(sql.endsWith("ORDER BY COALESCE(y1,0)+COALESCE(y2,0) DESC LIMIT 30"), sql);
+    }
+
+    @Test
+    void r2_nonStackedOrder_notMerged() throws Exception {
+        String sql = runMerged(Arrays.asList(topicSeries("A"), topicSeries("B")), "count DESC", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
+        assertTrue(sql.contains("q2(y, x1) AS"), sql);
+    }
+
+    @Test
+    void r2_disabled_notMerged() throws Exception {
+        stubTopicMapper();
+        when(statsCache.isEnabled()).thenReturn(false);
+        when(statsRepository.executeQuery(anyString(), anyList(), anyString())).thenReturn(new TimedResult(emptyResult(), 1, 0));
+        statsService.query(Arrays.asList(topicSeries("A"), topicSeries("B")), "xaxis");
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(statsRepository).executeQuery(sql.capture(), anyList(), anyString());
+        assertTrue(sql.getValue().contains("keys AS"), sql.getValue());
+    }
+
+    @Test
+    void r2_seriesDifferingInTwoFilters_notMerged() throws Exception {
+        Query b = topicSeries("B");
+        b.getFilters().get(0).getGroupFilters().set(0, new Filter("result.type", "=", List.of("dataset"), null));
+        String sql = runMerged(Arrays.asList(topicSeries("A"), b), "xaxis", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
+    }
+
+    @Test
+    void r2_differingFilterNotOnGroupByField_notMerged() throws Exception {
+        Query a = topicSeries("A"), b = topicSeries("A");
+        a.getFilters().get(0).getGroupFilters().set(0, new Filter("result.type", "=", List.of("publication"), null));
+        b.getFilters().get(0).getGroupFilters().set(0, new Filter("result.type", "=", List.of("dataset"), null));
+        String sql = runMerged(Arrays.asList(a, b), "xaxis", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
+    }
+
+    @Test
+    void r2_orGroup_notMerged() throws Exception {
+        Query a = topicSeries("A"), b = topicSeries("B");
+        a.getFilters().get(0).setOp("OR");
+        b.getFilters().get(0).setOp("OR");
+        String sql = runMerged(Arrays.asList(a, b), "xaxis", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
+    }
+
+    @Test
+    void r2_namedQueryInList_notMerged() throws Exception {
+        Query named = newQuery("p", true);
+        named.setName("some.named.query");
+        named.setParameters(new ArrayList<>(List.of("B")));
+        when(namedQueryRepository.getQuery("some.named.query")).thenReturn("SELECT y, x FROM s WHERE x=?");
+        String sql = runMerged(Arrays.asList(topicSeries("A"), named), "xaxis", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
+    }
+
+    @Test
+    void r2_differentLimits_notMerged() throws Exception {
+        Query a = topicSeries("A"), b = topicSeries("B");
+        b.setLimit(10);
+        String sql = runMerged(Arrays.asList(a, b), "xaxis", emptyResult(), null);
+        assertFalse(sql.contains("MAX(CASE"), sql);
     }
 }

@@ -5,9 +5,14 @@ import gr.uoa.di.madgik.statstool.domain.FilterGroup;
 import gr.uoa.di.madgik.statstool.domain.Query;
 import gr.uoa.di.madgik.statstool.domain.Select;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.*;
 
 public class SqlQueryTree {
+    private static final Logger log = LogManager.getLogger(SqlQueryTree.class);
+
     private final Node root;
     private int count;
     private final int limit;
@@ -17,12 +22,21 @@ public class SqlQueryTree {
     // different root columns into one semi-join. null = unknown.
     private final String rootKey;
 
+    // True when rootKey is unique in the root table (profile entity flag "uniqueKey").
+    // Enables rule R1: COUNT(root.key) instead of COUNT(DISTINCT root.key) when no join can repeat a root row.
+    private final boolean rootKeyUnique;
+
     public SqlQueryTree(Query query) {
         this(query, null);
     }
 
     public SqlQueryTree(Query query, String rootKey) {
+        this(query, rootKey, false);
+    }
+
+    public SqlQueryTree(Query query, String rootKey, boolean rootKeyUnique) {
         this.rootKey = rootKey;
+        this.rootKeyUnique = rootKeyUnique && rootKey != null;
         this.root = new Node();
         this.root.table = query.getEntity();
         this.root.alias = query.getEntity().charAt(0) + Integer.toString(this.count);
@@ -162,6 +176,13 @@ public class SqlQueryTree {
         // Map select order -> outer expression placeholder to preserve original ordering
         Map<Integer, String> outerExprByOrder = new HashMap<>();
 
+        // R1: the outer FROM holds only the root table when no non-root node has a select (such a select
+        // becomes a JOIN or a derived LEFT JOIN, both of which can repeat root rows). Filters never add a
+        // join to the outer FROM (they are semi-joins on the root), so each root row is seen once and, with
+        // a unique key, COUNT(DISTINCT key) = COUNT(key).
+        boolean rootRowsUnique = this.rootKeyUnique && !hasNonRootSelect(this.root);
+        String rootKeyRef = this.root.alias + "." + this.rootKey;
+
         stack.push(this.root);
         while (!stack.empty()) {
             Node nd = stack.pop();
@@ -175,7 +196,10 @@ public class SqlQueryTree {
                             group.add(expr);
                         } else {
                             String agg = select.getAggregate();
-                            if ("count".equals(agg)) {
+                            if ("count".equals(agg) && rootRowsUnique && rootKeyRef.equals(expr)) {
+                                log.debug("R1: COUNT({}) without DISTINCT on {}", expr, this.root.table);
+                                selects.add(new OrderedSelect(select.getOrder(), "COUNT(" + expr + ")"));
+                            } else if ("count".equals(agg)) {
                                 selects.add(new OrderedSelect(select.getOrder(), "COUNT(DISTINCT " + expr + ")"));
                             } else {
                                 selects.add(new OrderedSelect(select.getOrder(), agg + "(" + expr + ")"));
@@ -828,6 +852,14 @@ public class SqlQueryTree {
             }
         }
         return mappedFilters;
+    }
+
+    /** True if any node below {@code nd} carries a select (it would be joined into the outer query). */
+    private static boolean hasNonRootSelect(Node nd) {
+        for (Edge e : nd.children.values()) {
+            if (!e.node.selects.isEmpty() || hasNonRootSelect(e.node)) return true;
+        }
+        return false;
     }
 
     /** Aggregates whose result does not change when input rows are repeated ("count" is generated as COUNT(DISTINCT)). */
